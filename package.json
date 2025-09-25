@@ -1,0 +1,45 @@
+{
+  "name": "localprice",
+  "version": "1.0.0",
+  "description": "Application de comparaison de prix locaux",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "client": "cd client && npm start",
+    "server": "nodemon server.js",
+    "build": "cd client && npm run build",
+    "start:all": "concurrently \"npm run dev\" \"npm run client\"",
+    "setup": "./start.sh",
+    "install:all": "npm install && cd client && npm install && cd ..",
+    "clean": "rm -rf node_modules client/node_modules package-lock.json client/package-lock.json",
+    "reset": "npm run clean && npm run install:all",
+    "create-admin": "node create-admin-user.js",
+    "test:api": "curl http://localhost:5001/api/stores",
+    "logs": "tail -f logs/app.log",
+    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install --prefix client && npm run build --prefix client"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.10.0",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.6.0"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0",
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "price",
+    "comparison",
+    "local",
+    "shopping"
+  ],
+  "author": "Votre nom",
+  "license": "MIT"
+}
