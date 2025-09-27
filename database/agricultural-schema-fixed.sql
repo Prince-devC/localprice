@@ -1,4 +1,4 @@
--- Schéma de base de données pour LocalPrice - Version Agricole
+-- Schéma de base de données pour Lokali - Version Agricole
 -- Basé sur le cahier des charges détaillé
 
 -- Table des utilisateurs avec rôles
@@ -114,4 +114,5 @@ CREATE INDEX idx_prices_submitted_by ON prices(submitted_by);
 CREATE INDEX idx_prices_validated_by ON prices(validated_by);
 CREATE INDEX idx_localities_coordinates ON localities(latitude, longitude);
 CREATE INDEX idx_products_category ON products(category_id);
+
 

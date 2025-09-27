@@ -239,7 +239,7 @@ const Register = () => {
       <RegisterCard>
         <RegisterHeader>
           <RegisterTitle>Inscription</RegisterTitle>
-          <RegisterSubtitle>Créez votre compte LocalPrice</RegisterSubtitle>
+          <RegisterSubtitle>Créez votre compte Lokali</RegisterSubtitle>
         </RegisterHeader>
 
         <RegisterForm onSubmit={handleSubmit}>

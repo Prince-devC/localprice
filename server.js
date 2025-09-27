@@ -53,7 +53,7 @@ app.use('/api/admin', require('./routes/admin'));
 
 // Route de test
 app.get('/api/test', (req, res) => {
-  res.json({ message: 'API LocalPrice fonctionne!' });
+  res.json({ message: 'API Lokali fonctionne!' });
 });
 
 // Gestion des erreurs

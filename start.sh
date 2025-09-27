@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# 🚀 Script de démarrage automatique pour LocalPrice
-# Ce script configure et démarre l'application LocalPrice
+# 🚀 Script de démarrage automatique pour Lokali
+# Ce script configure et démarre l'application Lokali
 
-echo "🛒 LocalPrice - Démarrage automatique"
+echo "🛒 Lokali - Démarrage automatique"
 echo "======================================"
 
 # Couleurs pour les messages
@@ -175,4 +175,4 @@ else
 fi
 
 echo ""
-print_success "Script terminé ! Bon développement avec LocalPrice ! 🛒✨"
+print_success "Script terminé ! Bon développement avec Lokali ! 🛒✨"

@@ -1,6 +1,6 @@
-# 🛒 LocalPrice - Application de Comparaison de Prix Locaux
+# 🛒 Lokali - Application de Comparaison de Prix Locaux
 
-LocalPrice est une application web moderne qui permet aux utilisateurs de comparer les prix des produits dans leurs magasins locaux. L'application offre une interface intuitive pour rechercher des produits, comparer les prix entre différents magasins, et trouver les meilleures offres près de chez eux.
+Lokali est une application web moderne qui permet aux utilisateurs de comparer les prix des produits dans leurs magasins locaux. L'application offre une interface intuitive pour rechercher des produits, comparer les prix entre différents magasins, et trouver les meilleures offres près de chez eux.
 
 ## ✨ Fonctionnalités Principales
 
@@ -55,7 +55,7 @@ LocalPrice est une application web moderne qui permet aux utilisateurs de compar
 ### 1. Cloner le projet
 ```bash
 git clone <url-du-repo>
-cd LocalPrice
+cd Lokali
 ```
 
 ### 2. Configuration de la base de données
@@ -177,7 +177,7 @@ npm run client
 ## 📁 Structure du Projet
 
 ```
-LocalPrice/
+Lokali/
 ├── client/                    # Application React
 │   ├── public/               # Fichiers publics
 │   ├── src/
@@ -434,4 +434,4 @@ Pour toute question ou problème :
 
 ---
 
-**LocalPrice** - Trouvez les meilleurs prix près de chez vous ! 🛒✨
+**Lokali** - Trouvez les meilleurs prix près de chez vous ! 🛒✨

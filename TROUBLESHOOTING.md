@@ -1,4 +1,4 @@
-# 🔧 Guide de Dépannage - LocalPrice
+# 🔧 Guide de Dépannage - Lokali
 
 ## 🚨 Problèmes Courants et Solutions
 

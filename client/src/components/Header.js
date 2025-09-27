@@ -42,22 +42,34 @@ const Logo = styled(Link)`
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+  margin-right: 2rem;
+  
+  @media (max-width: 1024px) {
+    margin-right: 1.5rem;
+  }
+  
+  @media (max-width: 768px) {
+    margin-right: 1rem;
+  }
   
   @media (max-width: 480px) {
     font-size: 1.25rem;
     gap: 0.25rem;
+    margin-right: 0.5rem;
   }
 `;
 
 const SearchContainer = styled.div`
   flex: 1;
-  max-width: 500px;
-  margin: 0 2rem;
+  min-width: 300px;
+  max-width: 700px;
+  margin: 0 1.5rem;
   position: relative;
   
   @media (max-width: 1024px) {
     margin: 0 1rem;
-    max-width: 400px;
+    min-width: 250px;
+    max-width: 500px;
   }
   
   @media (max-width: 768px) {
@@ -74,47 +86,67 @@ const SearchForm = styled.form`
 
 const SearchInput = styled.input`
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  padding: 0.875rem 1rem 0.875rem 3rem;
   border: 2px solid var(--gray-200);
-  border-radius: 25px;
-  font-size: 0.875rem;
-  background: var(--gray-50);
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-radius: 30px;
+  font-size: 0.9rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
   
   &::placeholder {
-    color: var(--gray-400);
+    color: var(--gray-500);
     font-weight: 400;
+    transition: all 0.3s ease;
   }
   
   &:hover {
     border-color: var(--gray-300);
-    background: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      0 2px 4px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    
+    &::placeholder {
+      color: var(--gray-600);
+      transform: translateX(2px);
+    }
   }
   
   &:focus {
     outline: none;
     border-color: var(--primary-color);
     background: white;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 4px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-1px);
+    box-shadow: 
+      0 0 0 4px rgba(59, 130, 246, 0.12),
+      0 8px 25px rgba(0, 0, 0, 0.12),
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px) scale(1.02);
+    
+    &::placeholder {
+      color: var(--gray-400);
+      transform: translateX(4px);
+    }
   }
 `;
 
 const SearchIcon = styled(FiSearch)`
   position: absolute;
-  left: 0.75rem;
+  left: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--gray-400);
-  font-size: 1.25rem;
-  transition: color 0.3s ease;
+  color: var(--gray-500);
+  font-size: 1.3rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
-  
-  ${SearchInput}:focus + & {
-    color: var(--primary-color);
-  }
+  z-index: 1;
 `;
 
 const SearchButton = styled.button`
@@ -153,11 +185,18 @@ const SearchButton = styled.button`
 const Nav = styled.nav`
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   flex-shrink: 0;
+  margin-left: 1rem;
+  
+  @media (max-width: 1200px) {
+    gap: 0.5rem;
+    margin-left: 0.75rem;
+  }
   
   @media (max-width: 1024px) {
-    gap: 0.5rem;
+    gap: 0.375rem;
+    margin-left: 0.5rem;
   }
   
   @media (max-width: 768px) {
@@ -169,19 +208,33 @@ const NavLink = styled(Link)`
   color: var(--gray-700);
   text-decoration: none;
   font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: var(--border-radius);
-  transition: var(--transition);
+  padding: 0.625rem 0.875rem;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  position: relative;
+  font-size: 0.9rem;
   
   &:hover {
     color: var(--primary-color);
-    background-color: var(--gray-100);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.1);
+  }
+  
+  @media (max-width: 1200px) {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
   }
   
   @media (max-width: 1024px) {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.8rem;
   }
 `;
 
@@ -189,11 +242,18 @@ const UserMenu = styled.div`
   position: relative;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   flex-shrink: 0;
+  margin-left: 0.5rem;
+  
+  @media (max-width: 1200px) {
+    gap: 0.5rem;
+    margin-left: 0.25rem;
+  }
   
   @media (max-width: 1024px) {
-    gap: 0.5rem;
+    gap: 0.375rem;
+    margin-left: 0;
   }
 `;
 
@@ -201,21 +261,37 @@ const UserButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: none;
+  padding: 0.625rem 1rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid var(--gray-300);
-  border-radius: var(--border-radius);
+  border-radius: 10px;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  font-weight: 500;
+  color: var(--gray-700);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   
   &:hover {
-    background-color: var(--gray-100);
+    background: linear-gradient(135deg, var(--gray-50) 0%, #f1f5f9 100%);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  @media (max-width: 1200px) {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
   }
   
   @media (max-width: 1024px) {
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
   }
   
   @media (max-width: 480px) {
@@ -226,61 +302,108 @@ const UserButton = styled.button`
 
 const Dropdown = styled.div`
   position: absolute;
-  top: 100%;
+  top: calc(100% + 0.5rem);
   right: 0;
   background: white;
   border: 1px solid var(--gray-200);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-lg);
-  min-width: 200px;
+  border-radius: 12px;
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.05);
+  min-width: 220px;
   z-index: 1001;
   display: ${props => props.isOpen ? 'block' : 'none'};
+  backdrop-filter: blur(10px);
+  animation: ${props => props.isOpen ? 'slideDown' : 'none'} 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
 `;
 
 const DropdownItem = styled(Link)`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
   color: var(--gray-700);
   text-decoration: none;
-  transition: var(--transition);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  border-radius: 8px;
+  margin: 0.25rem;
   
   &:hover {
-    background-color: var(--gray-100);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%);
+    color: var(--primary-color);
+    transform: translateX(4px);
+  }
+  
+  &:first-child {
+    margin-top: 0.5rem;
+  }
+  
+  &:last-child {
+    margin-bottom: 0.5rem;
   }
 `;
 
 const LogoutButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1rem;
   background: none;
   border: none;
   color: var(--gray-700);
   text-align: left;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  border-radius: 8px;
+  margin: 0.25rem;
   
   &:hover {
-    background-color: var(--gray-100);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.04) 100%);
+    color: #dc2626;
+    transform: translateX(4px);
+  }
+  
+  &:last-child {
+    margin-bottom: 0.5rem;
   }
 `;
 
 const MobileMenuButton = styled.button`
   display: none;
-  background: none;
-  border: none;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--gray-300);
   font-size: 1.5rem;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: var(--border-radius);
-  transition: var(--transition);
+  padding: 0.75rem;
+  border-radius: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: var(--gray-700);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   
   &:hover {
-    background-color: var(--gray-100);
+    background: linear-gradient(135deg, var(--gray-50) 0%, #f1f5f9 100%);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
   
   @media (max-width: 768px) {
@@ -289,7 +412,7 @@ const MobileMenuButton = styled.button`
   
   @media (max-width: 480px) {
     font-size: 1.25rem;
-    padding: 0.375rem;
+    padding: 0.625rem;
   }
 `;
 
@@ -300,28 +423,51 @@ const MobileMenu = styled.div`
   right: 0;
   background: white;
   border-top: 1px solid var(--gray-200);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.05);
   z-index: 999;
   display: ${props => props.isOpen ? 'block' : 'none'};
   max-height: calc(100vh - 80px);
   overflow-y: auto;
+  backdrop-filter: blur(10px);
+  animation: ${props => props.isOpen ? 'slideDown' : 'none'} 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
   @media (max-width: 480px) {
     top: 70px;
     max-height: calc(100vh - 70px);
   }
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 `;
 
 const MobileNavLink = styled(Link)`
   display: block;
-  padding: 1rem;
+  padding: 1rem 1.25rem;
   color: var(--gray-700);
   text-decoration: none;
   border-bottom: 1px solid var(--gray-100);
-  transition: var(--transition);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  position: relative;
   
   &:hover {
-    background-color: var(--gray-100);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%);
+    color: var(--primary-color);
+    transform: translateX(8px);
+  }
+  
+  &:active {
+    transform: translateX(4px);
   }
   
   @media (max-width: 480px) {
@@ -348,47 +494,67 @@ const MobileSearchForm = styled.form`
 
 const MobileSearchInput = styled.input`
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  padding: 0.875rem 1rem 0.875rem 3rem;
   border: 2px solid var(--gray-200);
-  border-radius: 25px;
-  font-size: 0.875rem;
-  background: var(--gray-50);
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-radius: 30px;
+  font-size: 0.9rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
   
   &::placeholder {
-    color: var(--gray-400);
+    color: var(--gray-500);
     font-weight: 400;
+    transition: all 0.3s ease;
   }
   
   &:hover {
     border-color: var(--gray-300);
-    background: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      0 2px 4px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    
+    &::placeholder {
+      color: var(--gray-600);
+      transform: translateX(2px);
+    }
   }
   
   &:focus {
     outline: none;
     border-color: var(--primary-color);
     background: white;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 4px 12px rgba(0, 0, 0, 0.15);
-    transform: translateY(-1px);
+    box-shadow: 
+      0 0 0 4px rgba(59, 130, 246, 0.12),
+      0 8px 25px rgba(0, 0, 0, 0.12),
+      0 4px 12px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px) scale(1.02);
+    
+    &::placeholder {
+      color: var(--gray-400);
+      transform: translateX(4px);
+    }
   }
 `;
 
 const MobileSearchIcon = styled(FiSearch)`
   position: absolute;
-  left: 1.75rem;
+  left: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--gray-400);
-  font-size: 1.25rem;
-  transition: color 0.3s ease;
+  color: var(--gray-500);
+  font-size: 1.3rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
-  
-  ${MobileSearchInput}:focus + & {
-    color: var(--primary-color);
-  }
+  z-index: 1;
 `;
 
 const MobileSearchButton = styled.button`
@@ -490,7 +656,7 @@ const Header = () => {
         <HeaderContent>
           <Logo to="/">
             <FiSearch />
-            LocalPrice
+            Lokali
           </Logo>
           
           <SearchContainer>
@@ -509,15 +675,14 @@ const Header = () => {
           </SearchContainer>
           
           <Nav>
-              <NavLink to="/stores">Magasins</NavLink>
-              <NavLink to="/compare">Comparer</NavLink>
-              <NavLink to="/price-map">Carte des Prix</NavLink>
-              <NavLink to="/cost-comparator">Calculer Coûts</NavLink>
-              {user && (user.role === 'contributor' || user.role === 'admin') && (
-                <NavLink to="/submit-price">Soumettre Prix</NavLink>
-              )}
+              <NavLink to="/suppliers">Fournisseurs</NavLink>
+              <NavLink to="/stores">Magasins de stockages</NavLink>
+              <NavLink to="/price-map">Cartes</NavLink>
+              <NavLink to="/cost-comparator">Calculer les coûts</NavLink>
+              <NavLink to="/compare">Comparer prix</NavLink>
+              <NavLink to="/submit-price">Contribuer</NavLink>
               {user && user.role === 'admin' && (
-                <NavLink to="/admin">Administration</NavLink>
+                <NavLink to="/admin">Espace Admin</NavLink>
               )}
             {isAuthenticated ? (
               <UserMenu>
@@ -538,8 +703,8 @@ const Header = () => {
               </UserMenu>
             ) : (
               <>
-                <NavLink to="/login">Connexion</NavLink>
-                <NavLink to="/register">Inscription</NavLink>
+                <NavLink to="/login">Login</NavLink>
+                <NavLink to="/register">Register</NavLink>
               </>
             )}
           </Nav>
@@ -571,16 +736,15 @@ const Header = () => {
           </MobileSearchForm>
         </MobileSearchContainer>
         
-        <MobileNavLink to="/stores">Magasins</MobileNavLink>
-        <MobileNavLink to="/compare">Comparer</MobileNavLink>
-        <MobileNavLink to="/price-map">Carte des Prix</MobileNavLink>
-        <MobileNavLink to="/cost-comparator">Calculer Coûts</MobileNavLink>
+        <MobileNavLink to="/suppliers">Fournisseurs</MobileNavLink>
+        <MobileNavLink to="/stores">Magasins de stockages</MobileNavLink>
+        <MobileNavLink to="/price-map">Cartes</MobileNavLink>
+        <MobileNavLink to="/cost-comparator">Calculer les coûts</MobileNavLink>
+        <MobileNavLink to="/compare">Comparer prix</MobileNavLink>
+        <MobileNavLink to="/submit-price">Contribuer</MobileNavLink>
         
-        {user && (user.role === 'contributor' || user.role === 'admin') && (
-          <MobileNavLink to="/submit-price">Soumettre Prix</MobileNavLink>
-        )}
         {user && user.role === 'admin' && (
-          <MobileNavLink to="/admin">Administration</MobileNavLink>
+          <MobileNavLink to="/admin">Espace Admin</MobileNavLink>
         )}
         
         {isAuthenticated ? (
@@ -590,8 +754,8 @@ const Header = () => {
           </>
         ) : (
           <>
-            <MobileNavLink to="/login">Connexion</MobileNavLink>
-            <MobileNavLink to="/register">Inscription</MobileNavLink>
+            <MobileNavLink to="/login">Login</MobileNavLink>
+            <MobileNavLink to="/register">Register</MobileNavLink>
           </>
         )}
       </MobileMenu>

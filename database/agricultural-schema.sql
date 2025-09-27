@@ -1,4 +1,4 @@
--- Schéma de base de données pour LocalPrice - Version Agricole
+-- Schéma de base de données pour Lokali - Version Agricole
 -- Basé sur le cahier des charges détaillé
 
 -- Table des utilisateurs avec rôles

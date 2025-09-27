@@ -1,4 +1,4 @@
--- Données d'exemple pour LocalPrice
+-- Données d'exemple pour Lokali
 -- À exécuter après l'importation du schéma principal
 
 USE localprice;

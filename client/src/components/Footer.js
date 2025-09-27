@@ -102,7 +102,7 @@ const Footer = () => {
       <FooterContent>
         <FooterGrid>
           <FooterSection>
-            <h3>LocalPrice</h3>
+            <h3>Lokali</h3>
             <p style={{ color: 'var(--gray-300)', marginBottom: '1rem' }}>
               Comparez les prix dans vos magasins locaux et trouvez les meilleures offres près de chez vous.
             </p>
@@ -153,13 +153,13 @@ const Footer = () => {
             </ContactInfo>
             <ContactInfo>
               <FiMail />
-              <span>contact@localprice.fr</span>
+              <span>contact@lokali.bj</span>
             </ContactInfo>
           </FooterSection>
         </FooterGrid>
         
         <FooterBottom>
-          <p>&copy; 2024 LocalPrice. Tous droits réservés.</p>
+          <p>&copy; 2024 Lokali. Tous droits réservés.</p>
         </FooterBottom>
       </FooterContent>
     </FooterContainer>

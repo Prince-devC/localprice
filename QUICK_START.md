@@ -1,4 +1,4 @@
-# 🚀 Démarrage Rapide - LocalPrice
+# 🚀 Démarrage Rapide - Lokali
 
 ## ⚡ Installation Express (5 minutes)
 
@@ -11,7 +11,7 @@
 ```bash
 # Cloner le projet
 git clone <url-du-repo>
-cd LocalPrice
+cd Lokali
 
 # Copier la configuration
 cp env.example .env
@@ -111,7 +111,7 @@ npm run start:all
 ## 📁 Structure
 
 ```
-LocalPrice/
+Lokali/
 ├── client/          # React App
 ├── routes/          # API Routes
 ├── models/          # Data Models
@@ -129,4 +129,4 @@ LocalPrice/
 
 ---
 
-**Prêt à démarrer ?** Suivez les étapes ci-dessus et votre application LocalPrice sera opérationnelle en 5 minutes ! 🎉
+**Prêt à démarrer ?** Suivez les étapes ci-dessus et votre application Lokali sera opérationnelle en 5 minutes ! 🎉

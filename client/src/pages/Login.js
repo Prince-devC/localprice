@@ -194,7 +194,7 @@ const Login = () => {
       <LoginCard>
         <LoginHeader>
           <LoginTitle>Connexion</LoginTitle>
-          <LoginSubtitle>Connectez-vous à votre compte LocalPrice</LoginSubtitle>
+          <LoginSubtitle>Connectez-vous à votre compte Lokali</LoginSubtitle>
         </LoginHeader>
 
         <LoginForm onSubmit={handleSubmit}>

@@ -1,4 +1,4 @@
-# Configuration MAMP pour LocalPrice
+# Configuration MAMP pour Lokali
 
 ## Configuration de la Base de Données
 
@@ -66,14 +66,14 @@ MAMP_PORT=8889
 
 #### Terminal 1 - Backend
 ```bash
-cd /Applications/MAMP/htdocs/LocalPrice
+cd /Applications/MAMP/htdocs/Lokali
 npm install
 npm run dev
 ```
 
 #### Terminal 2 - Frontend
 ```bash
-cd /Applications/MAMP/htdocs/LocalPrice/client
+cd /Applications/MAMP/htdocs/Lokali/client
 npm install
 npm start
 ```
@@ -109,7 +109,7 @@ Le schéma de base de données inclut des données de test :
 ## Structure des Fichiers MAMP
 
 ```
-/Applications/MAMP/htdocs/LocalPrice/
+/Applications/MAMP/htdocs/Lokali/
 ├── client/                 # Application React
 ├── routes/                # Routes API
 ├── models/                # Modèles de données

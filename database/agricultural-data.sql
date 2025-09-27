@@ -1,4 +1,4 @@
--- Données de base pour LocalPrice - Version Agricole
+-- Données de base pour Lokali - Version Agricole
 
 -- Catégories de produits agricoles
 INSERT INTO product_categories (name, type, description) VALUES
@@ -147,4 +147,5 @@ INSERT INTO prices (product_id, locality_id, unit_id, price, date, submitted_by,
 (28, 1, 1, 60.00, '2024-01-15', 'contributor_001', 'pending'),
 (29, 1, 1, 40.00, '2024-01-15', 'contributor_001', 'pending'),
 (30, 1, 1, 30.00, '2024-01-15', 'contributor_001', 'pending');
+
 
