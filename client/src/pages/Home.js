@@ -8,7 +8,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import PriceFilters from '../components/PriceFilters';
 
 const HomeContainer = styled.div`
-  padding: 2rem 0;
+  padding: 0;
 `;
 
 const HeroSection = styled.section`
@@ -529,13 +529,10 @@ const Home = () => {
     <HomeContainer>
       <HeroSection>
         <HeroContent>
-          <HeroTitle>Trouver le prix</HeroTitle>
+          <HeroTitle>Votre courtier digital pour l'agriculture béninoise</HeroTitle>
           <HeroSubtitle>
-            Découvrez les prix des produits agricoles dans votre région
+            Accédez en un clic aux prix des produits agricoles, directement auprès des producteurs et des coopératives. Rejoignez notre réseau de centaines d'acteurs pour des achats plus stratégiques et avantageux.
           </HeroSubtitle>
-          <HeroDescription>
-            Utilisez les filtres ci-dessous pour trouver les prix des produits agricoles selon vos critères
-          </HeroDescription>
         </HeroContent>
       </HeroSection>
 
