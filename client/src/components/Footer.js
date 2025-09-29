@@ -31,6 +31,17 @@ const FooterSection = styled.div`
     color: white;
   }
   
+  .logo-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+    
+    img {
+      height: 48px;
+      width: auto;
+    }
+  }
+  
   ul {
     list-style: none;
     padding: 0;
@@ -102,7 +113,9 @@ const Footer = () => {
       <FooterContent>
         <FooterGrid>
           <FooterSection>
-            <h3>Lokali</h3>
+            <div className="logo-container">
+              <img src="/assets/lokali_white.svg" alt="Lokali" />
+            </div>
             <p style={{ color: 'var(--gray-300)', marginBottom: '1rem' }}>
               Comparez les prix dans vos magasins locaux et trouvez les meilleures offres près de chez vous.
             </p>

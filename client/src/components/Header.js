@@ -44,18 +44,35 @@ const Logo = styled(Link)`
   flex-shrink: 0;
   margin-right: 2rem;
   
+  img {
+    height: 60px;
+    width: auto;
+  }
+  
   @media (max-width: 1024px) {
     margin-right: 1.5rem;
+    
+    img {
+      height: 50px;
+    }
   }
   
   @media (max-width: 768px) {
     margin-right: 1rem;
+    
+    img {
+      height: 45px;
+    }
   }
   
   @media (max-width: 480px) {
     font-size: 1.25rem;
     gap: 0.25rem;
     margin-right: 0.5rem;
+    
+    img {
+      height: 40px;
+    }
   }
 `;
 
@@ -655,8 +672,7 @@ const Header = () => {
       <HeaderContainer>
         <HeaderContent>
           <Logo to="/">
-            <FiSearch />
-            Lokali
+            <img src="/assets/lokali_blue.svg" alt="Lokali" />
           </Logo>
           
           <SearchContainer>
