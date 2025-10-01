@@ -20,9 +20,17 @@ router.get('/', async (req, res) => {
     };
 
     const prices = await AgriculturalPrice.getValidatedPrices(filters);
-    res.json({ success: true, data: prices });
+    
+    res.json({
+      success: true,
+      data: prices
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('Erreur lors de la récupération des prix agricoles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
   }
 });
 

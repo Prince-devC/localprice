@@ -7,7 +7,30 @@ class AgriculturalPrice {
       let query = `
         SELECT p.id, pr.name as product_name, pc.name as category_name, pc.type as category_type,
                l.name as locality_name, r.name as region_name, u.name as unit_name, u.symbol as unit_symbol,
-               p.price, p.date, p.created_at
+               p.price, p.date, p.created_at,
+               -- Calcul de la variation de prix par rapport au prix précédent du même produit dans la même localité
+               (
+                 SELECT CASE 
+                   WHEN prev_p.price IS NOT NULL AND prev_p.price > 0 
+                   THEN ROUND(((p.price - prev_p.price) / prev_p.price) * 100, 2)
+                   ELSE NULL 
+                 END
+                 FROM prices prev_p 
+                 WHERE prev_p.product_id = p.product_id 
+                   AND prev_p.locality_id = p.locality_id 
+                   AND prev_p.status = 'validated'
+                   AND prev_p.date < p.date
+                 ORDER BY prev_p.date DESC 
+                 LIMIT 1
+               ) as price_change,
+               -- Volume simulé basé sur la popularité du produit (valeurs réalistes)
+               CASE 
+                 WHEN pc.type = 'cereales' THEN ROUND((RANDOM() * 500 + 100), 0)
+                 WHEN pc.type = 'legumes' THEN ROUND((RANDOM() * 200 + 50), 0)
+                 WHEN pc.type = 'fruits' THEN ROUND((RANDOM() * 150 + 30), 0)
+                 ELSE ROUND((RANDOM() * 100 + 20), 0)
+               END as volume,
+               p.date as updated_at
         FROM prices p
         JOIN products pr ON p.product_id = pr.id
         JOIN product_categories pc ON pr.category_id = pc.id
@@ -65,7 +88,7 @@ class AgriculturalPrice {
         query += ` LIMIT ${parseInt(filters.limit)}`;
       }
       
-      const [rows] = await db.execute(query, params);
+      const rows = await db.all(query, params);
       return rows;
     } catch (error) {
       throw new Error(`Erreur lors de la récupération des prix validés: ${error.message}`);
@@ -75,21 +98,22 @@ class AgriculturalPrice {
   // Récupérer les prix en attente de validation (admin)
   static async getPendingPrices(limit = 50, offset = 0) {
     try {
-      const [rows] = await db.execute(
+      const rows = await db.all(
         `SELECT p.id, pr.name as product_name, pc.name as category_name,
                 l.name as locality_name, r.name as region_name, u.name as unit_name,
                 p.price, p.date, p.comment, p.created_at,
-                u.email as submitted_by_email
+                users.email as submitted_by_email
          FROM prices p
          JOIN products pr ON p.product_id = pr.id
          JOIN product_categories pc ON pr.category_id = pc.id
          JOIN localities l ON p.locality_id = l.id
          JOIN regions r ON l.region_id = r.id
          JOIN units u ON p.unit_id = u.id
-         JOIN users u ON p.submitted_by = u.id
+         LEFT JOIN users ON p.submitted_by = users.id
          WHERE p.status = 'pending'
          ORDER BY p.created_at ASC
-         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`
+         LIMIT ? OFFSET ?`,
+        [parseInt(limit), parseInt(offset)]
       );
       return rows;
     } catch (error) {
@@ -100,18 +124,18 @@ class AgriculturalPrice {
   // Valider un prix (admin)
   static async validatePrice(priceId, adminId, comment = null) {
     try {
-      const [result] = await db.execute(
+      const result = await db.run(
         `UPDATE prices 
-         SET status = 'validated', validated_by = ?, validated_at = NOW(), comment = ?
+         SET status = 'validated', validated_by = ?, validated_at = CURRENT_TIMESTAMP, comment = ?
          WHERE id = ? AND status = 'pending'`,
         [adminId, comment, priceId]
       );
       
-      if (result.affectedRows === 0) {
+      if (result.changes === 0) {
         throw new Error('Prix non trouvé ou déjà traité');
       }
       
-      return result.affectedRows > 0;
+      return result.changes > 0;
     } catch (error) {
       throw new Error(`Erreur lors de la validation du prix: ${error.message}`);
     }
@@ -120,18 +144,18 @@ class AgriculturalPrice {
   // Rejeter un prix (admin)
   static async rejectPrice(priceId, adminId, rejectionReason) {
     try {
-      const [result] = await db.execute(
+      const result = await db.run(
         `UPDATE prices 
-         SET status = 'rejected', validated_by = ?, validated_at = NOW(), rejection_reason = ?
+         SET status = 'rejected', validated_by = ?, validated_at = CURRENT_TIMESTAMP, rejection_reason = ?
          WHERE id = ? AND status = 'pending'`,
         [adminId, rejectionReason, priceId]
       );
       
-      if (result.affectedRows === 0) {
+      if (result.changes === 0) {
         throw new Error('Prix non trouvé ou déjà traité');
       }
       
-      return result.affectedRows > 0;
+      return result.changes > 0;
     } catch (error) {
       throw new Error(`Erreur lors du rejet du prix: ${error.message}`);
     }
@@ -142,13 +166,13 @@ class AgriculturalPrice {
     try {
       const { product_id, locality_id, unit_id, price, date, comment } = priceData;
       
-      const [result] = await db.execute(
+      const result = await db.run(
         `INSERT INTO prices (product_id, locality_id, unit_id, price, date, submitted_by, comment, status)
          VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
         [product_id, locality_id, unit_id, price, date, contributorId, comment]
       );
       
-      return result.insertId;
+      return result.lastID;
     } catch (error) {
       throw new Error(`Erreur lors de la soumission du prix: ${error.message}`);
     }
@@ -194,8 +218,8 @@ class AgriculturalPrice {
         params.push(filters.date_to);
       }
       
-      const [rows] = await db.execute(query, params);
-      return rows[0];
+      const rows = await db.all(query, params);
+      return rows[0] || {};
     } catch (error) {
       throw new Error(`Erreur lors de la récupération des statistiques: ${error.message}`);
     }
@@ -224,7 +248,7 @@ class AgriculturalPrice {
       
       query += ` GROUP BY p.date ORDER BY p.date ASC`;
       
-      const [rows] = await db.execute(query, params);
+      const rows = await db.all(query, params);
       return rows;
     } catch (error) {
       throw new Error(`Erreur lors de la récupération de l'évolution: ${error.message}`);
@@ -263,7 +287,7 @@ class AgriculturalPrice {
         params.push(filters.date_from);
       }
       
-      const [rows] = await db.execute(query, params);
+      const rows = await db.all(query, params);
       return rows;
     } catch (error) {
       throw new Error(`Erreur lors de la récupération des prix pour la carte: ${error.message}`);
@@ -273,16 +297,17 @@ class AgriculturalPrice {
   // Calculer l'indice panier de base
   static async getBasketIndex(essentialProducts = [1, 2, 3, 4, 5]) {
     try {
-      const [rows] = await db.execute(
+      const placeholders = essentialProducts.map(() => '?').join(',');
+      const rows = await db.all(
         `SELECT AVG(p.price) as basket_index
          FROM prices p
          WHERE p.status = 'validated' 
-         AND p.product_id IN (${essentialProducts.map(() => '?').join(',')})
-         AND p.date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
+         AND p.product_id IN (${placeholders})
+         AND p.date >= date('now', '-30 days')`,
         essentialProducts
       );
       
-      return rows[0].basket_index || 0;
+      return rows[0]?.basket_index || 0;
     } catch (error) {
       throw new Error(`Erreur lors du calcul de l'indice panier: ${error.message}`);
     }

@@ -7,7 +7,7 @@ class Product {
       const [rows] = await db.execute(
         `SELECT p.*, c.name as category_name 
          FROM products p 
-         LEFT JOIN categories c ON p.category_id = c.id 
+         LEFT JOIN product_categories c ON p.category_id = c.id 
          ORDER BY p.name 
          LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`
       );
@@ -23,11 +23,11 @@ class Product {
       const [rows] = await db.execute(
         `SELECT p.*, c.name as category_name 
          FROM products p 
-         LEFT JOIN categories c ON p.category_id = c.id 
+         LEFT JOIN product_categories c ON p.category_id = c.id 
          WHERE p.id = ?`,
         [id]
       );
-      return rows[0];
+      return rows;
     } catch (error) {
       throw new Error(`Erreur lors de la récupération du produit: ${error.message}`);
     }
@@ -39,7 +39,7 @@ class Product {
       const [rows] = await db.execute(
         `SELECT p.*, c.name as category_name 
          FROM products p 
-         LEFT JOIN categories c ON p.category_id = c.id 
+         LEFT JOIN product_categories c ON p.category_id = c.id 
          WHERE p.name LIKE ? 
          ORDER BY p.name 
          LIMIT ${parseInt(limit)}`,
@@ -57,7 +57,7 @@ class Product {
       const [rows] = await db.execute(
         `SELECT p.*, c.name as category_name 
          FROM products p 
-         LEFT JOIN categories c ON p.category_id = c.id 
+         LEFT JOIN product_categories c ON p.category_id = c.id 
          WHERE p.category_id = ? 
          ORDER BY p.name 
          LIMIT ${parseInt(limit)}`,
@@ -75,7 +75,7 @@ class Product {
       const [rows] = await db.execute(
         `SELECT p.*, c.name as category_name 
          FROM products p 
-         LEFT JOIN categories c ON p.category_id = c.id 
+         LEFT JOIN product_categories c ON p.category_id = c.id 
          WHERE p.barcode = ?`,
         [barcode]
       );
@@ -152,7 +152,7 @@ class Product {
     try {
       let query = `SELECT p.*, c.name as category_name 
                    FROM products p 
-                   LEFT JOIN categories c ON p.category_id = c.id 
+                   LEFT JOIN product_categories c ON p.category_id = c.id 
                    WHERE 1=1`;
       
       const params = [];
@@ -174,8 +174,8 @@ class Product {
 
       if (filters.min_price && filters.max_price) {
         query += ` AND p.id IN (
-          SELECT product_id FROM product_prices 
-          WHERE price BETWEEN ? AND ? AND is_available = TRUE
+          SELECT product_id FROM prices 
+          WHERE price BETWEEN ? AND ? AND status = 'validated'
         )`;
         params.push(filters.min_price, filters.max_price);
       }

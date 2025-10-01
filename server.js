@@ -50,6 +50,7 @@ app.use('/api/localities', require('./routes/localities'));
 app.use('/api/units', require('./routes/units'));
 app.use('/api/costs', require('./routes/costs'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/filter-options', require('./routes/filter-options'));
 
 // Route de test
 app.get('/api/test', (req, res) => {

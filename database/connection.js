@@ -1,32 +1,72 @@
-const mysql = require('mysql2');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 require('dotenv').config();
 
-// Configuration de la base de données
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'localprice',
-  port: process.env.MAMP_PORT || 3306,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-};
+// Configuration de la base de données SQLite
+const dbPath = path.join(__dirname, 'lokali.db');
 
-// Créer le pool de connexions
-const pool = mysql.createPool(dbConfig);
-
-// Promisifier les requêtes
-const promisePool = pool.promise();
-
-// Test de connexion
-pool.getConnection((err, connection) => {
+// Créer la connexion SQLite
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Erreur de connexion à la base de données:', err.message);
+    console.error('Erreur de connexion à la base de données SQLite:', err.message);
   } else {
-    console.log('Connexion à la base de données établie');
-    connection.release();
+    console.log('Connexion à la base de données SQLite établie');
   }
 });
 
-module.exports = promisePool;
+// Promisifier les requêtes SQLite
+const promiseDb = {
+  run: (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.run(sql, params, function(err) {
+        if (err) reject(err);
+        else resolve({ lastID: this.lastID, changes: this.changes });
+      });
+    });
+  },
+  
+  get: (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  },
+  
+  all: (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+  },
+  
+  execute: (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve([rows]); // Retourner dans le format MySQL [rows]
+      });
+    });
+  },
+  exec: (sql) => {
+    return new Promise((resolve, reject) => {
+      db.exec(sql, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  },
+  close: () => {
+    return new Promise((resolve, reject) => {
+      db.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+  }
+};
+
+module.exports = promiseDb;

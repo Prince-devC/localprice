@@ -183,4 +183,18 @@ export const adminService = {
   rejectPrice: (id, data) => api.post(`/admin/reject-price/${id}`, data)
 };
 
+// API pour les options de filtres
+export const filterOptionsService = {
+  getAll: () => api.get('/filter-options'),
+  getProducts: () => api.get('/filter-options/products'),
+  getLocalities: () => api.get('/filter-options/localities'),
+  getRegions: () => api.get('/filter-options/regions'),
+  getCategories: () => api.get('/filter-options/categories'),
+  getPeriods: () => api.get('/filter-options/periods'),
+  updateStatus: (type, id, isActive) => api.put(`/filter-options/${type}/${id}/status`, { is_active: isActive }),
+  addProduct: (data) => api.post('/filter-options/products', data),
+  addLocality: (data) => api.post('/filter-options/localities', data),
+  delete: (type, id) => api.delete(`/filter-options/${type}/${id}`)
+};
+
 export default api;
