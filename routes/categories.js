@@ -2,20 +2,20 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/connection');
 
-// GET /api/categories - Récupérer toutes les catégories
+// GET /api/product_categories - Récupérer toutes les catégories
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM categories ORDER BY name');
+    const [rows] = await db.execute('SELECT * FROM product_categories ORDER BY name');
     res.json({ success: true, data: rows });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// GET /api/categories/:id - Récupérer une catégorie par ID
+// GET /api/product_categories/:id - Récupérer une catégorie par ID
 router.get('/:id', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM categories WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute('SELECT * FROM product_categories WHERE id = ?', [req.params.id]);
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Catégorie non trouvée' });
     }
@@ -25,7 +25,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/categories - Créer une nouvelle catégorie
+// POST /api/product_categories - Créer une nouvelle catégorie
 router.post('/', async (req, res) => {
   try {
     const { name, description } = req.body;
@@ -35,7 +35,7 @@ router.post('/', async (req, res) => {
     }
 
     const [result] = await db.execute(
-      'INSERT INTO categories (name, description) VALUES (?, ?)',
+      'INSERT INTO product_categories (name, description) VALUES (?, ?)',
       [name, description]
     );
 
@@ -49,7 +49,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/categories/:id - Mettre à jour une catégorie
+// PUT /api/product_categories/:id - Mettre à jour une catégorie
 router.put('/:id', async (req, res) => {
   try {
     const { name, description } = req.body;
@@ -59,7 +59,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const [result] = await db.execute(
-      'UPDATE categories SET name = ?, description = ? WHERE id = ?',
+      'UPDATE product_categories SET name = ?, description = ? WHERE id = ?',
       [name, description, req.params.id]
     );
 
@@ -73,10 +73,10 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/categories/:id - Supprimer une catégorie
+// DELETE /api/product_categories/:id - Supprimer une catégorie
 router.delete('/:id', async (req, res) => {
   try {
-    const [result] = await db.execute('DELETE FROM categories WHERE id = ?', [req.params.id]);
+    const [result] = await db.execute('DELETE FROM product_categories WHERE id = ?', [req.params.id]);
     
     if (result.affectedRows === 0) {
       return res.status(404).json({ success: false, message: 'Catégorie non trouvée' });

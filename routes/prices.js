@@ -27,7 +27,7 @@ router.get('/store/:storeId', async (req, res) => {
       `SELECT pp.*, p.name as product_name, p.brand, c.name as category_name
        FROM product_prices pp
        JOIN products p ON pp.product_id = p.id
-       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN product_categories c ON p.category_id = c.id
        WHERE pp.store_id = ? AND pp.is_available = TRUE
        ORDER BY p.name
        LIMIT ?`,

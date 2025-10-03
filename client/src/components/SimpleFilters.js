@@ -221,11 +221,13 @@ const SimpleFilters = ({ filters, onFiltersChange, onReset }) => {
   );
 
   // Extraire les données des réponses API
-  const categories = categoriesResponse?.data || [];
-  const localities = localitiesResponse?.data || [];
+  const categories = categoriesResponse?.data?.data || [];
+  const localities = localitiesResponse?.data?.data || [];
 
   console.log('SimpleFilters: Categories loaded:', categories);
   console.log('SimpleFilters: Localities loaded:', localities);
+  console.log('SimpleFilters: Categories loading:', categoriesLoading, 'Error:', categoriesErrorFlag, categoriesError);
+  console.log('SimpleFilters: Localities loading:', localitiesLoading, 'Error:', localitiesErrorFlag, localitiesError);
   
 
   // Synchroniser les filtres locaux avec les props

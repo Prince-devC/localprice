@@ -15,7 +15,7 @@ INSERT OR IGNORE INTO regions (name, code) VALUES
 ('Plateau', 'PL'),
 ('Zou', 'ZO');
 
--- Insertion des communes du Bénin par département
+-- Insertion des communes du Bénin par département (sans doublons)
 INSERT OR IGNORE INTO localities (name, region_id, latitude, longitude) VALUES
 -- Alibori
 ('Banikoara', 1, 11.2989, 2.4394),
@@ -49,8 +49,6 @@ INSERT OR IGNORE INTO localities (name, region_id, latitude, longitude) VALUES
 -- Borgou
 ('Bembèrèkè', 4, 10.2167, 2.6667),
 ('Kalale', 4, 10.3000, 3.3833),
-('Kandi', 4, 11.1342, 2.9386),
-('Malanville', 4, 11.8667, 3.3833),
 ('Nikki', 4, 9.9333, 3.2167),
 ('Parakou', 4, 9.3372, 2.6303),
 ('Pèrèrè', 4, 9.7000, 2.8500),
@@ -82,12 +80,12 @@ INSERT OR IGNORE INTO localities (name, region_id, latitude, longitude) VALUES
 ('Cotonou', 8, 6.3703, 2.3912),
 
 -- Mono
+('Athiémé', 9, 6.5667, 1.6667),
 ('Bopa', 9, 6.8667, 1.9667),
 ('Comè', 9, 6.4000, 1.8833),
 ('Grand-Popo', 9, 6.2833, 1.8167),
 ('Houéyogbé', 9, 6.5833, 1.9000),
 ('Lokossa', 9, 6.6386, 1.7175),
-('Athiémé', 9, 6.5667, 1.6667),
 
 -- Ouémé
 ('Adjarra', 10, 6.4833, 2.6167),
@@ -241,66 +239,64 @@ INSERT OR IGNORE INTO filter_locality_options (locality_id, display_name, is_act
 -- Borgou
 (24, 'Bembèrèkè', 1, 24),
 (25, 'Kalalé', 1, 25),
-(26, 'N''Dali', 1, 26),
-(27, 'Nikki', 1, 27),
-(28, 'Parakou', 1, 28),
-(29, 'Pèrèrè', 1, 29),
-(30, 'Sinendé', 1, 30),
-(31, 'Tchaourou', 1, 31),
+(26, 'Nikki', 1, 26),
+(27, 'Parakou', 1, 27),
+(28, 'Pèrèrè', 1, 28),
+(29, 'Sinendé', 1, 29),
 -- Collines
-(32, 'Bantè', 1, 32),
-(33, 'Dassa-Zoumè', 1, 33),
-(34, 'Glazoué', 1, 34),
-(35, 'Ouèssè', 1, 35),
-(36, 'Savalou', 1, 36),
-(37, 'Savè', 1, 37),
+(30, 'Bantè', 1, 30),
+(31, 'Dassa-Zoumè', 1, 31),
+(32, 'Glazoué', 1, 32),
+(33, 'Ouèssè', 1, 33),
+(34, 'Savalou', 1, 34),
+(35, 'Savè', 1, 35),
 -- Couffo
-(38, 'Aplahoué', 1, 38),
-(39, 'Djakotomey', 1, 39),
-(40, 'Dogbo', 1, 40),
-(41, 'Klouékanmè', 1, 41),
-(42, 'Lalo', 1, 42),
-(43, 'Toviklin', 1, 43),
+(36, 'Aplahoué', 1, 36),
+(37, 'Djakotomey', 1, 37),
+(38, 'Dogbo', 1, 38),
+(39, 'Klouékanmè', 1, 39),
+(40, 'Lalo', 1, 40),
+(41, 'Toviklin', 1, 41),
 -- Donga
-(44, 'Bassila', 1, 44),
-(45, 'Copargo', 1, 45),
-(46, 'Djougou', 1, 46),
-(47, 'Ouaké', 1, 47),
+(42, 'Bassila', 1, 42),
+(43, 'Copargo', 1, 43),
+(44, 'Djougou', 1, 44),
+(45, 'Ouaké', 1, 45),
 -- Littoral
-(48, 'Cotonou', 1, 48),
+(46, 'Cotonou', 1, 46),
 -- Mono
-(49, 'Athiémé', 1, 49),
-(50, 'Bopa', 1, 50),
-(51, 'Comè', 1, 51),
-(52, 'Grand-Popo', 1, 52),
-(53, 'Houéyogbé', 1, 53),
-(54, 'Lokossa', 1, 54),
+(47, 'Athiémé', 1, 47),
+(48, 'Bopa', 1, 48),
+(49, 'Comè', 1, 49),
+(50, 'Grand-Popo', 1, 50),
+(51, 'Houéyogbé', 1, 51),
+(52, 'Lokossa', 1, 52),
 -- Ouémé
-(55, 'Adjarra', 1, 55),
-(56, 'Adjohoun', 1, 56),
-(57, 'Aguégués', 1, 57),
-(58, 'Akpro-Missérété', 1, 58),
-(59, 'Avrankou', 1, 59),
-(60, 'Bonou', 1, 60),
-(61, 'Dangbo', 1, 61),
-(62, 'Porto-Novo', 1, 62),
-(63, 'Sèmè-Kpodji', 1, 63),
+(53, 'Adjarra', 1, 53),
+(54, 'Adjohoun', 1, 54),
+(55, 'Aguégués', 1, 55),
+(56, 'Akpro-Missérété', 1, 56),
+(57, 'Avrankou', 1, 57),
+(58, 'Bonou', 1, 58),
+(59, 'Dangbo', 1, 59),
+(60, 'Porto-Novo', 1, 60),
+(61, 'Sèmè-Kpodji', 1, 61),
 -- Plateau
-(64, 'Adja-Ouèrè', 1, 64),
-(65, 'Ifangni', 1, 65),
-(66, 'Kétou', 1, 66),
-(67, 'Pobè', 1, 67),
-(68, 'Sakété', 1, 68),
+(62, 'Adja-Ouèrè', 1, 62),
+(63, 'Ifangni', 1, 63),
+(64, 'Kétou', 1, 64),
+(65, 'Pobè', 1, 65),
+(66, 'Sakété', 1, 66),
 -- Zou
-(69, 'Abomey', 1, 69),
-(70, 'Agbangnizoun', 1, 70),
-(71, 'Bohicon', 1, 71),
-(72, 'Cové', 1, 72),
-(73, 'Djidja', 1, 73),
-(74, 'Ouinhi', 1, 74),
-(75, 'Za-Kpota', 1, 75),
-(76, 'Zangnanado', 1, 76),
-(77, 'Zogbodomey', 1, 77);
+(67, 'Abomey', 1, 67),
+(68, 'Agbangnizoun', 1, 68),
+(69, 'Bohicon', 1, 69),
+(70, 'Cové', 1, 70),
+(71, 'Djidja', 1, 71),
+(72, 'Ouinhi', 1, 72),
+(73, 'Za-Kpota', 1, 73),
+(74, 'Zangnanado', 1, 74),
+(75, 'Zogbodomey', 1, 75);
 
 -- Insertion des options de filtres pour les régions (départements du Bénin)
 INSERT OR IGNORE INTO filter_region_options (region_id, display_name, is_active, sort_order) VALUES
@@ -320,10 +316,10 @@ INSERT OR IGNORE INTO filter_region_options (region_id, display_name, is_active,
 -- Insertion des options de filtres pour les catégories
 INSERT OR IGNORE INTO filter_category_options (category_id, display_name, is_active, sort_order) VALUES
 (1, 'Céréales', 1, 1),
-(2, 'Légumineuses', 1, 2),
-(3, 'Légumes', 1, 3),
-(4, 'Fruits', 1, 4),
-(5, 'Tubercules', 1, 5),
+(2, 'Tubercules', 1, 2),
+(3, 'Légumineuses', 1, 3),
+(4, 'Légumes', 1, 4),
+(5, 'Fruits', 1, 5),
 (6, 'Produits transformés', 1, 6);
 
 -- Insertion des options de filtres pour les périodes
@@ -335,27 +331,79 @@ INSERT OR IGNORE INTO filter_period_options (period_key, display_name, days_coun
 ('year', 'Cette année', 365, 1, 5),
 ('all', 'Toutes les périodes', 0, 1, 6);
 
+-- Insertion des coûts de transport et de stockage
+INSERT OR IGNORE INTO costs (type, value, unit, description) VALUES
+('transport', 50.0, 'per_km_per_tonne', 'Coût de transport par km et par tonne'),
+('stockage', 100.0, 'per_day_per_tonne', 'Coût de stockage par jour et par tonne'),
+('stockage', 0.1, 'per_day_per_kg', 'Coût de stockage par jour et par kg'),
+('stockage', 1000.0, 'per_day_per_q', 'Coût de stockage par jour et par quintal');
+
+-- Insertion de quelques magasins d'exemple
+INSERT OR IGNORE INTO stores (name, address, city, postal_code, phone, email, website, latitude, longitude, opening_hours) VALUES
+('Super Marché Cotonou', 'Avenue Clozel, Cotonou', 'Cotonou', '01BP1234', '+229 21 31 12 34', 'contact@supermarche-cotonou.bj', 'https://supermarche-cotonou.bj', 6.3703, 2.3912, '{"lundi": "7h-20h", "mardi": "7h-20h", "mercredi": "7h-20h", "jeudi": "7h-20h", "vendredi": "7h-20h", "samedi": "7h-20h", "dimanche": "8h-18h"}'),
+('Marché Dantokpa', 'Quartier Dantokpa, Cotonou', 'Cotonou', '01BP5678', '+229 21 31 56 78', 'info@marche-dantokpa.bj', '', 6.3500, 2.4000, '{"lundi": "6h-19h", "mardi": "6h-19h", "mercredi": "6h-19h", "jeudi": "6h-19h", "vendredi": "6h-19h", "samedi": "6h-19h", "dimanche": "7h-18h"}'),
+('Super Marché Porto-Novo', 'Avenue Jean Paul II, Porto-Novo', 'Porto-Novo', '01BP9012', '+229 20 21 90 12', 'contact@supermarche-pn.bj', 'https://supermarche-pn.bj', 6.4969, 2.6289, '{"lundi": "7h-20h", "mardi": "7h-20h", "mercredi": "7h-20h", "jeudi": "7h-20h", "vendredi": "7h-20h", "samedi": "7h-20h", "dimanche": "8h-18h"}'),
+('Marché de Bohicon', 'Centre-ville, Bohicon', 'Bohicon', '01BP3456', '+229 23 45 67 89', 'info@marche-bohicon.bj', '', 7.1786, 2.0667, '{"lundi": "6h-19h", "mardi": "6h-19h", "mercredi": "6h-19h", "jeudi": "6h-19h", "vendredi": "6h-19h", "samedi": "6h-19h", "dimanche": "7h-18h"}');
+
+-- Insertion de quelques prix de produits d'exemple
+INSERT OR IGNORE INTO product_prices (product_id, store_id, price, unit, date, status, is_available) VALUES
+-- Maïs
+(1, 1, 350.00, 'kg', '2024-01-15', 'active', 1),
+(1, 2, 340.00, 'kg', '2024-01-15', 'active', 1),
+(1, 3, 360.00, 'kg', '2024-01-15', 'active', 1),
+(1, 4, 320.00, 'kg', '2024-01-15', 'active', 1),
+-- Riz paddy
+(2, 1, 450.00, 'kg', '2024-01-15', 'active', 1),
+(2, 2, 440.00, 'kg', '2024-01-15', 'active', 1),
+(2, 3, 460.00, 'kg', '2024-01-15', 'active', 1),
+(2, 4, 430.00, 'kg', '2024-01-15', 'active', 1),
+-- Igname
+(6, 1, 280.00, 'kg', '2024-01-15', 'active', 1),
+(6, 2, 270.00, 'kg', '2024-01-15', 'active', 1),
+(6, 3, 290.00, 'kg', '2024-01-15', 'active', 1),
+(6, 4, 260.00, 'kg', '2024-01-15', 'active', 1),
+-- Tomate
+(13, 1, 400.00, 'kg', '2024-01-15', 'active', 1),
+(13, 2, 380.00, 'kg', '2024-01-15', 'active', 1),
+(13, 3, 420.00, 'kg', '2024-01-15', 'active', 1),
+(13, 4, 370.00, 'kg', '2024-01-15', 'active', 1),
+-- Oignon
+(14, 1, 300.00, 'kg', '2024-01-15', 'active', 1),
+(14, 2, 290.00, 'kg', '2024-01-15', 'active', 1),
+(14, 3, 310.00, 'kg', '2024-01-15', 'active', 1),
+(14, 4, 280.00, 'kg', '2024-01-15', 'active', 1),
+-- Gari
+(23, 1, 250.00, 'kg', '2024-01-15', 'active', 1),
+(23, 2, 240.00, 'kg', '2024-01-15', 'active', 1),
+(23, 3, 260.00, 'kg', '2024-01-15', 'active', 1),
+(23, 4, 230.00, 'kg', '2024-01-15', 'active', 1),
+-- Huile de palme
+(26, 1, 800.00, 'l', '2024-01-15', 'active', 1),
+(26, 2, 780.00, 'l', '2024-01-15', 'active', 1),
+(26, 3, 820.00, 'l', '2024-01-15', 'active', 1),
+(26, 4, 760.00, 'l', '2024-01-15', 'active', 1);
+
 -- Insertion de quelques prix d'exemple pour les produits béninois
 INSERT OR IGNORE INTO prices (product_id, locality_id, unit_id, price, date, status, submitted_by) VALUES
 -- Maïs
-(1, 48, 1, 350.00, '2024-01-15', 'validated', 'user1'),
-(1, 62, 1, 340.00, '2024-01-15', 'validated', 'user2'),
-(1, 71, 1, 320.00, '2024-01-15', 'validated', 'user3'),
+(1, 46, 1, 350.00, '2024-01-15', 'validated', 'user1'),
+(1, 60, 1, 340.00, '2024-01-15', 'validated', 'user2'),
+(1, 69, 1, 320.00, '2024-01-15', 'validated', 'user3'),
 -- Riz paddy
-(2, 48, 1, 450.00, '2024-01-15', 'validated', 'user1'),
-(2, 62, 1, 460.00, '2024-01-15', 'validated', 'user2'),
+(2, 46, 1, 450.00, '2024-01-15', 'validated', 'user1'),
+(2, 60, 1, 460.00, '2024-01-15', 'validated', 'user2'),
 -- Igname
-(6, 48, 1, 280.00, '2024-01-15', 'validated', 'user1'),
-(6, 62, 1, 290.00, '2024-01-15', 'validated', 'user2'),
+(6, 46, 1, 280.00, '2024-01-15', 'validated', 'user1'),
+(6, 60, 1, 290.00, '2024-01-15', 'validated', 'user2'),
 -- Tomate
-(13, 48, 1, 400.00, '2024-01-15', 'validated', 'user1'),
-(13, 62, 1, 420.00, '2024-01-15', 'validated', 'user2'),
+(13, 46, 1, 400.00, '2024-01-15', 'validated', 'user1'),
+(13, 60, 1, 420.00, '2024-01-15', 'validated', 'user2'),
 -- Oignon
-(14, 48, 1, 300.00, '2024-01-15', 'validated', 'user1'),
-(14, 62, 1, 310.00, '2024-01-15', 'validated', 'user2'),
+(14, 46, 1, 300.00, '2024-01-15', 'validated', 'user1'),
+(14, 60, 1, 310.00, '2024-01-15', 'validated', 'user2'),
 -- Gari
-(23, 48, 1, 250.00, '2024-01-15', 'validated', 'user1'),
-(23, 62, 1, 260.00, '2024-01-15', 'validated', 'user2'),
+(23, 46, 1, 250.00, '2024-01-15', 'validated', 'user1'),
+(23, 60, 1, 260.00, '2024-01-15', 'validated', 'user2'),
 -- Huile de palme
-(26, 48, 3, 800.00, '2024-01-15', 'validated', 'user1'),
-(26, 62, 3, 820.00, '2024-01-15', 'validated', 'user2');
+(26, 46, 3, 800.00, '2024-01-15', 'validated', 'user1'),
+(26, 60, 3, 820.00, '2024-01-15', 'validated', 'user2');

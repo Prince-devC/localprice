@@ -230,9 +230,9 @@ const AdvancedFilters = ({ filters, onFiltersChange, onReset }) => {
   );
 
   // Extraire les données de la réponse API
-  const categories = categoriesResponse?.data || [];
-  const localities = localitiesResponse?.data || [];
-  const products = productsResponse?.data || [];
+  const categories = categoriesResponse?.data?.data || [];
+  const localities = localitiesResponse?.data?.data || [];
+  const products = productsResponse?.data?.data || [];
 
   console.log('AdvancedFilters: Categories loaded:', categories);
   console.log('AdvancedFilters: Localities loaded:', localities);

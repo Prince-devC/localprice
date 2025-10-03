@@ -79,6 +79,24 @@ CREATE TABLE IF NOT EXISTS prices (
     FOREIGN KEY (validated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Table des prix de produits (pour les comparaisons)
+DROP TABLE IF EXISTS product_prices;
+CREATE TABLE product_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    store_id INTEGER NOT NULL,
+    price REAL NOT NULL,
+    unit TEXT DEFAULT 'unité',
+    date DATE NOT NULL,
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    is_available INTEGER DEFAULT 1,
+    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
+);
+
 -- Tables d'options pour les filtres (noms en anglais)
 
 -- Table des options de produits pour les filtres
@@ -136,6 +154,34 @@ CREATE TABLE IF NOT EXISTS filter_period_options (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Table des magasins
+CREATE TABLE IF NOT EXISTS stores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    address TEXT,
+    city TEXT,
+    postal_code TEXT,
+    phone TEXT,
+    email TEXT,
+    website TEXT,
+    latitude REAL,
+    longitude REAL,
+    opening_hours TEXT, -- JSON as TEXT in SQLite
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des coûts
+CREATE TABLE IF NOT EXISTS costs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL CHECK (type IN ('transport', 'stockage')),
+    value REAL NOT NULL,
+    unit TEXT NOT NULL,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Table des logs d'audit
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,3 +212,13 @@ CREATE INDEX IF NOT EXISTS idx_filter_locality_options_active ON filter_locality
 CREATE INDEX IF NOT EXISTS idx_filter_region_options_active ON filter_region_options(is_active, sort_order);
 CREATE INDEX IF NOT EXISTS idx_filter_category_options_active ON filter_category_options(is_active, sort_order);
 CREATE INDEX IF NOT EXISTS idx_filter_period_options_active ON filter_period_options(is_active, sort_order);
+
+-- Index pour la table des magasins
+CREATE INDEX IF NOT EXISTS idx_stores_city ON stores(city);
+CREATE INDEX IF NOT EXISTS idx_stores_coordinates ON stores(latitude, longitude);
+
+-- Index pour la table des prix de produits
+CREATE INDEX IF NOT EXISTS idx_product_prices_product ON product_prices(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_prices_store ON product_prices(store_id);
+CREATE INDEX IF NOT EXISTS idx_product_prices_status ON product_prices(status);
+CREATE INDEX IF NOT EXISTS idx_product_prices_date ON product_prices(date);

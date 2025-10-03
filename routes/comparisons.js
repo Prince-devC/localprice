@@ -101,7 +101,7 @@ router.post('/compare-stores', async (req, res) => {
                  FROM product_prices pp
                  JOIN products p ON pp.product_id = p.id
                  JOIN stores s ON pp.store_id = s.id
-                 LEFT JOIN categories c ON p.category_id = c.id
+                 LEFT JOIN product_categories c ON p.category_id = c.id
                  WHERE pp.store_id IN (${store_ids.map(() => '?').join(',')})
                  AND pp.is_available = TRUE`;
 
@@ -154,7 +154,7 @@ router.get('/search', async (req, res) => {
                         AVG(pp.price) as avg_price,
                         COUNT(DISTINCT pp.store_id) as store_count
                  FROM products p
-                 LEFT JOIN categories c ON p.category_id = c.id
+                 LEFT JOIN product_categories c ON p.category_id = c.id
                  JOIN product_prices pp ON p.id = pp.product_id
                  JOIN stores s ON pp.store_id = s.id
                  WHERE pp.is_available = TRUE`;

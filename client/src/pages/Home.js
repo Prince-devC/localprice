@@ -110,19 +110,24 @@ const Home = () => {
     
     // Convertir les tableaux de catégories et localités en IDs
     if (filters.categories && filters.categories.length > 0) {
-      apiFilters.category = filters.categories.map(cat => cat.id).join(',');
+      apiFilters.category_id = filters.categories.map(cat => cat.id).join(',');
     }
     if (filters.localities && filters.localities.length > 0) {
-      apiFilters.locality = filters.localities.map(loc => loc.id).join(',');
+      apiFilters.locality_id = filters.localities.map(loc => loc.id).join(',');
     }
     if (filters.products && filters.products.length > 0) {
-      apiFilters.product = filters.products.map(prod => prod.id).join(',');
+      apiFilters.product_id = filters.products.map(prod => prod.id).join(',');
     }
     if (filters.search) apiFilters.search = filters.search;
-    if (filters.minPrice) apiFilters.minPrice = parseFloat(filters.minPrice);
-    if (filters.maxPrice) apiFilters.maxPrice = parseFloat(filters.maxPrice);
-    if (filters.period) apiFilters.period = parseInt(filters.period);
+    if (filters.minPrice) apiFilters.price_min = parseFloat(filters.minPrice);
+    if (filters.maxPrice) apiFilters.price_max = parseFloat(filters.maxPrice);
+    if (filters.period) apiFilters.days = parseInt(filters.period);
     
+    // Ajouter des paramètres par défaut pour l'API des prix agricoles
+    apiFilters.limit = 50;
+    apiFilters.status = 'validated';
+    
+    console.log('Mapped filters for API:', apiFilters);
     return apiFilters;
   };
 

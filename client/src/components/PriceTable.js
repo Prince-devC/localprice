@@ -236,6 +236,8 @@ const PriceTable = ({ filters, onRefresh }) => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  console.log('PriceTable: Received filters:', filters);
+
   const { 
     data: agriculturalPricesResponse, 
     isLoading, 
@@ -263,7 +265,8 @@ const PriceTable = ({ filters, onRefresh }) => {
   console.log('Agricultural prices response:', agriculturalPricesResponse);
 
   // Extraire les données de la réponse API
-  const agriculturalPrices = agriculturalPricesResponse?.data || [];
+  const agriculturalPrices = agriculturalPricesResponse?.data?.data || [];
+  console.log('Extracted agricultural prices:', agriculturalPrices);
 
   const handleManualRefresh = async () => {
     await refetch();

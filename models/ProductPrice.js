@@ -25,7 +25,7 @@ class ProductPrice {
         `SELECT pp.*, p.name as product_name, c.name as category_name
          FROM product_prices pp
          JOIN products p ON pp.product_id = p.id
-         LEFT JOIN categories c ON p.category_id = c.id
+         LEFT JOIN product_categories c ON p.category_id = c.id
          WHERE pp.store_id = ? AND pp.is_available = TRUE
          ORDER BY p.name
          LIMIT ?`,
@@ -130,7 +130,7 @@ class ProductPrice {
          FROM product_prices pp
          JOIN products p ON pp.product_id = p.id
          JOIN stores s ON pp.store_id = s.id
-         LEFT JOIN categories c ON p.category_id = c.id
+         LEFT JOIN product_categories c ON p.category_id = c.id
          WHERE pp.is_available = TRUE
          ORDER BY pp.price ASC
          LIMIT ${parseInt(limit)}`
@@ -167,7 +167,7 @@ class ProductPrice {
         `SELECT DISTINCT p.id as product_id, p.name as product_name, p.description, 
                 c.name as category_name, pp.price, pp.unit, s.name as store_name, s.city
          FROM products p
-         LEFT JOIN categories c ON p.category_id = c.id
+         LEFT JOIN product_categories c ON p.category_id = c.id
          JOIN product_prices pp ON p.id = pp.product_id
          JOIN stores s ON pp.store_id = s.id
          WHERE pp.price BETWEEN ? AND ? AND pp.is_available = TRUE

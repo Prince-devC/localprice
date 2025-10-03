@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test CORS</title>
+</head>
+<body>
+    <h1>Test de connectivité API</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function testAPI() {
+            const results = document.getElementById('results');
+            
+            const apis = [
+                'http://localhost:5001/api/product-categories',
+                'http://localhost:5001/api/localities',
+                'http://localhost:5001/api/agricultural-prices?limit=3'
+            ];
+            
+            for (const api of apis) {
+                try {
+                    const response = await fetch(api);
+                    const data = await response.json();
+                    results.innerHTML += `<p>✅ ${api}: ${data.success ? 'SUCCESS' : 'FAILED'} (${data.data ? data.data.length : 0} éléments)</p>`;
+                } catch (error) {
+                    results.innerHTML += `<p>❌ ${api}: ERROR - ${error.message}</p>`;
+                }
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>
