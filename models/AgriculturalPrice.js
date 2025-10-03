@@ -106,6 +106,76 @@ class AgriculturalPrice {
     }
   }
 
+  // Compter le nombre total de prix validés avec les mêmes filtres
+  static async countValidatedPrices(filters = {}) {
+    try {
+      let query = `
+        SELECT COUNT(*) as total
+        FROM prices p
+        JOIN products pr ON p.product_id = pr.id
+        JOIN product_categories pc ON pr.category_id = pc.id
+        JOIN localities l ON p.locality_id = l.id
+        JOIN regions r ON l.region_id = r.id
+        JOIN units u ON p.unit_id = u.id
+        WHERE p.status = 'validated'
+      `;
+
+      const params = [];
+      
+      if (filters.product_id) {
+        query += ` AND p.product_id = ?`;
+        params.push(filters.product_id);
+      }
+      
+      if (filters.locality_id) {
+        query += ` AND p.locality_id = ?`;
+        params.push(filters.locality_id);
+      }
+      
+      if (filters.category_id) {
+        query += ` AND pr.category_id = ?`;
+        params.push(filters.category_id);
+      }
+      
+      if (filters.region_id) {
+        query += ` AND l.region_id = ?`;
+        params.push(filters.region_id);
+      }
+      
+      if (filters.date_from) {
+        query += ` AND p.date >= ?`;
+        params.push(filters.date_from);
+      }
+      
+      if (filters.date_to) {
+        query += ` AND p.date <= ?`;
+        params.push(filters.date_to);
+      }
+      
+      if (filters.price_min) {
+        query += ` AND p.price >= ?`;
+        params.push(filters.price_min);
+      }
+      
+      if (filters.price_max) {
+        query += ` AND p.price <= ?`;
+        params.push(filters.price_max);
+      }
+      
+      // Recherche globale dans les noms de produits et localités
+      if (filters.search) {
+        query += ` AND (pr.name LIKE ? OR l.name LIKE ? OR pc.name LIKE ?)`;
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm, searchTerm);
+      }
+      
+      const result = await db.get(query, params);
+      return result.total || 0;
+    } catch (error) {
+      throw new Error(`Erreur lors du comptage des prix validés: ${error.message}`);
+    }
+  }
+
   // Récupérer les prix en attente de validation (admin)
   static async getPendingPrices(limit = 50, offset = 0) {
     try {

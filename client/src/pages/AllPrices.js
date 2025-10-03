@@ -147,7 +147,24 @@ const AllPrices = () => {
   }, []);
 
   const handleDataLoaded = (data) => {
-    setTotalItems(data?.length || 0);
+    console.log('handleDataLoaded received:', data);
+    // Vérifier si on reçoit un objet avec pagination ou juste un tableau
+    if (data && typeof data === 'object' && data.total !== undefined) {
+      // Nouveau format avec pagination
+      console.log('Setting totalItems from data.total:', data.total);
+      setTotalItems(data.total);
+    } else if (data && typeof data === 'object' && data.pagination && data.pagination.total !== undefined) {
+      // Format avec pagination dans un sous-objet
+      console.log('Setting totalItems from data.pagination.total:', data.pagination.total);
+      setTotalItems(data.pagination.total);
+    } else if (Array.isArray(data)) {
+      // Ancien format (tableau simple)
+      console.log('Setting totalItems from array length:', data.length);
+      setTotalItems(data.length);
+    } else {
+      console.log('Setting totalItems to 0, data:', data);
+      setTotalItems(0);
+    }
   };
 
   const handleToggleFilters = (advanced) => {
@@ -157,6 +174,8 @@ const AllPrices = () => {
   const handleFiltersChange = (newFilters) => {
     setFilters(newFilters);
     setCurrentPage(1); // Reset to first page when filters change
+    // Réinitialiser totalItems pour forcer un nouveau calcul
+    setTotalItems(0);
   };
 
   const handleFiltersReset = () => {
@@ -171,6 +190,8 @@ const AllPrices = () => {
     };
     setFilters(resetFilters);
     setCurrentPage(1);
+    // Réinitialiser totalItems pour forcer un nouveau calcul
+    setTotalItems(0);
   };
 
   const mapFiltersForAPI = (filters) => {
@@ -191,19 +212,13 @@ const AllPrices = () => {
     if (filters.maxPrice) apiFilters.price_max = parseFloat(filters.maxPrice);
     if (filters.period) apiFilters.days = parseInt(filters.period);
     
-    // Ajouter la pagination seulement si on n'a pas de recherche active
-    // Quand il y a une recherche, on veut voir tous les résultats
-    if (!filters.search || filters.search.trim() === '') {
-      apiFilters.limit = itemsPerPage;
-      apiFilters.offset = (currentPage - 1) * itemsPerPage;
-    } else {
-      // Pour la recherche, on limite à un nombre raisonnable mais plus élevé
-      apiFilters.limit = 100;
-      apiFilters.offset = 0;
-    }
+    // Toujours ajouter la pagination
+    apiFilters.limit = itemsPerPage;
+    apiFilters.offset = (currentPage - 1) * itemsPerPage;
     apiFilters.status = 'validated';
     
     console.log('Mapped filters for API:', apiFilters);
+    console.log('Current page:', currentPage, 'Items per page:', itemsPerPage);
     return apiFilters;
   };
 
@@ -271,7 +286,12 @@ const AllPrices = () => {
           />
         </PriceTableWrapper>
 
-        {totalItems > itemsPerPage && (
+        {/* Debug: Affichage temporaire des valeurs pour diagnostic */}
+        <div style={{padding: '10px', background: '#f0f0f0', margin: '10px 0', fontSize: '12px'}}>
+          Debug: totalItems = {totalItems}, itemsPerPage = {itemsPerPage}, condition = {totalItems > itemsPerPage ? 'true' : 'false'}
+        </div>
+        
+        {totalItems >= itemsPerPage && (
           <PaginationContainer>
             <PaginationButton 
               onClick={handlePreviousPage}

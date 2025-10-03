@@ -73,9 +73,9 @@ const WhyChoose = () => {
           <FeatureIcon>
             <FiMapPin />
           </FeatureIcon>
-          <FeatureTitle>Magasins locaux</FeatureTitle>
+          <FeatureTitle>Prix par localité</FeatureTitle>
           <FeatureDescription>
-            Découvrez les magasins près de chez vous et comparez leurs prix en temps réel.
+            Consultez les prix de produits agricoles spécifiques à chaque localité du Bénin en temps réel.
           </FeatureDescription>
         </FeatureCard>
         
@@ -83,9 +83,9 @@ const WhyChoose = () => {
           <FeatureIcon>
             <FiTrendingUp />
           </FeatureIcon>
-          <FeatureTitle>Économies garanties</FeatureTitle>
+          <FeatureTitle>Connexion directe</FeatureTitle>
           <FeatureDescription>
-            Trouvez toujours les meilleurs prix et économisez sur vos achats quotidiens.
+            Connectez-vous directement aux fournisseurs de produits agricoles sans intermédiaire.
           </FeatureDescription>
         </FeatureCard>
         
@@ -93,9 +93,9 @@ const WhyChoose = () => {
           <FeatureIcon>
             <FiStar />
           </FeatureIcon>
-          <FeatureTitle>Comparaison facile</FeatureTitle>
+          <FeatureTitle>Courtier digital</FeatureTitle>
           <FeatureDescription>
-            Interface intuitive pour comparer rapidement les prix entre différents magasins.
+            Votre courtier digital pour faciliter vos transactions agricoles au Bénin.
           </FeatureDescription>
         </FeatureCard>
       </FeaturesGrid>

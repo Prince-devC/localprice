@@ -21,11 +21,22 @@ router.get('/', async (req, res) => {
       offset: req.query.offset || 0
     };
 
-    const prices = await AgriculturalPrice.getValidatedPrices(filters);
+    // Récupérer les données paginées et le nombre total
+    const [prices, totalCount] = await Promise.all([
+      AgriculturalPrice.getValidatedPrices(filters),
+      AgriculturalPrice.countValidatedPrices(filters)
+    ]);
     
     res.json({
       success: true,
-      data: prices
+      data: prices,
+      pagination: {
+        total: totalCount,
+        limit: parseInt(filters.limit),
+        offset: parseInt(filters.offset),
+        page: Math.floor(parseInt(filters.offset) / parseInt(filters.limit)) + 1,
+        totalPages: Math.ceil(totalCount / parseInt(filters.limit))
+      }
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des prix agricoles:', error);

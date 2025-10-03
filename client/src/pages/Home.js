@@ -6,7 +6,6 @@ import AdvancedFilters from '../components/AdvancedFilters';
 import SimpleFilters from '../components/SimpleFilters';
 import PriceTable from '../components/PriceTable';
 import WhyChoose from '../components/WhyChoose';
-import ProductCategories from '../components/ProductCategories';
 import PricingPlans from '../components/PricingPlans';
 import Contributor from '../components/Contributor';
 import Testimonials from '../components/Testimonials';
@@ -177,8 +176,6 @@ const Home = () => {
       </Section>
 
       <WhyChoose />
-      
-      <ProductCategories />
       
       <PricingPlans />
       

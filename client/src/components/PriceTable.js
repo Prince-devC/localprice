@@ -261,17 +261,37 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
 
   console.log('Current filters:', filters);
   console.log('Agricultural prices response:', agriculturalPricesResponse);
+  console.log('Full API response structure:', JSON.stringify(agriculturalPricesResponse, null, 2));
 
   // Extraire les données de la réponse API
   let agriculturalPrices = agriculturalPricesResponse?.data?.data || [];
+  const paginationInfo = agriculturalPricesResponse?.data?.pagination || null;
   
-  // Appeler le callback avec les données originales (avant limitation côté client)
-  // Note: Les données sont déjà filtrées côté serveur selon les critères de recherche
+  console.log('Extracted agricultural prices:', agriculturalPrices);
+  console.log('Pagination info:', paginationInfo);
+  
+  // Appeler le callback avec les informations de pagination
   useEffect(() => {
-    if (onDataLoaded && agriculturalPrices) {
-      onDataLoaded(agriculturalPrices);
+    if (onDataLoaded) {
+      if (paginationInfo) {
+        // Si on a des informations de pagination, utiliser le total de l'API
+        console.log('Calling onDataLoaded with pagination info:', { 
+          data: agriculturalPrices, 
+          total: paginationInfo.total,
+          pagination: paginationInfo
+        });
+        onDataLoaded({ 
+          data: agriculturalPrices, 
+          total: paginationInfo.total,
+          pagination: paginationInfo
+        });
+      } else {
+        // Sinon, utiliser la longueur des données (comportement précédent)
+        console.log('Calling onDataLoaded with array only:', agriculturalPrices);
+        onDataLoaded(agriculturalPrices);
+      }
     }
-  }, [agriculturalPrices, onDataLoaded]);
+  }, [agriculturalPrices, paginationInfo, onDataLoaded]);
   
   // Limiter les prix si une limite est spécifiée (pour la page d'accueil)
   // Cette limitation ne s'applique que pour l'affichage, pas pour le comptage
