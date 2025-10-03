@@ -82,10 +82,21 @@ class AgriculturalPrice {
         params.push(filters.price_max);
       }
       
+      // Recherche globale dans les noms de produits et localités
+      if (filters.search) {
+        query += ` AND (pr.name LIKE ? OR l.name LIKE ? OR pc.name LIKE ?)`;
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm, searchTerm);
+      }
+      
       query += ` ORDER BY p.date DESC, p.price ASC`;
       
       if (filters.limit) {
         query += ` LIMIT ${parseInt(filters.limit)}`;
+        
+        if (filters.offset) {
+          query += ` OFFSET ${parseInt(filters.offset)}`;
+        }
       }
       
       const rows = await db.all(query, params);

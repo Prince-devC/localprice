@@ -113,10 +113,10 @@ const Hero = () => {
     <HeroSection>
       <HeroContent>
         <HeroTitle>
-          Votre courtier digital pour l'agriculture béninoise
+          Prix Directs & Fournisseurs de Produits Agricoles au Bénin
         </HeroTitle>
         <HeroSubtitle>
-          Accédez aux prix des produits agricoles, bruts ou transformés, directement auprès des producteurs et coopératives. Rejoignez notre réseau de centaines d'acteurs pour des achats plus stratégiques.
+          Lokali votre courtier digital vous permet de consulter les prix de produits agricoles par localité et de vous connecter à des fournisseurs sans intermédiaire.
         </HeroSubtitle>
         <HeroCTA>
           <CTAButton onClick={() => { document.getElementById('filters-section').scrollIntoView({ behavior: 'smooth' }); }}>

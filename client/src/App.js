@@ -14,6 +14,7 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import AgriculturalPrices from './pages/AgriculturalPrices';
+import AllPrices from './pages/AllPrices';
 import PriceSubmissionForm from './components/PriceSubmissionForm';
 import PriceMap from './components/PriceMap';
 import CostComparator from './components/CostComparator';
@@ -50,6 +51,7 @@ function App() {
             
             {/* Nouvelles routes agricoles */}
             <Route path="/agricultural-prices" element={<AgriculturalPrices />} />
+            <Route path="/all-prices" element={<AllPrices />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/submit-price" element={<PriceSubmissionForm />} />
             <Route path="/price-map" element={<PriceMap />} />

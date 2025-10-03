@@ -75,7 +75,6 @@ const TradingTable = styled.div`
   box-shadow: var(--shadow);
   overflow: hidden;
   margin-bottom: 2rem;
-  max-height: 600px;
   display: flex;
   flex-direction: column;
 `;
@@ -114,7 +113,6 @@ const TradingHeaderCell = styled.div`
 
 const TradingBody = styled.div`
   flex: 1;
-  overflow-y: auto;
   min-height: 0;
 `;
 
@@ -232,7 +230,7 @@ const EmptyState = styled.div`
   font-style: italic;
 `;
 
-const PriceTable = ({ filters, onRefresh }) => {
+const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, onDataLoaded }) => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
@@ -265,8 +263,25 @@ const PriceTable = ({ filters, onRefresh }) => {
   console.log('Agricultural prices response:', agriculturalPricesResponse);
 
   // Extraire les données de la réponse API
-  const agriculturalPrices = agriculturalPricesResponse?.data?.data || [];
+  let agriculturalPrices = agriculturalPricesResponse?.data?.data || [];
+  
+  // Appeler le callback avec les données originales (avant limitation côté client)
+  // Note: Les données sont déjà filtrées côté serveur selon les critères de recherche
+  useEffect(() => {
+    if (onDataLoaded && agriculturalPrices) {
+      onDataLoaded(agriculturalPrices);
+    }
+  }, [agriculturalPrices, onDataLoaded]);
+  
+  // Limiter les prix si une limite est spécifiée (pour la page d'accueil)
+  // Cette limitation ne s'applique que pour l'affichage, pas pour le comptage
+  let displayedPrices = agriculturalPrices;
+  if (limit && agriculturalPrices.length > limit) {
+    displayedPrices = agriculturalPrices.slice(0, limit);
+  }
+  
   console.log('Extracted agricultural prices:', agriculturalPrices);
+  console.log('Displayed agricultural prices:', displayedPrices);
 
   const handleManualRefresh = async () => {
     await refetch();
@@ -324,7 +339,7 @@ const PriceTable = ({ filters, onRefresh }) => {
                   Erreur lors du chargement des prix: {error?.message || 'Erreur inconnue'}
                 </EmptyState>
               ) : agriculturalPrices.length > 0 ? (
-                agriculturalPrices.map((price, index) => (
+                displayedPrices.map((price, index) => (
                   <TradingRow key={price.id || `price-${index}`}>
                     <TradingCell>
                       <ProductInfo>
@@ -377,12 +392,14 @@ const PriceTable = ({ filters, onRefresh }) => {
               )}
             </TradingBody>
           </TradingTable>
-          <div style={{ textAlign: 'center' }}>
-            <ViewAllLink to="/agricultural-prices">
-              Voir tous les prix
-              <FiArrowRight />
-            </ViewAllLink>
-          </div>
+          {showViewAllLink && (
+            <div style={{ textAlign: 'center' }}>
+              <ViewAllLink to="/all-prices">
+                Voir tous les prix
+                <FiArrowRight />
+              </ViewAllLink>
+            </div>
+          )}
         </>
       )}
     </PriceTableContainer>

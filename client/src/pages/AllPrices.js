@@ -1,0 +1,302 @@
+import React, { useState, useEffect } from 'react';
+import styled from 'styled-components';
+import { FiSettings, FiFilter, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import AdvancedFilters from '../components/AdvancedFilters';
+import SimpleFilters from '../components/SimpleFilters';
+import PriceTable from '../components/PriceTable';
+
+const AllPricesContainer = styled.div`
+  padding: 0;
+  min-height: 100vh;
+  background: var(--gray-50);
+`;
+
+const PageHeader = styled.div`
+  background: white;
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+const HeaderContent = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+`;
+
+const PageTitle = styled.h1`
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin: 0 0 0.5rem 0;
+  text-align: center;
+`;
+
+const PageSubtitle = styled.p`
+  font-size: 1.1rem;
+  color: var(--gray-600);
+  text-align: center;
+  margin: 0;
+`;
+
+const Section = styled.section`
+  margin-bottom: 3rem;
+  padding: 0 1rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+`;
+
+const FilterToggleContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+`;
+
+const FilterToggleButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: ${props => props.active ? 'var(--primary-color)' : 'white'};
+  color: ${props => props.active ? 'white' : 'var(--gray-600)'};
+  border: 1px solid ${props => props.active ? 'var(--primary-color)' : 'var(--gray-300)'};
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:first-child {
+    border-top-left-radius: var(--border-radius);
+    border-bottom-left-radius: var(--border-radius);
+    border-right: none;
+  }
+
+  &:last-child {
+    border-top-right-radius: var(--border-radius);
+    border-bottom-right-radius: var(--border-radius);
+    border-left: none;
+  }
+
+  &:hover:not(:disabled) {
+    background: ${props => props.active ? 'var(--primary-dark)' : 'var(--gray-50)'};
+  }
+`;
+
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 2rem 0;
+`;
+
+const PaginationButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: ${props => props.disabled ? 'var(--gray-200)' : 'var(--primary-color)'};
+  color: ${props => props.disabled ? 'var(--gray-400)' : 'white'};
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.3s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+  }
+`;
+
+const PageInfo = styled.div`
+  font-size: 0.875rem;
+  color: var(--gray-600);
+  font-weight: 500;
+`;
+
+const PriceTableWrapper = styled.div`
+  background: white;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+`;
+
+const AllPrices = () => {
+  const [useAdvancedFilters, setUseAdvancedFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [filters, setFilters] = useState({
+    categories: [],
+    products: [],
+    localities: [],
+    period: '7',
+    search: '',
+    minPrice: '',
+    maxPrice: ''
+  });
+
+  const itemsPerPage = 24;
+
+  // Scroll vers le haut au montage du composant
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const handleDataLoaded = (data) => {
+    setTotalItems(data?.length || 0);
+  };
+
+  const handleToggleFilters = (advanced) => {
+    setUseAdvancedFilters(advanced);
+  };
+
+  const handleFiltersChange = (newFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  const handleFiltersReset = () => {
+    const resetFilters = {
+      categories: [],
+      products: [],
+      localities: [],
+      period: '7',
+      search: '',
+      minPrice: '',
+      maxPrice: ''
+    };
+    setFilters(resetFilters);
+    setCurrentPage(1);
+  };
+
+  const mapFiltersForAPI = (filters) => {
+    const apiFilters = {};
+    
+    // Convertir les tableaux de catégories et localités en IDs
+    if (filters.categories && filters.categories.length > 0) {
+      apiFilters.category_id = filters.categories.map(cat => cat.id).join(',');
+    }
+    if (filters.localities && filters.localities.length > 0) {
+      apiFilters.locality_id = filters.localities.map(loc => loc.id).join(',');
+    }
+    if (filters.products && filters.products.length > 0) {
+      apiFilters.product_id = filters.products.map(prod => prod.id).join(',');
+    }
+    if (filters.search) apiFilters.search = filters.search;
+    if (filters.minPrice) apiFilters.price_min = parseFloat(filters.minPrice);
+    if (filters.maxPrice) apiFilters.price_max = parseFloat(filters.maxPrice);
+    if (filters.period) apiFilters.days = parseInt(filters.period);
+    
+    // Ajouter la pagination seulement si on n'a pas de recherche active
+    // Quand il y a une recherche, on veut voir tous les résultats
+    if (!filters.search || filters.search.trim() === '') {
+      apiFilters.limit = itemsPerPage;
+      apiFilters.offset = (currentPage - 1) * itemsPerPage;
+    } else {
+      // Pour la recherche, on limite à un nombre raisonnable mais plus élevé
+      apiFilters.limit = 100;
+      apiFilters.offset = 0;
+    }
+    apiFilters.status = 'validated';
+    
+    console.log('Mapped filters for API:', apiFilters);
+    return apiFilters;
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(currentPage + 1);
+  };
+
+  return (
+    <AllPricesContainer>
+      <PageHeader>
+        <HeaderContent>
+          <PageTitle>Tous les Prix de Produits Agricoles</PageTitle>
+          <PageSubtitle>
+            Consultez l'ensemble des prix des produits agricoles disponibles sur notre plateforme
+          </PageSubtitle>
+        </HeaderContent>
+      </PageHeader>
+      
+      <Section>
+        <FilterToggleContainer>
+          <FilterToggleButton 
+            active={!useAdvancedFilters}
+            onClick={() => handleToggleFilters(false)}
+          >
+            <FiFilter />
+            Filtres simples
+          </FilterToggleButton>
+          <FilterToggleButton 
+            active={useAdvancedFilters}
+            onClick={() => handleToggleFilters(true)}
+          >
+            <FiSettings />
+            Filtres avancés
+          </FilterToggleButton>
+        </FilterToggleContainer>
+
+        {useAdvancedFilters ? (
+          <AdvancedFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onReset={handleFiltersReset}
+          />
+        ) : (
+          <SimpleFilters
+            filters={filters}
+            onFiltersChange={handleFiltersChange}
+            onReset={handleFiltersReset}
+          />
+        )}
+        
+        <PriceTableWrapper>
+          <PriceTable
+            filters={mapFiltersForAPI(filters)}
+            showViewAllLink={false}
+            onDataLoaded={handleDataLoaded}
+            onRefresh={() => {
+              // Optionnel: actions supplémentaires lors du rafraîchissement
+            }}
+          />
+        </PriceTableWrapper>
+
+        {totalItems > itemsPerPage && (
+          <PaginationContainer>
+            <PaginationButton 
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+            >
+              <FiChevronLeft />
+              Précédent
+            </PaginationButton>
+            
+            <PageInfo>
+              Page {currentPage} sur {Math.ceil(totalItems / itemsPerPage)}
+            </PageInfo>
+            
+            <PaginationButton 
+              onClick={handleNextPage}
+              disabled={currentPage >= Math.ceil(totalItems / itemsPerPage)}
+            >
+              Suivant
+              <FiChevronRight />
+            </PaginationButton>
+          </PaginationContainer>
+        )}
+      </Section>
+    </AllPricesContainer>
+  );
+};
+
+export default AllPrices;

@@ -16,7 +16,9 @@ router.get('/', async (req, res) => {
       date_to: req.query.date_to,
       price_min: req.query.price_min,
       price_max: req.query.price_max,
-      limit: req.query.limit || 50
+      search: req.query.search,
+      limit: req.query.limit || 50,
+      offset: req.query.offset || 0
     };
 
     const prices = await AgriculturalPrice.getValidatedPrices(filters);

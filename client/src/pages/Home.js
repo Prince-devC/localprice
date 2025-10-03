@@ -169,6 +169,7 @@ const Home = () => {
         
         <PriceTable
           filters={mapFiltersForAPI(filters)}
+          limit={12}
           onRefresh={() => {
             // Optionnel: actions supplémentaires lors du rafraîchissement
           }}
