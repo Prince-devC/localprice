@@ -158,9 +158,9 @@ const AllPrices = () => {
       console.log('Setting totalItems from data.pagination.total:', data.pagination.total);
       setTotalItems(data.pagination.total);
     } else if (Array.isArray(data)) {
-      // Ancien format (tableau simple)
-      console.log('Setting totalItems from array length:', data.length);
-      setTotalItems(data.length);
+      // Ancien format (tableau simple) - ne pas utiliser pour la pagination
+      console.log('Received array data, not setting totalItems for pagination');
+      // Ne pas définir totalItems pour les tableaux car cela ne donne pas le total réel
     } else {
       console.log('Setting totalItems to 0, data:', data);
       setTotalItems(0);
@@ -177,6 +177,17 @@ const AllPrices = () => {
     // Réinitialiser totalItems pour forcer un nouveau calcul
     setTotalItems(0);
   };
+
+  // Réinitialiser la page quand les filtres changent
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  // Forcer le rechargement des données quand la page change
+  useEffect(() => {
+    // Cette fonction sera appelée par PriceTable via onDataLoaded
+    console.log('Page changed to:', currentPage);
+  }, [currentPage]);
 
   const handleFiltersReset = () => {
     const resetFilters = {
@@ -210,7 +221,19 @@ const AllPrices = () => {
     if (filters.search) apiFilters.search = filters.search;
     if (filters.minPrice) apiFilters.price_min = parseFloat(filters.minPrice);
     if (filters.maxPrice) apiFilters.price_max = parseFloat(filters.maxPrice);
-    if (filters.period) apiFilters.days = parseInt(filters.period);
+    
+    // Convertir le filtre de période en dates
+    if (filters.period && filters.period !== '7') {
+      const days = parseInt(filters.period);
+      const today = new Date();
+      const fromDate = new Date(today);
+      fromDate.setDate(today.getDate() - days);
+      
+      // Formater les dates au format ISO (YYYY-MM-DD)
+      apiFilters.date_from = fromDate.toISOString().split('T')[0];
+      apiFilters.date_to = today.toISOString().split('T')[0];
+    }
+    // Si period est '7' (par défaut), ne pas appliquer de filtre de date pour afficher tous les prix
     
     // Toujours ajouter la pagination
     apiFilters.limit = itemsPerPage;
@@ -277,6 +300,7 @@ const AllPrices = () => {
         
         <PriceTableWrapper>
           <PriceTable
+            key={`prices-${currentPage}-${JSON.stringify(filters)}`}
             filters={mapFiltersForAPI(filters)}
             showViewAllLink={false}
             onDataLoaded={handleDataLoaded}
@@ -286,12 +310,7 @@ const AllPrices = () => {
           />
         </PriceTableWrapper>
 
-        {/* Debug: Affichage temporaire des valeurs pour diagnostic */}
-        <div style={{padding: '10px', background: '#f0f0f0', margin: '10px 0', fontSize: '12px'}}>
-          Debug: totalItems = {totalItems}, itemsPerPage = {itemsPerPage}, condition = {totalItems > itemsPerPage ? 'true' : 'false'}
-        </div>
-        
-        {totalItems >= itemsPerPage && (
+        {totalItems > itemsPerPage && totalItems > 0 && (
           <PaginationContainer>
             <PaginationButton 
               onClick={handlePreviousPage}

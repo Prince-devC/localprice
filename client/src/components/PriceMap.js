@@ -26,25 +26,44 @@ function MapCenter({ center, zoom }) {
 function PriceMarkers({ prices, onMarkerClick }) {
   const getMarkerColor = (price) => {
     const priceValue = parseFloat(price.price);
-    if (priceValue < 200) return 'green';
-    if (priceValue < 300) return 'yellow';
-    if (priceValue < 400) return 'orange';
-    return 'red';
+    if (priceValue < 1000) return '#22c55e'; // Vert pour prix bas
+    if (priceValue < 2000) return '#eab308'; // Jaune pour prix moyen
+    if (priceValue < 3000) return '#f97316'; // Orange pour prix élevé
+    return '#ef4444'; // Rouge pour prix très élevé
   };
 
-  const createCustomIcon = (color) => {
+  const getMarkerSize = (price) => {
+    const priceValue = parseFloat(price.price);
+    if (priceValue < 1000) return 16;
+    if (priceValue < 2000) return 20;
+    if (priceValue < 3000) return 24;
+    return 28;
+  };
+
+  const createCustomIcon = (price) => {
+    const color = getMarkerColor(price);
+    const size = getMarkerSize(price);
+    const priceValue = parseFloat(price.price);
+    
     return L.divIcon({
       className: 'custom-div-icon',
       html: `<div style="
         background-color: ${color};
-        width: 20px;
-        height: 20px;
+        width: ${size}px;
+        height: ${size}px;
         border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      "></div>`,
-      iconSize: [20, 20],
-      iconAnchor: [10, 10]
+        border: 3px solid white;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: ${size > 20 ? '10px' : '8px'};
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+      ">${priceValue < 1000 ? 'B' : priceValue < 2000 ? 'M' : priceValue < 3000 ? 'H' : 'V'}</div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
     });
   };
 
@@ -53,8 +72,7 @@ function PriceMarkers({ prices, onMarkerClick }) {
       {prices.map((price) => {
         if (!price.latitude || !price.longitude) return null;
         
-        const color = getMarkerColor(price);
-        const icon = createCustomIcon(color);
+        const icon = createCustomIcon(price);
         
         return (
           <Marker
@@ -66,22 +84,62 @@ function PriceMarkers({ prices, onMarkerClick }) {
             }}
           >
             <Popup>
-              <div style={{ minWidth: '200px' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: '#333' }}>
-                  {price.product_name}
-                </h4>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}>
-                  <strong>Prix:</strong> {price.price} {price.unit_symbol}
-                </p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}>
-                  <strong>Localité:</strong> {price.locality_name}
-                </p>
-                <p style={{ margin: '4px 0', fontSize: '14px' }}>
-                  <strong>Catégorie:</strong> {price.category_name}
-                </p>
-                <p style={{ margin: '4px 0', fontSize: '12px', color: '#666' }}>
-                  {new Date(price.date).toLocaleDateString('fr-FR')}
-                </p>
+              <div style={{ minWidth: '250px', padding: '8px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  marginBottom: '12px',
+                  paddingBottom: '8px',
+                  borderBottom: '1px solid #eee'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    backgroundColor: getMarkerColor(price),
+                    borderRadius: '50%'
+                  }}></div>
+                  <h4 style={{ margin: '0', color: '#333', fontSize: '16px' }}>
+                    {price.product_name}
+                  </h4>
+                </div>
+                
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ 
+                    fontSize: '20px', 
+                    fontWeight: 'bold', 
+                    color: getMarkerColor(price),
+                    marginBottom: '4px'
+                  }}>
+                    {new Intl.NumberFormat('fr-FR').format(price.price)} {price.unit_symbol}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    Prix par {price.unit_name || 'unité'}
+                  </div>
+                </div>
+                
+                <div style={{ marginBottom: '6px', fontSize: '14px' }}>
+                  <strong>📍 Localité:</strong> {price.locality_name}
+                </div>
+                <div style={{ marginBottom: '6px', fontSize: '14px' }}>
+                  <strong>📦 Catégorie:</strong> {price.category_name}
+                </div>
+                <div style={{ marginBottom: '6px', fontSize: '14px' }}>
+                  <strong>🏷️ Type:</strong> {price.category_type || 'Non spécifié'}
+                </div>
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: '#666', 
+                  marginTop: '8px',
+                  paddingTop: '8px',
+                  borderTop: '1px solid #eee'
+                }}>
+                  📅 Mis à jour le {new Date(price.date).toLocaleDateString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                  })}
+                </div>
               </div>
             </Popup>
           </Marker>
@@ -103,16 +161,7 @@ const PriceMap = ({
   const [error, setError] = useState(null);
 
   // Mémoriser les filtres pour éviter les re-renders inutiles
-  const memoizedFilters = useMemo(() => filters, [
-    filters.product_id,
-    filters.category_id,
-    filters.locality_id,
-    filters.region_id,
-    filters.date_from,
-    filters.date_to,
-    filters.min_price,
-    filters.max_price
-  ]);
+  const memoizedFilters = useMemo(() => filters, [filters]);
 
   const fetchPrices = useCallback(async () => {
     try {
@@ -210,53 +259,78 @@ const PriceMap = ({
         position: 'absolute',
         bottom: '10px',
         right: '10px',
-        background: 'white',
-        padding: '10px',
-        borderRadius: '5px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        background: 'rgba(255, 255, 255, 0.95)',
+        padding: '12px',
+        borderRadius: '8px',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
         fontSize: '12px',
-        zIndex: 1000
+        zIndex: 1000,
+        minWidth: '180px'
       }}>
-        <div style={{ marginBottom: '5px', fontWeight: 'bold' }}>Légende des prix:</div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+        <div style={{ marginBottom: '8px', fontWeight: 'bold', fontSize: '13px' }}>Légende des prix:</div>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
           <div style={{ 
-            width: '12px', 
-            height: '12px', 
-            backgroundColor: 'green', 
+            width: '16px', 
+            height: '16px', 
+            backgroundColor: '#22c55e', 
             borderRadius: '50%', 
-            marginRight: '5px' 
-          }}></div>
-          <span>Moins de 200 FCFA</span>
+            marginRight: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '8px',
+            fontWeight: 'bold',
+            color: 'white'
+          }}>B</div>
+          <span>Bas (&lt; 1,000 FCFA)</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
           <div style={{ 
-            width: '12px', 
-            height: '12px', 
-            backgroundColor: 'yellow', 
+            width: '20px', 
+            height: '20px', 
+            backgroundColor: '#eab308', 
             borderRadius: '50%', 
-            marginRight: '5px' 
-          }}></div>
-          <span>200-300 FCFA</span>
+            marginRight: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            color: 'white'
+          }}>M</div>
+          <span>Moyen (1,000-2,000 FCFA)</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
           <div style={{ 
-            width: '12px', 
-            height: '12px', 
-            backgroundColor: 'orange', 
+            width: '24px', 
+            height: '24px', 
+            backgroundColor: '#f97316', 
             borderRadius: '50%', 
-            marginRight: '5px' 
-          }}></div>
-          <span>300-400 FCFA</span>
+            marginRight: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            color: 'white'
+          }}>H</div>
+          <span>Élevé (2,000-3,000 FCFA)</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{ 
-            width: '12px', 
-            height: '12px', 
-            backgroundColor: 'red', 
+            width: '28px', 
+            height: '28px', 
+            backgroundColor: '#ef4444', 
             borderRadius: '50%', 
-            marginRight: '5px' 
-          }}></div>
-          <span>Plus de 400 FCFA</span>
+            marginRight: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            color: 'white'
+          }}>V</div>
+          <span>Très élevé (&gt; 3,000 FCFA)</span>
         </div>
       </div>
     </div>

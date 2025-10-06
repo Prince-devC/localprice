@@ -120,7 +120,19 @@ const Home = () => {
     if (filters.search) apiFilters.search = filters.search;
     if (filters.minPrice) apiFilters.price_min = parseFloat(filters.minPrice);
     if (filters.maxPrice) apiFilters.price_max = parseFloat(filters.maxPrice);
-    if (filters.period) apiFilters.days = parseInt(filters.period);
+    
+    // Convertir le filtre de période en dates
+    if (filters.period && filters.period !== '7') {
+      const days = parseInt(filters.period);
+      const today = new Date();
+      const fromDate = new Date(today);
+      fromDate.setDate(today.getDate() - days);
+      
+      // Formater les dates au format ISO (YYYY-MM-DD)
+      apiFilters.date_from = fromDate.toISOString().split('T')[0];
+      apiFilters.date_to = today.toISOString().split('T')[0];
+    }
+    // Si period est '7' (par défaut), ne pas appliquer de filtre de date pour afficher tous les prix
     
     // Ajouter des paramètres par défaut pour l'API des prix agricoles
     apiFilters.limit = 50;

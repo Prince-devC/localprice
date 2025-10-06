@@ -16,7 +16,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AgriculturalPrices from './pages/AgriculturalPrices';
 import AllPrices from './pages/AllPrices';
 import PriceSubmissionForm from './components/PriceSubmissionForm';
-import PriceMap from './components/PriceMap';
+import PriceMapPage from './pages/PriceMapPage';
 import CostComparator from './components/CostComparator';
 import { AuthProvider } from './contexts/AuthContext';
 
@@ -54,7 +54,7 @@ function App() {
             <Route path="/all-prices" element={<AllPrices />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/submit-price" element={<PriceSubmissionForm />} />
-            <Route path="/price-map" element={<PriceMap />} />
+            <Route path="/price-map" element={<PriceMapPage />} />
             <Route path="/cost-comparator" element={<CostComparator />} />
           </Routes>
         </MainContent>
