@@ -504,6 +504,7 @@ const Header = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
+  const [isDirectoryDropdownOpen, setIsDirectoryDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -522,13 +523,16 @@ const Header = () => {
       if (isToolsDropdownOpen) {
         setIsToolsDropdownOpen(false);
       }
+      if (isDirectoryDropdownOpen) {
+        setIsDirectoryDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isUserMenuOpen, isToolsDropdownOpen]);
+  }, [isUserMenuOpen, isToolsDropdownOpen, isDirectoryDropdownOpen]);
 
   // Fermer le menu mobile quand on navigue
   useEffect(() => {
@@ -544,9 +548,26 @@ const Header = () => {
           </Logo>
           
           <Nav>
-            <NavLink to="/suppliers">Fournisseurs</NavLink>
-            <NavLink to="/stores">Magasins de stockages</NavLink>
+            <NavLink to="/all-prices">Tous les prix</NavLink>
             <NavLink to="/price-map">Cartes</NavLink>
+
+            <DropdownContainer>
+              <DropdownButton 
+                onClick={() => setIsDirectoryDropdownOpen(!isDirectoryDropdownOpen)}
+                $isOpen={isDirectoryDropdownOpen}
+              >
+                Ressources
+                <FiChevronDown />
+              </DropdownButton>
+              <DropdownMenu $isOpen={isDirectoryDropdownOpen}>
+                <ToolsDropdownItem to="/suppliers">
+                  Fournisseurs
+                </ToolsDropdownItem>
+                <ToolsDropdownItem to="/stores">
+                  Magasins de stockages
+                </ToolsDropdownItem>
+              </DropdownMenu>
+            </DropdownContainer>
             
             <DropdownContainer>
               <DropdownButton 
@@ -615,9 +636,19 @@ const Header = () => {
       />
       
       <MobileMenu $isOpen={isMobileMenuOpen}>
-        <MobileNavLink to="/suppliers">Fournisseurs</MobileNavLink>
-        <MobileNavLink to="/stores">Magasins de stockages</MobileNavLink>
+        <MobileNavLink to="/all-prices">Tous les prix</MobileNavLink>
         <MobileNavLink to="/price-map">Cartes</MobileNavLink>
+
+        {/* Section Ressources */}
+        <MobileDropdownSection>
+          <MobileDropdownHeader>Ressources</MobileDropdownHeader>
+          <MobileNavLink to="/suppliers" style={{paddingLeft: '2rem'}}>
+            Fournisseurs
+          </MobileNavLink>
+          <MobileNavLink to="/stores" style={{paddingLeft: '2rem'}}>
+            Magasins de stockages
+          </MobileNavLink>
+        </MobileDropdownSection>
         
         {/* Section Outils */}
         <MobileDropdownSection>
