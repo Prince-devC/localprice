@@ -38,7 +38,7 @@ function App() {
         <Header />
         <MainContent>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<PriceMapPage />} />
             <Route path="/search" element={<Search />} />
             <Route path="/product/:id" element={<ProductDetail />} />
             <Route path="/suppliers" element={<StoreList />} />

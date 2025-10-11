@@ -1,9 +1,19 @@
 import axios from 'axios';
 
 // Configuration de base d'axios
+// Utilise une URL relative par défaut pour profiter du proxy du client (package.json)
+// et éviter les problèmes de CORS/preview. Si REACT_APP_API_URL est défini, on l'utilise.
+const resolvedBaseURL = (() => {
+  const envUrl = process.env.REACT_APP_API_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0) {
+    return envUrl.trim();
+  }
+  return '/api';
+})();
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5001/api',
-  timeout: 10000,
+  baseURL: resolvedBaseURL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -50,6 +60,12 @@ export const storeService = {
   delete: (id) => api.delete(`/stores/${id}`),
 };
 
+// Services pour les fournisseurs (table suppliers)
+export const supplierService = {
+  getAll: () => api.get('/suppliers'),
+  getSummary: (id) => api.get(`/suppliers/${id}/summary`),
+};
+
 // Services pour les produits
 export const productService = {
   getAll: (params = {}) => api.get('/products', { params }),
@@ -84,6 +100,8 @@ export const comparisonService = {
       limit 
     }),
   search: (params) => api.get('/comparisons/search', { params }),
+  getProductLocalityComparison: (productId, limit = 100) => 
+    api.get(`/comparisons/product/${productId}/localities?limit=${limit}`),
 };
 
 // Services d'authentification

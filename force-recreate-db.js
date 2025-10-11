@@ -1,13 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const db = require('./database/connection');
+// NOTE: Ne pas importer la connexion avant suppression du fichier DB pour éviter le verrou.
 
 async function forceRecreateDB() {
   try {
     console.log('Suppression forcée de la base de données...');
     
     // Supprimer le fichier de base de données
-    const dbPath = path.join(__dirname, 'database.sqlite');
+    const dbPath = path.join(__dirname, 'database', 'lokali.db');
     if (fs.existsSync(dbPath)) {
       fs.unlinkSync(dbPath);
       console.log('Fichier de base de données supprimé');
@@ -15,6 +15,8 @@ async function forceRecreateDB() {
     
     // Recréer la base de données
     console.log('Recréation de la base de données...');
+    // Importer la connexion maintenant que le fichier est supprimé
+    const db = require('./database/connection');
     
     // Exécuter le schéma
     const schemaPath = path.join(__dirname, 'database', 'sqlite-schema.sql');

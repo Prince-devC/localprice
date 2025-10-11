@@ -25,7 +25,17 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    // Autoriser le frontend lancé sur un autre port en développement
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://localhost:3002',
+    'http://127.0.0.1:3002',
+    'http://localhost:3003',
+    'http://127.0.0.1:3003'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -37,6 +47,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/stores', require('./routes/stores'));
+app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/comparisons', require('./routes/comparisons'));
 app.use('/api/auth', require('./routes/auth').router);

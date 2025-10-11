@@ -51,21 +51,21 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const [result] = await db.execute(
+    const result = await db.run(
       `INSERT INTO product_prices (product_id, store_id, price, unit, is_available)
        VALUES (?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-       price = VALUES(price),
-       unit = VALUES(unit),
-       is_available = VALUES(is_available),
-       last_updated = CURRENT_TIMESTAMP`,
+       ON CONFLICT(product_id, store_id) DO UPDATE SET
+         price = excluded.price,
+         unit = excluded.unit,
+         is_available = excluded.is_available,
+         last_updated = CURRENT_TIMESTAMP`,
       [product_id, store_id, price, unit, is_available]
     );
 
     res.status(201).json({ 
       success: true, 
       message: 'Prix sauvegardé avec succès', 
-      data: { id: result.insertId || result.affectedRows } 
+      data: { id: result.lastID, changes: result.changes } 
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

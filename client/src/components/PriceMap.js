@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { agriculturalPriceService } from '../services/api';
+import { agriculturalPriceService, storeService, localityService, supplierService } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import 'leaflet/dist/leaflet.css';
 
@@ -23,7 +23,7 @@ function MapCenter({ center, zoom }) {
 }
 
 // Composant pour les marqueurs colorés
-function PriceMarkers({ prices, onMarkerClick }) {
+function PriceMarkers({ prices, onMarkerClick, jitter = false }) {
   const getMarkerColor = (price) => {
     const priceValue = parseFloat(price.price);
     if (priceValue < 1000) return '#22c55e'; // Vert pour prix bas
@@ -67,18 +67,33 @@ function PriceMarkers({ prices, onMarkerClick }) {
     });
   };
 
+  const jitterPosition = (lat, lon, id) => {
+    // Petit décalage déterministe basé sur l'id pour éviter la superposition
+    const angleDeg = (parseInt(id, 10) * 53) % 360;
+    const angle = (angleDeg * Math.PI) / 180;
+    const radius = 0.0015; // ~150m
+    const dLat = radius * Math.cos(angle);
+    const latRad = (lat * Math.PI) / 180;
+    const dLon = (radius * Math.sin(angle)) / Math.max(Math.cos(latRad), 0.1);
+    return [lat + dLat, lon + dLon];
+  };
+
   return (
     <>
       {prices.map((price) => {
         if (!price.latitude || !price.longitude) return null;
         
         const icon = createCustomIcon(price);
+        const position = jitter
+          ? jitterPosition(price.latitude, price.longitude, price.id)
+          : [price.latitude, price.longitude];
         
         return (
           <Marker
             key={price.id}
-            position={[price.latitude, price.longitude]}
+            position={position}
             icon={icon}
+            zIndexOffset={500}
             eventHandlers={{
               click: () => onMarkerClick && onMarkerClick(price)
             }}
@@ -111,7 +126,7 @@ function PriceMarkers({ prices, onMarkerClick }) {
                     color: getMarkerColor(price),
                     marginBottom: '4px'
                   }}>
-                    {new Intl.NumberFormat('fr-FR').format(price.price)} {price.unit_symbol}
+                    {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(price.price).replace('XOF', 'FCFA')}
                   </div>
                   <div style={{ fontSize: '12px', color: '#666' }}>
                     Prix par {price.unit_name || 'unité'}
@@ -149,16 +164,151 @@ function PriceMarkers({ prices, onMarkerClick }) {
   );
 }
 
+// Composant pour les marqueurs de fournisseurs (magasins)
+function SupplierMarkers({ stores, jitter = false, summaries = {}, onPopupOpen }) {
+  const jitterPosition = (lat, lon, id) => {
+    const angleDeg = (parseInt(id, 10) * 37) % 360;
+    const angle = (angleDeg * Math.PI) / 180;
+    const radius = 0.002;
+    const dLat = radius * Math.cos(angle);
+    const latRad = (lat * Math.PI) / 180;
+    const dLon = (radius * Math.sin(angle)) / Math.max(Math.cos(latRad), 0.1);
+    return [lat + dLat, lon + dLon];
+  };
+  const createSupplierIcon = (store) => {
+    const size = 22;
+    return L.divIcon({
+      className: 'supplier-div-icon',
+      html: `<div style="
+        background-color: #2563eb;
+        width: ${size}px;
+        height: ${size}px;
+        border-radius: 4px;
+        border: 2px solid white;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: white;
+        letter-spacing: 0.5px;
+      ">S</div>`,
+      iconSize: [size, size],
+      iconAnchor: [size/2, size/2]
+    });
+  };
+
+  return (
+    <>
+      {stores.map((store) => {
+        if (!store.latitude || !store.longitude) return null;
+        const icon = createSupplierIcon(store);
+        const position = jitter
+          ? jitterPosition(store.latitude, store.longitude, store.id)
+          : [store.latitude, store.longitude];
+        return (
+          <Marker
+            key={`store-${store.id}`}
+            position={position}
+            icon={icon}
+            zIndexOffset={600}
+            eventHandlers={{
+              popupopen: () => {
+                if (onPopupOpen) onPopupOpen(store.id);
+              }
+            }}
+          >
+            <Popup>
+              <div style={{ minWidth: '220px', padding: '8px' }}>
+                <h4 style={{ margin: 0, color: '#2563eb' }}>{store.name}</h4>
+                {store.address && (
+                  <div style={{ marginTop: '6px', fontSize: '13px', color: '#444' }}>
+                    📍 {store.address}
+                  </div>
+                )}
+                <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
+                  Ville: {store.city || '—'}
+                </div>
+                {store.phone && (
+                  <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
+                    ☎️ {store.phone}
+                  </div>
+                )}
+                {store.email && (
+                  <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
+                    ✉️ {store.email}
+                  </div>
+                )}
+                {store.__approxLocation && (
+                  <div style={{ marginTop: '8px', fontSize: '11px', color: '#999' }}>
+                    📌 Localisation approximative basée sur la ville
+                  </div>
+                )}
+                <div style={{ marginTop: '10px', fontSize: '12px', color: '#333' }}>
+                  <strong>Produits et prix:</strong>
+                  {summaries[store.id]?.prices && summaries[store.id].prices.length > 0 ? (
+                    <ul style={{ margin: '6px 0 0 0', padding: 0, listStyle: 'none' }}>
+                      {summaries[store.id].prices.slice(0, 3).map((p) => (
+                        <li key={`p-${store.id}-${p.price_id}`} style={{ marginBottom: '4px' }}>
+                          {p.product_name} — {new Intl.NumberFormat('fr-FR').format(p.price)} FCFA
+                          {p.unit_symbol ? `/${p.unit_symbol}` : p.unit_name ? `/${p.unit_name}` : ''}
+                          <span style={{ color: '#777' }}> ({new Date(p.date).toLocaleDateString('fr-FR')})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ marginTop: '4px', color: '#777' }}>—</div>
+                  )}
+                </div>
+                <div style={{ marginTop: '8px', fontSize: '12px', color: '#333' }}>
+                  <strong>Disponibilités:</strong>
+                  {summaries[store.id]?.availability && summaries[store.id].availability.length > 0 ? (
+                    <ul style={{ margin: '6px 0 0 0', padding: 0, listStyle: 'none' }}>
+                      {summaries[store.id].availability.slice(0, 2).map((a, idx) => (
+                        <li key={`a-${store.id}-${a.product_id}-${idx}`} style={{ marginBottom: '4px' }}>
+                          {a.product_name}: {a.is_available ? 'Disponible' : 'Indisponible'}
+                          {a.available_quantity ? ` (${a.available_quantity} ${a.quantity_unit || ''})` : ''}
+                          {a.expected_restock_date ? `, réappro. ${new Date(a.expected_restock_date).toLocaleDateString('fr-FR')}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ marginTop: '4px', color: '#777' }}>—</div>
+                  )}
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+    </>
+  );
+}
+
 const PriceMap = ({ 
   filters = {}, 
   onMarkerClick, 
   height = '400px',
-  center = [14.6928, -17.4467], // Dakar par défaut
-  zoom = 8 
+  center = [9.3077, 2.3158], // Centre du Bénin par défaut
+  zoom = 7 
 }) => {
   const [prices, setPrices] = useState([]);
+  const [stores, setStores] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [supplierSummaries, setSupplierSummaries] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Normaliser les noms pour matcher villes/localités sans accents
+  const normalizeName = useCallback((name) => {
+    if (!name || typeof name !== 'string') return '';
+    return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }, []);
 
   // Mémoriser les filtres pour éviter les re-renders inutiles
   const memoizedFilters = useMemo(() => filters, [filters]);
@@ -183,14 +333,89 @@ const PriceMap = ({
     }
   }, [memoizedFilters]);
 
+  const fetchStores = useCallback(async () => {
+    try {
+      const [storesRes, localitiesRes] = await Promise.all([
+        storeService.getAll(),
+        localityService.getWithCoordinates()
+      ]);
+
+      const rawStores = Array.isArray(storesRes.data?.data)
+        ? storesRes.data.data
+        : (storesRes.data || []);
+
+      const localities = Array.isArray(localitiesRes.data?.data)
+        ? localitiesRes.data.data
+        : (localitiesRes.data || []);
+
+      const localityByName = new Map(
+        localities.map((l) => [normalizeName(l.name), l])
+      );
+
+      const enrichedStores = rawStores.map((s) => {
+        const hasCoords = s.latitude != null && s.longitude != null;
+        if (hasCoords) return s;
+        const key = normalizeName(s.city);
+        const match = key ? localityByName.get(key) : undefined;
+        if (match && match.latitude != null && match.longitude != null) {
+          return {
+            ...s,
+            latitude: match.latitude,
+            longitude: match.longitude,
+            __approxLocation: true,
+          };
+        }
+        return s;
+      });
+
+      setStores(enrichedStores);
+    } catch (err) {
+      console.error('Erreur lors du chargement des fournisseurs:', err);
+      // On ne bloque pas l’affichage si les magasins ne sont pas disponibles
+    }
+  }, [normalizeName]);
+
+  const fetchSuppliers = useCallback(async () => {
+    try {
+      const res = await supplierService.getAll();
+      const raw = Array.isArray(res.data?.data) ? res.data.data : (res.data || []);
+      const normalized = raw.map((s) => ({
+        id: s.id,
+        name: s.name,
+        address: s.address || null,
+        city: s.city || null,
+        phone: s.phone || null,
+        email: s.email || null,
+        latitude: s.latitude,
+        longitude: s.longitude,
+        __approxLocation: Boolean(s.approx_location),
+      }));
+      setSuppliers(normalized);
+    } catch (err) {
+      console.error('Erreur lors du chargement des fournisseurs (table suppliers):', err);
+    }
+  }, []);
+
   useEffect(() => {
     // Debounce pour éviter les requêtes trop fréquentes
     const timeoutId = setTimeout(() => {
       fetchPrices();
+      fetchStores();
+      fetchSuppliers();
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [fetchPrices]);
+  }, [fetchPrices, fetchStores]);
+
+  const handleSupplierPopupOpen = useCallback(async (supplierId) => {
+    try {
+      if (supplierSummaries[supplierId]) return;
+      const res = await supplierService.getSummary(supplierId);
+      setSupplierSummaries((prev) => ({ ...prev, [supplierId]: res.data }));
+    } catch (err) {
+      console.error('Erreur lors du chargement du résumé fournisseur:', err);
+    }
+  }, [supplierSummaries]);
 
   if (loading) {
     return (
@@ -250,8 +475,17 @@ const PriceMap = ({
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          errorTileUrl="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9W9Hq1kAAAAASUVORK5CYII="
+          crossOrigin
         />
-        <PriceMarkers prices={prices} onMarkerClick={onMarkerClick} />
+        <PriceMarkers prices={prices} onMarkerClick={onMarkerClick} jitter />
+        <SupplierMarkers stores={stores} />
+        <SupplierMarkers 
+          stores={suppliers} 
+          jitter 
+          summaries={supplierSummaries}
+          onPopupOpen={handleSupplierPopupOpen}
+        />
       </MapContainer>
       
       {/* Légende */}
@@ -331,6 +565,23 @@ const PriceMap = ({
             color: 'white'
           }}>V</div>
           <span>Très élevé (&gt; 3,000 FCFA)</span>
+        </div>
+        <div style={{ marginTop: '10px', fontWeight: 'bold', fontSize: '13px' }}>Fournisseurs:</div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ 
+            width: '22px', 
+            height: '22px', 
+            backgroundColor: '#2563eb', 
+            borderRadius: '4px', 
+            marginRight: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            color: 'white'
+          }}>S</div>
+          <span>Fournisseurs (magasins et marchés)</span>
         </div>
       </div>
     </div>

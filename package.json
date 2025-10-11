@@ -10,7 +10,6 @@
     "server": "nodemon server.js",
     "build": "cd client && npm run build",
     "start:all": "concurrently \"npm run dev\" \"npm run client\"",
-    "setup": "./start.sh",
     "install:all": "npm install && cd client && npm install && cd ..",
     "clean": "rm -rf node_modules client/node_modules package-lock.json client/package-lock.json",
     "reset": "npm run clean && npm run install:all",

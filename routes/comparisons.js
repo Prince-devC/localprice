@@ -28,6 +28,20 @@ router.get('/category/:categoryId/best', async (req, res) => {
   }
 });
 
+// GET /api/comparisons/product/:productId/localities - Dernier prix validé par localité pour un produit
+router.get('/product/:productId/localities', async (req, res) => {
+  try {
+    const { limit = 100 } = req.query;
+    const rows = await ProductPrice.getProductLocalityComparison(
+      req.params.productId,
+      parseInt(limit)
+    );
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // GET /api/comparisons/price-range - Rechercher par gamme de prix
 router.get('/price-range', async (req, res) => {
   try {

@@ -79,6 +79,14 @@ CREATE TABLE IF NOT EXISTS prices (
     FOREIGN KEY (validated_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- Indexes pour accélérer les requêtes sur la table prices
+CREATE INDEX IF NOT EXISTS idx_prices_product ON prices(product_id);
+CREATE INDEX IF NOT EXISTS idx_prices_locality ON prices(locality_id);
+CREATE INDEX IF NOT EXISTS idx_prices_unit ON prices(unit_id);
+CREATE INDEX IF NOT EXISTS idx_prices_date ON prices(date);
+CREATE INDEX IF NOT EXISTS idx_prices_status ON prices(status);
+CREATE INDEX IF NOT EXISTS idx_prices_product_date ON prices(product_id, date);
+
 -- Table des prix de produits (pour les comparaisons)
 DROP TABLE IF EXISTS product_prices;
 CREATE TABLE product_prices (
@@ -96,6 +104,17 @@ CREATE TABLE product_prices (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
     FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
 );
+
+-- Contrainte unique pour permettre les UPSERT SQLite sur (product_id, store_id)
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_product_store ON product_prices(product_id, store_id);
+
+-- Indexes pour accélérer les requêtes de comparaison
+CREATE INDEX IF NOT EXISTS idx_product_prices_product ON product_prices(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_prices_store ON product_prices(store_id);
+CREATE INDEX IF NOT EXISTS idx_product_prices_price ON product_prices(price);
+CREATE INDEX IF NOT EXISTS idx_product_prices_availability ON product_prices(is_available);
+CREATE INDEX IF NOT EXISTS idx_product_prices_status ON product_prices(status);
+CREATE INDEX IF NOT EXISTS idx_product_prices_product_price ON product_prices(product_id, price);
 
 -- Tables d'options pour les filtres (noms en anglais)
 
@@ -208,6 +227,98 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 
 -- Index pour les tables d'options
 CREATE INDEX IF NOT EXISTS idx_filter_product_options_active ON filter_product_options(is_active, sort_order);
+
+-- ==========================================
+-- Table des fournisseurs et liaisons aux prix
+-- ==========================================
+
+-- Table des fournisseurs
+DROP TABLE IF EXISTS suppliers;
+CREATE TABLE IF NOT EXISTS suppliers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    type TEXT NOT NULL CHECK (type IN ('producteur','transformateur','cooperative','grossiste')),
+    contact_phone TEXT,
+    contact_email TEXT,
+    address TEXT,
+    locality_id INTEGER NOT NULL,
+    -- Localisation fine optionnelle (si différent du centre de la localité)
+    latitude REAL,
+    longitude REAL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (locality_id) REFERENCES localities(id) ON DELETE CASCADE
+);
+
+-- Table de liaison: fournisseurs ↔ produits/localités/prix (prix agrégés par localité)
+DROP TABLE IF EXISTS supplier_prices;
+CREATE TABLE IF NOT EXISTS supplier_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    locality_id INTEGER NOT NULL,
+    price_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (locality_id) REFERENCES localities(id) ON DELETE CASCADE,
+    FOREIGN KEY (price_id) REFERENCES prices(id) ON DELETE CASCADE
+);
+
+-- Contrainte d'unicité pour éviter les doublons (un prix par fournisseur)
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_supplier_price ON supplier_prices(supplier_id, price_id);
+
+-- Index pour optimiser les liaisons et recherches
+CREATE INDEX IF NOT EXISTS idx_supplier_prices_supplier ON supplier_prices(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_prices_product ON supplier_prices(product_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_prices_locality ON supplier_prices(locality_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_prices_price ON supplier_prices(price_id);
+
+-- Disponibilité par fournisseur et produit (état courant)
+DROP TABLE IF EXISTS supplier_product_availability;
+CREATE TABLE IF NOT EXISTS supplier_product_availability (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    is_available INTEGER NOT NULL DEFAULT 1, -- 1: dispo, 0: indispo
+    available_quantity REAL, -- quantité estimée
+    quantity_unit TEXT, -- ex: 'kg', 'l', 'unité'
+    expected_restock_date DATE, -- date estimée de réapprovisionnement
+    available_from DATE, -- début de période de disponibilité
+    available_until DATE, -- fin de période de disponibilité (optionnel)
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_supplier_product_avail ON supplier_product_availability(supplier_id, product_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_product_avail_supplier ON supplier_product_availability(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_product_avail_product ON supplier_product_availability(product_id);
+
+-- Historique des disponibilités et quantités par fournisseur et produit
+DROP TABLE IF EXISTS supplier_product_availability_history;
+CREATE TABLE IF NOT EXISTS supplier_product_availability_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    date DATE NOT NULL,
+    is_available INTEGER NOT NULL,
+    available_quantity REAL,
+    quantity_unit TEXT,
+    expected_restock_date DATE,
+    period_start DATE,
+    period_end DATE,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_supplier_product_avail_hist_supplier ON supplier_product_availability_history(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_product_avail_hist_product ON supplier_product_availability_history(product_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_product_avail_hist_date ON supplier_product_availability_history(date);
 CREATE INDEX IF NOT EXISTS idx_filter_locality_options_active ON filter_locality_options(is_active, sort_order);
 CREATE INDEX IF NOT EXISTS idx_filter_region_options_active ON filter_region_options(is_active, sort_order);
 CREATE INDEX IF NOT EXISTS idx_filter_category_options_active ON filter_category_options(is_active, sort_order);

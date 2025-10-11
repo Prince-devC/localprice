@@ -150,10 +150,12 @@ const CompareButton = styled.button`
 
 const ProductCard = ({ product }) => {
   const formatPrice = (price) => {
+    if (price === null || price === undefined) return 'N/A';
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
-      currency: 'EUR'
-    }).format(price);
+      currency: 'XOF',
+      minimumFractionDigits: 0
+    }).format(price).replace('XOF', 'FCFA');
   };
 
   return (

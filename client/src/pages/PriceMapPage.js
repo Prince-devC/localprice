@@ -249,8 +249,8 @@ const PriceMapPage = () => {
               filters={mapFiltersForAPI(filters)}
               onMarkerClick={handleMarkerClick}
               height="100%"
-              center={[14.6928, -17.4467]} // Dakar par défaut
-              zoom={6} // Zoom plus large pour voir plus de régions
+              center={[9.3077, 2.3158]} // Centre du Bénin
+              zoom={7} // Zoom adapté pour couvrir le Bénin
             />
           </MapWrapper>
         </MapContainer>

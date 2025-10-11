@@ -342,7 +342,7 @@ class AgriculturalPrice {
       let query = `
         SELECT p.id, pr.name as product_name, l.name as locality_name,
                l.latitude, l.longitude, p.price, u.symbol as unit_symbol,
-               p.date, pc.name as category_name
+               u.name as unit_name, p.date, pc.name as category_name, pc.type as category_type
         FROM prices p
         JOIN products pr ON p.product_id = pr.id
         JOIN localities l ON p.locality_id = l.id
@@ -353,19 +353,67 @@ class AgriculturalPrice {
       
       const params = [];
       
+      // Filtre par produit (supporte plusieurs IDs séparés par des virgules)
       if (filters.product_id) {
-        query += ` AND p.product_id = ?`;
-        params.push(filters.product_id);
+        const productIds = String(filters.product_id).split(',').map(id => id.trim()).filter(Boolean);
+        if (productIds.length > 1) {
+          query += ` AND p.product_id IN (${productIds.map(() => '?').join(',')})`;
+          params.push(...productIds);
+        } else {
+          query += ` AND p.product_id = ?`;
+          params.push(productIds[0]);
+        }
       }
       
+      // Filtre par catégorie (supporte plusieurs IDs)
       if (filters.category_id) {
-        query += ` AND pr.category_id = ?`;
-        params.push(filters.category_id);
+        const categoryIds = String(filters.category_id).split(',').map(id => id.trim()).filter(Boolean);
+        if (categoryIds.length > 1) {
+          query += ` AND pr.category_id IN (${categoryIds.map(() => '?').join(',')})`;
+          params.push(...categoryIds);
+        } else {
+          query += ` AND pr.category_id = ?`;
+          params.push(categoryIds[0]);
+        }
       }
       
+      // Filtre par localité (supporte plusieurs IDs)
+      if (filters.locality_id) {
+        const localityIds = String(filters.locality_id).split(',').map(id => id.trim()).filter(Boolean);
+        if (localityIds.length > 1) {
+          query += ` AND p.locality_id IN (${localityIds.map(() => '?').join(',')})`;
+          params.push(...localityIds);
+        } else {
+          query += ` AND p.locality_id = ?`;
+          params.push(localityIds[0]);
+        }
+      }
+      
+      // Filtre par plage de dates
       if (filters.date_from) {
         query += ` AND p.date >= ?`;
         params.push(filters.date_from);
+      }
+      if (filters.date_to) {
+        query += ` AND p.date <= ?`;
+        params.push(filters.date_to);
+      }
+      
+      // Filtre par prix minimum/maximum
+      if (filters.price_min) {
+        query += ` AND p.price >= ?`;
+        params.push(filters.price_min);
+      }
+      if (filters.price_max) {
+        query += ` AND p.price <= ?`;
+        params.push(filters.price_max);
+      }
+      
+      // Recherche globale
+      if (filters.search) {
+        query += ` AND (pr.name LIKE ? OR l.name LIKE ? OR pc.name LIKE ?)`;
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm, searchTerm);
       }
       
       const rows = await db.all(query, params);

@@ -979,3 +979,255 @@ INSERT OR IGNORE INTO prices (product_id, locality_id, unit_id, price, date, sta
 (19, 60, 1, 245.00, '2024-12-14', 'validated', 'user2'),
 (21, 60, 1, 115.00, '2024-12-13', 'validated', 'user2'),
 (24, 60, 1, 195.00, '2024-12-12', 'validated', 'user2');
+
+-- ======================================================
+-- Fournisseurs et prix mensuels 2025 (janvier → 10 octobre)
+-- ======================================================
+
+-- Création des fournisseurs (associés aux localités clés)
+INSERT OR IGNORE INTO suppliers (name, type, contact_phone, contact_email, address, locality_id) VALUES
+-- Cotonou (46)
+('Ferme Adjovi', 'producteur', '+229 21 00 00 11', 'ferme.adjovi@lokali.bj', 'Cotonou', 46),
+('Atelier de Transformation Soja Cotonou', 'transformateur', '+229 21 00 00 12', 'atelier.soja.cotonou@lokali.bj', 'Cotonou', 46),
+('Coopérative Maraîchers Cotonou', 'cooperative', '+229 21 00 00 13', 'coop.maraichers.cotonou@lokali.bj', 'Cotonou', 46),
+-- Porto-Novo (60)
+('Ferme Kpodo', 'producteur', '+229 20 00 00 21', 'ferme.kpodo@lokali.bj', 'Porto-Novo', 60),
+('Huilerie Porto-Novo', 'transformateur', '+229 20 00 00 22', 'huilerie.porto@lokali.bj', 'Porto-Novo', 60),
+('Coopérative Riziculteurs Porto-Novo', 'cooperative', '+229 20 00 00 23', 'coop.riz.porto@lokali.bj', 'Porto-Novo', 60);
+
+-- Insertion des prix mensuels 2025 pour Cotonou (46) et Porto-Novo (60)
+WITH months(mdate) AS (
+  VALUES ('2025-01-10'), ('2025-02-10'), ('2025-03-10'), ('2025-04-10'),
+         ('2025-05-10'), ('2025-06-10'), ('2025-07-10'), ('2025-08-10'),
+         ('2025-09-10'), ('2025-10-10')
+),
+products(product_id, unit_id, base_price) AS (
+  VALUES 
+    (1, 1, 320.00),  -- Maïs (kg)
+    (2, 1, 450.00),  -- Riz paddy (kg)
+    (6, 1, 280.00),  -- Igname (kg)
+    (13, 1, 500.00), -- Tomate (kg)
+    (14, 1, 300.00), -- Oignon (kg)
+    (23, 1, 260.00), -- Gari (kg)
+    (26, 3, 800.00)  -- Huile de palme (l)
+),
+locs(locality_id, price_factor) AS (
+  VALUES (46, 1.00), (60, 1.05) -- Porto-Novo légèrement plus cher
+)
+INSERT INTO prices (product_id, locality_id, unit_id, price, date, status, submitted_by)
+SELECT p.product_id,
+       l.locality_id,
+       p.unit_id,
+       ROUND(p.base_price * l.price_factor, 2) AS price,
+       m.mdate,
+       'validated',
+       'seed'
+FROM months m
+CROSS JOIN products p
+CROSS JOIN locs l;
+
+-- Lier les derniers prix (10 octobre) aux fournisseurs correspondants
+INSERT OR IGNORE INTO supplier_prices (supplier_id, product_id, locality_id, price_id)
+SELECT s.id AS supplier_id,
+       pr.product_id,
+       pr.locality_id,
+       pr.id AS price_id
+FROM suppliers s
+JOIN prices pr ON pr.locality_id = s.locality_id
+WHERE pr.date = '2025-10-10';
+
+-- ======================================================
+-- Disponibilités actuelles par fournisseur et produit
+-- ======================================================
+
+-- Ferme Adjovi → Maïs
+INSERT OR IGNORE INTO supplier_product_availability (
+  supplier_id, product_id, is_available, available_quantity, quantity_unit,
+  expected_restock_date, available_from, available_until, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Maïs'),
+       1,
+       1500,
+       'kg',
+       '2025-10-25',
+       '2025-10-12',
+       '2025-10-20',
+       'Récolte en cours'
+FROM suppliers s WHERE s.name = 'Ferme Adjovi';
+
+INSERT OR IGNORE INTO supplier_product_availability_history (
+  supplier_id, product_id, date, is_available, available_quantity, quantity_unit,
+  expected_restock_date, period_start, period_end, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Maïs'),
+       '2025-10-12',
+       1,
+       1500,
+       'kg',
+       '2025-10-25',
+       '2025-10-12',
+       '2025-10-20',
+       'Annonce de disponibilité'
+FROM suppliers s WHERE s.name = 'Ferme Adjovi';
+
+-- Atelier de Transformation Soja Cotonou → Soja
+INSERT OR IGNORE INTO supplier_product_availability (
+  supplier_id, product_id, is_available, available_quantity, quantity_unit,
+  expected_restock_date, available_from, available_until, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Soja'),
+       1,
+       2000,
+       'kg',
+       '2025-10-22',
+       '2025-10-08',
+       '2025-10-18',
+       'Lots de soja transformable disponibles'
+FROM suppliers s WHERE s.name = 'Atelier de Transformation Soja Cotonou';
+
+INSERT OR IGNORE INTO supplier_product_availability_history (
+  supplier_id, product_id, date, is_available, available_quantity, quantity_unit,
+  expected_restock_date, period_start, period_end, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Soja'),
+       '2025-10-08',
+       1,
+       2000,
+       'kg',
+       '2025-10-22',
+       '2025-10-08',
+       '2025-10-18',
+       'Annonce de disponibilité'
+FROM suppliers s WHERE s.name = 'Atelier de Transformation Soja Cotonou';
+
+-- Coopérative Maraîchers Cotonou → Tomate
+INSERT OR IGNORE INTO supplier_product_availability (
+  supplier_id, product_id, is_available, available_quantity, quantity_unit,
+  expected_restock_date, available_from, available_until, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Tomate'),
+       1,
+       1200,
+       'kg',
+       '2025-10-21',
+       '2025-10-10',
+       '2025-10-17',
+       'Production maraîchère en cours'
+FROM suppliers s WHERE s.name = 'Coopérative Maraîchers Cotonou';
+
+INSERT OR IGNORE INTO supplier_product_availability_history (
+  supplier_id, product_id, date, is_available, available_quantity, quantity_unit,
+  expected_restock_date, period_start, period_end, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Tomate'),
+       '2025-10-10',
+       1,
+       1200,
+       'kg',
+       '2025-10-21',
+       '2025-10-10',
+       '2025-10-17',
+       'Annonce de disponibilité'
+FROM suppliers s WHERE s.name = 'Coopérative Maraîchers Cotonou';
+
+-- Ferme Kpodo → Igname
+INSERT OR IGNORE INTO supplier_product_availability (
+  supplier_id, product_id, is_available, available_quantity, quantity_unit,
+  expected_restock_date, available_from, available_until, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Igname'),
+       1,
+       2500,
+       'kg',
+       '2025-10-28',
+       '2025-10-11',
+       '2025-10-23',
+       'Récolte en cours'
+FROM suppliers s WHERE s.name = 'Ferme Kpodo';
+
+INSERT OR IGNORE INTO supplier_product_availability_history (
+  supplier_id, product_id, date, is_available, available_quantity, quantity_unit,
+  expected_restock_date, period_start, period_end, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Igname'),
+       '2025-10-11',
+       1,
+       2500,
+       'kg',
+       '2025-10-28',
+       '2025-10-11',
+       '2025-10-23',
+       'Annonce de disponibilité'
+FROM suppliers s WHERE s.name = 'Ferme Kpodo';
+
+-- Huilerie Porto-Novo → Huile de palme
+INSERT OR IGNORE INTO supplier_product_availability (
+  supplier_id, product_id, is_available, available_quantity, quantity_unit,
+  expected_restock_date, available_from, available_until, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Huile de palme'),
+       1,
+       300,
+       'l',
+       '2025-10-24',
+       '2025-10-09',
+       '2025-10-19',
+       'Production locale en cours'
+FROM suppliers s WHERE s.name = 'Huilerie Porto-Novo';
+
+INSERT OR IGNORE INTO supplier_product_availability_history (
+  supplier_id, product_id, date, is_available, available_quantity, quantity_unit,
+  expected_restock_date, period_start, period_end, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Huile de palme'),
+       '2025-10-09',
+       1,
+       300,
+       'l',
+       '2025-10-24',
+       '2025-10-09',
+       '2025-10-19',
+       'Annonce de disponibilité'
+FROM suppliers s WHERE s.name = 'Huilerie Porto-Novo';
+
+-- Coopérative Riziculteurs Porto-Novo → Riz paddy
+INSERT OR IGNORE INTO supplier_product_availability (
+  supplier_id, product_id, is_available, available_quantity, quantity_unit,
+  expected_restock_date, available_from, available_until, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Riz paddy'),
+       1,
+       4000,
+       'kg',
+       '2025-10-26',
+       '2025-10-07',
+       '2025-10-20',
+       'Récolte en cours'
+FROM suppliers s WHERE s.name = 'Coopérative Riziculteurs Porto-Novo';
+
+INSERT OR IGNORE INTO supplier_product_availability_history (
+  supplier_id, product_id, date, is_available, available_quantity, quantity_unit,
+  expected_restock_date, period_start, period_end, notes
+)
+SELECT s.id,
+       (SELECT id FROM products WHERE name = 'Riz paddy'),
+       '2025-10-07',
+       1,
+       4000,
+       'kg',
+       '2025-10-26',
+       '2025-10-07',
+       '2025-10-20',
+       'Annonce de disponibilité'
+FROM suppliers s WHERE s.name = 'Coopérative Riziculteurs Porto-Novo';
