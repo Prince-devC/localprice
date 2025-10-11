@@ -17,6 +17,8 @@ import AgriculturalPrices from './pages/AgriculturalPrices';
 import AllPrices from './pages/AllPrices';
 import PriceSubmissionForm from './components/PriceSubmissionForm';
 import PriceMapPage from './pages/PriceMapPage';
+import SuppliersPage from './pages/SuppliersPage';
+import SupplierContact from './pages/SupplierContact';
 import CostComparator from './components/CostComparator';
 import { AuthProvider } from './contexts/AuthContext';
 
@@ -38,12 +40,13 @@ function App() {
         <Header />
         <MainContent>
           <Routes>
-            <Route path="/" element={<PriceMapPage />} />
+            <Route path="/" element={<Home />} />
             <Route path="/search" element={<Search />} />
             <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/suppliers" element={<StoreList />} />
+            <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/stores" element={<StoreList />} />
             <Route path="/store/:id" element={<StoreDetail />} />
+            <Route path="/supplier/:id/contact" element={<SupplierContact />} />
             <Route path="/compare" element={<Comparison />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
