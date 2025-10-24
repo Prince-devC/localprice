@@ -68,18 +68,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, email, password) => {
+  const register = async (firstName, lastName, email, password) => {
     try {
       setLoading(true);
-      const response = await authService.register(username, email, password);
+      const response = await authService.register(firstName, lastName, email, password);
       
       if (response.data.success) {
-        const { user: userData, token } = response.data.data;
-        setUser(userData);
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        toast.success('Inscription réussie !');
-        return { success: true };
+        const previewUrl = response.data?.data?.previewUrl || null;
+        toast.success('Compte créé. Vérifiez votre email pour valider.');
+        return { success: true, previewUrl };
       } else {
         toast.error(response.data.message || 'Erreur d\'inscription');
         return { success: false, message: response.data.message };
@@ -145,6 +142,10 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
+
+  
+
+  
 
   const value = {
     user,

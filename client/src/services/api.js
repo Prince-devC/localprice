@@ -107,8 +107,8 @@ export const comparisonService = {
 // Services d'authentification
 export const authService = {
   login: (email, password) => api.post('/auth/login', { email, password }),
-  register: (username, email, password) => 
-    api.post('/auth/register', { username, email, password }),
+  register: (firstName, lastName, email, password) => 
+    api.post('/auth/register', { username: `${firstName} ${lastName}`.trim(), email, password }),
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data) => api.put('/auth/profile', data),
   changePassword: (currentPassword, newPassword) => 

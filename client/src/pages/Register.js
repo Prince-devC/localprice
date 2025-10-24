@@ -19,7 +19,7 @@ const RegisterCard = styled.div`
   box-shadow: var(--shadow-lg);
   padding: 2rem;
   width: 100%;
-  max-width: 400px;
+  max-width: 680px;
 `;
 
 const RegisterHeader = styled.div`
@@ -172,11 +172,13 @@ const PasswordRequirements = styled.div`
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    username: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
+  
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
@@ -192,8 +194,14 @@ const Register = () => {
     setError('');
   };
 
+  
+
+  
+
+  
+
   const validateForm = () => {
-    if (!formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Veuillez remplir tous les champs');
       return false;
     }
@@ -225,10 +233,13 @@ const Register = () => {
       return;
     }
 
-    const result = await register(formData.username, formData.email, formData.password);
+    const result = await register(formData.firstName, formData.lastName, formData.email, formData.password);
     
     if (result.success) {
-      navigate('/');
+      toast.success('Compte créé. Vérifiez votre email pour valider.');
+      if (result.previewUrl) {
+        toast('Lien de prévisualisation email dispo.', { icon: '✉️' });
+      }
     } else {
       setError(result.message);
     }
@@ -239,21 +250,40 @@ const Register = () => {
       <RegisterCard>
         <RegisterHeader>
           <RegisterTitle>Inscription</RegisterTitle>
-          <RegisterSubtitle>Créez votre compte Lokali</RegisterSubtitle>
+          <RegisterSubtitle>Créer son compte Lokali (email uniquement)</RegisterSubtitle>
         </RegisterHeader>
 
         <RegisterForm onSubmit={handleSubmit}>
           {error && <ErrorMessage>{error}</ErrorMessage>}
-          
-          <FormGroup>
-            <FormLabel>Nom d'utilisateur</FormLabel>
+
+
+          <>
+           <FormGroup>
+            <FormLabel>Prénom</FormLabel>
             <InputContainer>
               <FormInput
                 type="text"
-                name="username"
-                value={formData.username}
+                name="firstName"
+                value={formData.firstName}
                 onChange={handleChange}
-                placeholder="Votre nom d'utilisateur"
+                placeholder="Votre prénom"
+                required
+              />
+              <InputIcon>
+                <FiUser />
+              </InputIcon>
+            </InputContainer>
+          </FormGroup>
+
+          <FormGroup>
+            <FormLabel>Nom</FormLabel>
+            <InputContainer>
+              <FormInput
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="Votre nom"
                 required
               />
               <InputIcon>
@@ -331,7 +361,8 @@ const Register = () => {
           <LoginLink to="/login">
             Se connecter
           </LoginLink>
-        </RegisterForm>
+            </>
+          </RegisterForm>
       </RegisterCard>
     </RegisterContainer>
   );

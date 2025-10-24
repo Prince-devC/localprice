@@ -19,7 +19,7 @@ const LoginCard = styled.div`
   box-shadow: var(--shadow-lg);
   padding: 2rem;
   width: 100%;
-  max-width: 400px;
+  max-width: 680px;
 `;
 
 const LoginHeader = styled.div`
@@ -194,12 +194,12 @@ const Login = () => {
       <LoginCard>
         <LoginHeader>
           <LoginTitle>Connexion</LoginTitle>
-          <LoginSubtitle>Connectez-vous à votre compte Lokali</LoginSubtitle>
+          <LoginSubtitle>Se connecter à Lokali</LoginSubtitle>
         </LoginHeader>
 
         <LoginForm onSubmit={handleSubmit}>
           {error && <ErrorMessage>{error}</ErrorMessage>}
-          
+
           <FormGroup>
             <FormLabel>Email</FormLabel>
             <InputContainer>
