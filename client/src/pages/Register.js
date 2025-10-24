@@ -236,10 +236,19 @@ const Register = () => {
     const result = await register(formData.firstName, formData.lastName, formData.email, formData.password);
     
     if (result.success) {
-      toast.success('Compte créé. Vérifiez votre email pour valider.');
-      if (result.previewUrl) {
-        toast('Lien de prévisualisation email dispo.', { icon: '✉️' });
-      }
+      // Ne pas dupliquer le toast: AuthContext affiche déjà le succès
+      // Vider le formulaire et rediriger après un court délai
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+      setShowPassword(false);
+      setShowConfirmPassword(false);
+      toast('Redirection vers la connexion...', { icon: '➡️' });
+      setTimeout(() => navigate('/login'), 1500);
     } else {
       setError(result.message);
     }
