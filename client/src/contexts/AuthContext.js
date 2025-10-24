@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from '../services/api';
+import { supabase } from '../services/supabase';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -17,50 +17,63 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Vérifier si l'utilisateur est connecté au chargement de l'app
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-    
-    if (token && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-        // Vérifier la validité du token
-        authService.getProfile()
-          .then(response => {
-            if (response.data.success) {
-              setUser(response.data.data);
-              localStorage.setItem('user', JSON.stringify(response.data.data));
-            }
-          })
-          .catch(() => {
-            // Token invalide, déconnecter l'utilisateur
-            logout();
-          });
-      } catch (error) {
-        logout();
+    // Init session from Supabase
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        // Persist access token for backend calls
+        if (session.access_token) {
+          localStorage.setItem('token', session.access_token);
+        }
+        localStorage.setItem('user', JSON.stringify(session.user));
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+    init();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        if (session.access_token) {
+          localStorage.setItem('token', session.access_token);
+        }
+        localStorage.setItem('user', JSON.stringify(session.user));
+      } else {
+        setUser(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email, password) => {
     try {
       setLoading(true);
-      const response = await authService.login(email, password);
-      
-      if (response.data.success) {
-        const { user: userData, token } = response.data.data;
-        setUser(userData);
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        const message = error.message || 'Erreur de connexion';
+        toast.error(message);
+        return { success: false, message };
+      }
+      const session = data.session;
+      if (session?.user) {
+        setUser(session.user);
+        if (session.access_token) {
+          localStorage.setItem('token', session.access_token);
+        }
+        localStorage.setItem('user', JSON.stringify(session.user));
         toast.success('Connexion réussie !');
         return { success: true };
-      } else {
-        toast.error(response.data.message || 'Erreur de connexion');
-        return { success: false, message: response.data.message };
       }
+      toast.error('Erreur de connexion');
+      return { success: false, message: 'Erreur de connexion' };
     } catch (error) {
-      const message = error.response?.data?.message || 'Erreur de connexion';
+      const message = error.message || 'Erreur de connexion';
       toast.error(message);
       return { success: false, message };
     } finally {
@@ -71,18 +84,24 @@ export const AuthProvider = ({ children }) => {
   const register = async (firstName, lastName, email, password) => {
     try {
       setLoading(true);
-      const response = await authService.register(firstName, lastName, email, password);
-      
-      if (response.data.success) {
-        const previewUrl = response.data?.data?.previewUrl || null;
-        toast.success('Compte créé. Vérifiez votre email pour valider.');
-        return { success: true, previewUrl };
-      } else {
-        toast.error(response.data.message || 'Erreur d\'inscription');
-        return { success: false, message: response.data.message };
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { firstName, lastName },
+          emailRedirectTo: window.location.origin // Redirection après vérification
+        }
+      });
+      if (error) {
+        const message = error.message || "Erreur d'inscription";
+        toast.error(message);
+        return { success: false, message };
       }
+      // Supabase envoie un email de confirmation automatiquement
+      toast.success('Compte créé. Vérifiez votre email pour valider.');
+      return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || 'Erreur d\'inscription';
+      const message = error.message || "Erreur d'inscription";
       toast.error(message);
       return { success: false, message };
     } finally {
@@ -90,7 +109,8 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -100,21 +120,20 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       setLoading(true);
-      const response = await authService.updateProfile(profileData);
-      
-      if (response.data.success) {
-        // Mettre à jour les données utilisateur
-        const updatedUser = { ...user, ...profileData };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        toast.success('Profil mis à jour !');
-        return { success: true };
-      } else {
-        toast.error(response.data.message || 'Erreur de mise à jour');
-        return { success: false, message: response.data.message };
+      const { error } = await supabase.auth.updateUser({ data: profileData });
+      if (error) {
+        const message = error.message || 'Erreur de mise à jour';
+        toast.error(message);
+        return { success: false, message };
       }
+      const current = user || (JSON.parse(localStorage.getItem('user')) || {});
+      const updatedUser = { ...current, user_metadata: { ...(current?.user_metadata || {}), ...profileData } };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      toast.success('Profil mis à jour !');
+      return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || 'Erreur de mise à jour';
+      const message = error.message || 'Erreur de mise à jour';
       toast.error(message);
       return { success: false, message };
     } finally {
@@ -122,20 +141,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const changePassword = async (currentPassword, newPassword) => {
+  const changePassword = async (_currentPassword, newPassword) => {
     try {
       setLoading(true);
-      const response = await authService.changePassword(currentPassword, newPassword);
-      
-      if (response.data.success) {
-        toast.success('Mot de passe changé !');
-        return { success: true };
-      } else {
-        toast.error(response.data.message || 'Erreur de changement de mot de passe');
-        return { success: false, message: response.data.message };
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        const message = error.message || 'Erreur de changement de mot de passe';
+        toast.error(message);
+        return { success: false, message };
       }
+      toast.success('Mot de passe changé !');
+      return { success: true };
     } catch (error) {
-      const message = error.response?.data?.message || 'Erreur de changement de mot de passe';
+      const message = error.message || 'Erreur de changement de mot de passe';
       toast.error(message);
       return { success: false, message };
     } finally {
