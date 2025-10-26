@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import toast from 'react-hot-toast';
+import { authService } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -15,6 +16,20 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState([]);
+
+  const fetchRoles = async () => {
+    try {
+      const response = await authService.getRoles();
+      const fetched = response?.data?.data?.roles || [];
+      setRoles(fetched);
+      try { localStorage.setItem('roles', JSON.stringify(fetched)); } catch (_) {}
+    } catch (e) {
+      console.warn('Failed to fetch roles:', e.message);
+      setRoles([]);
+      try { localStorage.removeItem('roles'); } catch (_) {}
+    }
+  };
 
   useEffect(() => {
     // Init session from Supabase
@@ -22,27 +37,33 @@ export const AuthProvider = ({ children }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        // Persist access token for backend calls
         if (session.access_token) {
           localStorage.setItem('token', session.access_token);
         }
         localStorage.setItem('user', JSON.stringify(session.user));
+        await fetchRoles();
+      } else {
+        setRoles([]);
+        try { localStorage.removeItem('roles'); } catch (_) {}
       }
       setLoading(false);
     };
     init();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         setUser(session.user);
         if (session.access_token) {
           localStorage.setItem('token', session.access_token);
         }
         localStorage.setItem('user', JSON.stringify(session.user));
+        await fetchRoles();
       } else {
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        setRoles([]);
+        try { localStorage.removeItem('roles'); } catch (_) {}
       }
     });
 
@@ -82,13 +103,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (firstName, lastName, email, password) => {
+    // Génère un username auto-généré (quasi unique) basé sur nom/prénom ou email
+    const generateUsername = () => {
+      const nameBase = [String(firstName || '').trim(), String(lastName || '').trim()].filter(Boolean).join(' ');
+      const baseRaw = nameBase || String(email).split('@')[0] || 'lokali';
+      const base = (baseRaw || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'lokali';
+      const suffix = Math.random().toString(36).slice(2, 8);
+      return `${base}-${suffix}`;
+    };
+
     try {
       setLoading(true);
+      const username = generateUsername();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { firstName, lastName },
+          data: { firstName, lastName, username, role: 'user' },
           emailRedirectTo: window.location.origin // Redirection après vérification
         }
       });
@@ -161,9 +192,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  
-
-  
+  const hasRole = (r) => roles.includes(r);
 
   const value = {
     user,
@@ -173,6 +202,9 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     changePassword,
+    roles,
+    hasRole,
+    refreshRoles: fetchRoles,
     isAuthenticated: !!user,
   };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { agriculturalPriceService, storeService, localityService, supplierService } from '../services/api';
@@ -22,6 +22,15 @@ function MapCenter({ center, zoom }) {
   return null;
 }
 
+// Helpers visibilité
+const formatK = (value) => {
+  const v = Number(value) || 0;
+  if (v >= 1000) return ((v / 1000).toFixed(v >= 10000 ? 0 : 1)) + 'k';
+  return String(Math.round(v));
+};
+
+
+
 // Composant pour les marqueurs colorés
 function PriceMarkers({ prices, onMarkerClick, jitter = false }) {
   const getMarkerColor = (price) => {
@@ -34,34 +43,33 @@ function PriceMarkers({ prices, onMarkerClick, jitter = false }) {
 
   const getMarkerSize = (price) => {
     const priceValue = parseFloat(price.price);
-    if (priceValue < 1000) return 16;
-    if (priceValue < 2000) return 20;
-    if (priceValue < 3000) return 24;
-    return 28;
+    if (priceValue < 1000) return 18;
+    if (priceValue < 2000) return 22;
+    if (priceValue < 3000) return 26;
+    return 32;
   };
 
   const createCustomIcon = (price) => {
     const color = getMarkerColor(price);
     const size = getMarkerSize(price);
     const priceValue = parseFloat(price.price);
-    
     return L.divIcon({
       className: 'custom-div-icon',
-      html: `<div style="
-        background-color: ${color};
-        width: ${size}px;
-        height: ${size}px;
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: ${size > 20 ? '10px' : '8px'};
-        font-weight: bold;
-        color: white;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-      ">${priceValue < 1000 ? 'B' : priceValue < 2000 ? 'M' : priceValue < 3000 ? 'H' : 'V'}</div>`,
+      html: '<div style="' +
+        'background-color: ' + color + ';' +
+        'width: ' + size + 'px;' +
+        'height: ' + size + 'px;' +
+        'border-radius: 50%;' +
+        'border: 3px solid white;' +
+        'box-shadow: 0 4px 8px rgba(0,0,0,0.45);' +
+        'display: flex;' +
+        'align-items: center;' +
+        'justify-content: center;' +
+        'font-size: ' + (size >= 26 ? '12px' : '11px') + ';' +
+        'font-weight: 800;' +
+        'color: white;' +
+        'text-shadow: 1px 1px 2px rgba(0,0,0,0.6);' +
+      '">' + formatK(priceValue) + '</div>',
       iconSize: [size, size],
       iconAnchor: [size/2, size/2]
     });
@@ -299,6 +307,7 @@ const PriceMap = ({
   const [supplierSummaries, setSupplierSummaries] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [fitRequested, setFitRequested] = useState(false);
 
   // Normaliser les noms pour matcher villes/localités sans accents
   const normalizeName = useCallback((name) => {
@@ -417,6 +426,14 @@ const PriceMap = ({
     }
   }, [supplierSummaries]);
 
+  const bounds = useMemo(() => {
+    const pts = [];
+    prices.forEach((p) => { if (p.latitude && p.longitude) pts.push([p.latitude, p.longitude]); });
+    stores.forEach((s) => { if (s.latitude && s.longitude) pts.push([s.latitude, s.longitude]); });
+    suppliers.forEach((s) => { if (s.latitude && s.longitude) pts.push([s.latitude, s.longitude]); });
+    return pts.length ? L.latLngBounds(pts) : null;
+  }, [prices, stores, suppliers]);
+
   if (loading) {
     return (
       <div style={{ 
@@ -464,17 +481,21 @@ const PriceMap = ({
   }
 
   return (
-    <div style={{ height, width: '100%', borderRadius: '8px', overflow: 'hidden' }}>
+    <div style={{ height, width: '100%', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
       <MapContainer
         center={center}
         zoom={zoom}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
       >
-        <MapCenter center={center} zoom={zoom} />
+        {bounds ? (
+          <FitBoundsOnData bounds={bounds} fitRequested={fitRequested} onDone={() => setFitRequested(false)} />
+        ) : (
+          <MapCenter center={center} zoom={zoom} />
+        )}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; OpenStreetMap & CartoDB'
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           errorTileUrl="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9W9Hq1kAAAAASUVORK5CYII="
           crossOrigin
         />
@@ -488,6 +509,21 @@ const PriceMap = ({
         />
       </MapContainer>
       
+      {/* Stats overlay + action */}
+      <div style={{
+        position: 'absolute', top: '60px', left: '10px', zIndex: 1000,
+        background: 'rgba(255,255,255,0.95)', padding: '10px 12px',
+        borderRadius: '8px', boxShadow: '0 3px 6px rgba(0,0,0,0.25)', fontSize: '13px', color: '#333'
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: '6px' }}>Résultats sur carte</div>
+        <div style={{ marginBottom: '8px' }}>Prix: {prices.length} • Fournisseurs: {stores.length + suppliers.length}</div>
+        <button onClick={() => setFitRequested(true)} style={{
+          padding: '6px 10px', backgroundColor: '#2563eb', color: 'white',
+          border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px'
+        }}>
+          Zoom sur résultats
+        </button>
+      </div>
       {/* Légende */}
       <div style={{
         position: 'absolute',
@@ -589,3 +625,21 @@ const PriceMap = ({
 };
 
 export default PriceMap;
+
+function FitBoundsOnData({ bounds, fitRequested, onDone }) {
+  const map = useMap();
+  const didAutoFitRef = useRef(false);
+  useEffect(() => {
+    if (bounds && !didAutoFitRef.current) {
+      map.fitBounds(bounds, { padding: [30, 30] });
+      didAutoFitRef.current = true;
+    }
+  }, [map, bounds]);
+  useEffect(() => {
+    if (bounds && fitRequested) {
+      map.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
+      onDone && onDone();
+    }
+  }, [map, bounds, fitRequested, onDone]);
+  return null;
+}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { FiUser, FiLogOut, FiMenu, FiX, FiChevronDown, FiTrendingUp } from 'react-icons/fi';
+import { FiUser, FiLogOut, FiMenu, FiX, FiChevronDown, FiTrendingUp, FiHome, FiShield } from 'react-icons/fi';
 import { FaCalculator } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/api';
 
 const HeaderContainer = styled.header`
   position: fixed;
@@ -500,12 +501,42 @@ const MobileOverlay = styled.div`
 `;
 
 const Header = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, roles } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
   const [isDirectoryDropdownOpen, setIsDirectoryDropdownOpen] = useState(false);
   const navigate = useNavigate();
+
+  // using roles from AuthContext; removed local fetch
+  // const [roles, setRoles] = useState([]);
+  // useEffect(() => {
+  //   if (isAuthenticated && user) {
+  //     authService.getRoles()
+  //       .then(resp => setRoles(resp?.data?.data?.roles || []))
+  //       .catch(() => setRoles([]));
+  //   } else {
+  //     setRoles([]);
+  //   }
+  // }, [isAuthenticated, user?.id]);
+
+  const isAdmin = !!(
+    (roles && (roles.includes('admin') || roles.includes('super_admin')))
+    || (user?.user_metadata && (user.user_metadata.role === 'admin' || user.user_metadata.role === 'super_admin'))
+    || (user?.app_metadata && (user.app_metadata.role === 'admin' || user.app_metadata.role === 'super_admin'))
+    || (user?.role === 'admin' || user?.role === 'super_admin')
+  );
+
+  const isContributor = !!(
+    (roles && roles.includes('contributor'))
+    || (user?.user_metadata && user.user_metadata.role === 'contributor')
+    || (user?.app_metadata && user.app_metadata.role === 'contributor')
+    || user?.role === 'contributor'
+  );
+
+  const displayName = user?.user_metadata?.firstName
+    ? `${user.user_metadata.firstName} ${user.user_metadata.lastName || ''}`.trim()
+    : (user?.user_metadata?.username || user?.email || 'Utilisateur');
 
   const handleLogout = () => {
     logout();
@@ -589,19 +620,30 @@ const Header = () => {
               </DropdownMenu>
             </DropdownContainer>
             
-            <NavLink to="/submit-price">Contribuer</NavLink>
-            {user && user.role === 'admin' && (
-              <NavLink to="/admin">Espace Admin</NavLink>
-            )}
+            <NavLink to={isAuthenticated ? ((isContributor || isAdmin) ? '/submit-price' : '/dashboard?apply=1') : '/login'}>Contribuer</NavLink>
+            {/* Retiré: Mon Espace & Espace Admin du menu principal */}
           </Nav>
-          
+
           {isAuthenticated ? (
             <UserMenu>
               <UserButton onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}>
                 <FiUser />
-                {user?.username}
+                {displayName}
               </UserButton>
               <Dropdown $isOpen={isUserMenuOpen}>
+                {isAdmin && (
+                  <UserDropdownItem to="/admin">
+                    <FiShield />
+                    Espace Admin
+                  </UserDropdownItem>
+                )}
+                {(roles?.includes('contributor') || roles?.includes('user')) && (
+                  <UserDropdownItem to="/dashboard">
+                    <FiHome />
+                    Mon Espace
+                  </UserDropdownItem>
+                )}
+
                 <UserDropdownItem to="/profile">
                   <FiUser />
                   Mon Profil
@@ -663,14 +705,12 @@ const Header = () => {
           </MobileNavLink>
         </MobileDropdownSection>
         
-        <MobileNavLink to="/submit-price">Contribuer</MobileNavLink>
-        
-        {user && user.role === 'admin' && (
-          <MobileNavLink to="/admin">Espace Admin</MobileNavLink>
-        )}
+        <MobileNavLink to={isAuthenticated ? ((isContributor || isAdmin) ? '/submit-price' : '/dashboard?apply=1') : '/login'}>Contribuer</MobileNavLink>
+        {/* Retiré: Espace Admin et Mon Espace du menu mobile principal */}
         
         {isAuthenticated ? (
           <>
+            {/* Garder seulement les options Profil/Déconnexion ici; accès Admin/Espace via menu profil */}
             <MobileNavLink to="/profile">Mon Profil</MobileNavLink>
             <MobileNavLink to="#" onClick={handleLogout}>Déconnexion</MobileNavLink>
           </>

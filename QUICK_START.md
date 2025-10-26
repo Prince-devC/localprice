@@ -1,47 +1,33 @@
 # 🚀 Démarrage Rapide - Lokali
 
-## ⚡ Installation Express (5 minutes)
+## ⚡ Prérequis
+- `Node.js` 16+ et `npm`
+- `Git` installé
 
-### 1. Prérequis
-- **MAMP** installé et démarré (ou MySQL)
-- **Node.js** installé (version 16+)
-- **Git** installé
-
-### 2. Cloner et configurer
+## 📦 Installation
 ```bash
 # Cloner le projet
 git clone <url-du-repo>
-cd Lokali
+cd localprice
 
 # Copier la configuration
 cp env.example .env
 ```
 
-### 3. Configuration de la Base de Données
+## 🗃️ Base de données SQLite
+- Pas de MySQL/MAMP requis. La base SQLite est gérée localement.
+- Fichiers: schéma `database/sqlite-schema.sql`, données `database/sqlite-data.sql`.
 
-#### Avec MAMP (Recommandé)
-1. **Démarrer MAMP** et aller sur http://localhost:8888/phpMyAdmin/
-2. **Créer la base** : `localprice`
-3. **Importer le schéma** : `database/schema-simple.sql`
-4. **Configurer .env** :
-   ```env
-   DB_HOST=localhost
-   DB_USER=root
-   DB_PASSWORD=root
-   DB_NAME=localprice
-   MAMP_PORT=3306
-   ```
-
-#### Avec MySQL standard
+Initialisation:
 ```bash
-# Créer la base
-mysql -u root -p -e "CREATE DATABASE localprice;"
+# Crée/rafraîchit la base et charge le schéma + les données
+node init-db.js
 
-# Importer le schéma
-mysql -u root -p localprice < database/schema-simple.sql
+# Option: recréation forcée (supprime le fichier DB puis réapplique)
+node force-recreate-db.js
 ```
 
-### 4. Installation des dépendances
+## 🔧 Dépendances
 ```bash
 # Backend
 npm install
@@ -50,83 +36,67 @@ npm install
 cd client && npm install && cd ..
 ```
 
-### 5. Créer un admin
+## 🚀 Démarrage
 ```bash
-# Créer l'utilisateur administrateur
-node create-admin-user.js
-```
-
-### 6. Démarrer l'application
-```bash
-# Option 1: Script automatique (recommandé)
+# Option 1 (recommandé) : démarre backend + frontend
 npm run start:all
 
-# Option 2: Manuel
-# Terminal 1: npm run dev
-# Terminal 2: npm run client
+# Option 2 : démarrage séparé
+# Terminal 1
+npm run dev    # API sur http://localhost:5001
+# Terminal 2
+npm run client # React sur http://localhost:3000
 ```
 
 ## 🌐 Accès
+- Frontend: `http://localhost:3000/`
+- Backend API: `http://localhost:5001/`
 
-- **Frontend** : http://localhost:3000
-- **Backend** : http://localhost:5001
-- **phpMyAdmin** : http://localhost:8888/phpMyAdmin/
+## 🧭 Nouvelles pages et flux
+- `GET /suppliers` (UI): liste des fournisseurs avec cartes stylées et badges prix.
+- `SupplierCard` affiche prix et **disponibilités colorées**:
+  - Vert: Disponible
+  - Orange: Réapprovisionnement prévu (date)
+  - Rouge: Indisponible
+- Bouton `Contacter` sur la carte fournisseur:
+  - Non authentifié → redirection vers `/login`
+  - Authentifié → `/supplier/:id/contact`
+- Page `SupplierContact` (route: `/supplier/:id/contact`) — **authentification requise**.
+- Pages `Login` / `Register` déjà intégrées (via l’en-tête).
 
-## 👤 Comptes de Test
+## 🔌 API utiles
+- `GET /api/suppliers` — liste des fournisseurs
+- `GET /api/suppliers/:id/summary` — prix/disponibilités/coordonnées par fournisseur
 
-### Admin
-- **Email** : admin@localprice.com
-- **Username** : admin
-- **Password** : admin123
+## 🐛 Dépannage rapide
+- `net::ERR_CONNECTION_REFUSED` sur `http://localhost:3000/`
+  - Vérifier que `npm run client` est bien démarré.
+  - Si le port `3000` est occupé (Windows):
+    - `netstat -ano | findstr :3000` puis `taskkill /PID <PID> /F`
+    - ou démarrer sur un autre port:
+      ```powershell
+      cd client
+      $env:PORT=3001; npm start
+      ```
+- Erreur DB (fichier verrouillé): arrêter backend/client avant `node force-recreate-db.js`.
+- CORS: le frontend doit pointer vers `http://localhost:5001`.
 
-### User
-- **Email** : user@localprice.com
-- **Username** : user
-- **Password** : user123
-
-## 🎯 Fonctionnalités Disponibles
-
-✅ **Recherche de produits**  
-✅ **Comparaison de prix**  
-✅ **Carte interactive**  
-✅ **Gestion des magasins**  
-✅ **Interface d'administration**  
-✅ **Authentification**  
-✅ **Design responsive**  
-
-## 🐛 Dépannage Rapide
-
-### Erreur MySQL
-- Vérifier que MAMP est démarré
-- Vérifier le port (3306 pour MAMP)
-- Vérifier les identifiants dans .env
-
-### Erreur de port
-- Vérifier que le port 5001 est libre
-- Modifier le port dans .env si nécessaire
-
-### Erreur CORS
-- Vérifier que le frontend pointe vers http://localhost:5001
-
-## 📁 Structure
-
+## 📁 Structure (simplifiée)
 ```
-Lokali/
-├── client/          # React App
-├── routes/          # API Routes
-├── models/          # Data Models
-├── database/        # DB Schema
-├── server.js        # Express Server
+localprice/
+├── client/          # React (UI)
+├── routes/          # API Express
+├── models/          # Modèles de données
+├── database/        # Schéma + seed SQLite
+├── scripts/         # Outils DB/debug
+├── server.js        # Serveur Express
 └── package.json
 ```
 
-## 🚀 Prochaines Étapes
+## 🚀 Prochaines étapes
+- Personnaliser l’interface
+- Ajouter vos fournisseurs/produits
+- Configurer l’authentification (si besoin de rôles avancés)
+- Déployer en production
 
-1. **Personnaliser** l'interface
-2. **Ajouter** vos magasins et produits
-3. **Configurer** l'authentification
-4. **Déployer** en production
-
----
-
-**Prêt à démarrer ?** Suivez les étapes ci-dessus et votre application Lokali sera opérationnelle en 5 minutes ! 🎉
+> Voir aussi: `README.md` (détails des fonctionnalités) et `BRANCH_NAMING_CONVENTION.md` (workflow Git).

@@ -8,6 +8,7 @@ const { requireRole } = require('../middleware/roleAuth');
 router.get('/', async (req, res) => {
   try {
     const filters = {
+      id: req.query.id,
       product_id: req.query.product_id,
       locality_id: req.query.locality_id,
       category_id: req.query.category_id,

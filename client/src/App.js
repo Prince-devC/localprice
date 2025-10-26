@@ -13,12 +13,14 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
-import AgriculturalPrices from './pages/AgriculturalPrices';
+import Dashboard from './pages/Dashboard';
+// import AgriculturalPrices from './pages/AgriculturalPrices';
 import AllPrices from './pages/AllPrices';
 import PriceSubmissionForm from './components/PriceSubmissionForm';
 import PriceMapPage from './pages/PriceMapPage';
 import SuppliersPage from './pages/SuppliersPage';
 import SupplierContact from './pages/SupplierContact';
+import PriceDetail from './pages/PriceDetail';
 import CostComparator from './components/CostComparator';
 import { AuthProvider } from './contexts/AuthContext';
 
@@ -43,6 +45,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<Search />} />
             <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/price/:id" element={<PriceDetail />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
             <Route path="/stores" element={<StoreList />} />
             <Route path="/store/:id" element={<StoreDetail />} />
@@ -53,9 +56,9 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             
             {/* Nouvelles routes agricoles */}
-            <Route path="/agricultural-prices" element={<AgriculturalPrices />} />
-            <Route path="/all-prices" element={<AllPrices />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+             <Route path="/all-prices" element={<AllPrices />} />
+             <Route path="/admin" element={<AdminDashboard />} />
+             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/submit-price" element={<PriceSubmissionForm />} />
             <Route path="/price-map" element={<PriceMapPage />} />
             <Route path="/cost-comparator" element={<CostComparator />} />

@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const axios = require('axios');
 const router = express.Router();
 const db = require('../database/connection');
 
@@ -23,40 +24,88 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// POST /api/auth/register - Inscription
+// Middleware pour vérifier un token Supabase et récupérer l'utilisateur
+const authenticateSupabaseToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token d\'accès requis' });
+    }
+
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const anonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !anonKey) {
+      return res.status(500).json({ success: false, message: 'Configuration Supabase manquante' });
+    }
+
+    const url = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`;
+    const resp = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: anonKey,
+      },
+      timeout: 10000,
+    });
+
+    const supaUser = resp?.data || null;
+    if (!supaUser || !supaUser.id) {
+      return res.status(403).json({ success: false, message: 'Token Supabase invalide' });
+    }
+
+    req.supabaseUser = { id: supaUser.id, email: supaUser.email };
+    next();
+  } catch (err) {
+    const status = err?.response?.status;
+    if (status === 401 || status === 403) {
+      return res.status(status).json({ success: false, message: 'Token Supabase invalide ou expiré' });
+    }
+    return res.status(500).json({ success: false, message: 'Erreur de vérification du token Supabase' });
+  }
+};
+
+// POST /api/auth/register - Inscription (username auto-généré unique si absent)
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, role = 'contributor' } = req.body;
+    const { username: providedUsername, email, password, role = 'user' } = req.body || {};
 
     await ensureUsersColumns();
 
-    // Vérifier que tous les champs sont fournis
-    if (!username || !email || !password) {
+    // Vérifier que les champs requis sont fournis
+    if (!email || !password) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Tous les champs sont requis' 
+        message: 'Email et mot de passe requis' 
       });
     }
 
     // Vérifier le rôle
-    if (!['contributor', 'admin'].includes(role)) {
+    if (!['user', 'contributor', 'admin'].includes(role)) {
+      return res.status(400).json({ success: false, message: 'Rôle invalide' });
+    }
+
+    // Vérifier unicité de l'email
+    const [emailExists] = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+    if (emailExists && emailExists.length > 0) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Rôle invalide' 
+        message: 'Un utilisateur avec cet email existe déjà' 
       });
     }
 
-    // Vérifier si l'utilisateur existe déjà
-    const [existingUser] = await db.execute(
-      'SELECT id FROM users WHERE email = ? OR username = ?',
-      [email, username]
-    );
-
-    if (existingUser.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Un utilisateur avec cet email ou nom d\'utilisateur existe déjà' 
-      });
+    // Générer un username unique si non fourni
+    const baseRaw = (providedUsername && String(providedUsername)) || String(email).split('@')[0] || 'lokali';
+    const base = (baseRaw || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'lokali';
+    let username = base;
+    // Vérifier unicité du username et ajouter suffixe aléatoire si nécessaire
+    const [u0] = await db.execute('SELECT id FROM users WHERE username = ?', [username]);
+    if (u0 && u0.length > 0) {
+      for (let i = 0; i < 5; i++) {
+        const suffix = Math.random().toString(36).slice(2, 8);
+        username = `${base}-${suffix}`;
+        const [uCheck] = await db.execute('SELECT id FROM users WHERE username = ?', [username]);
+        if (!uCheck || uCheck.length === 0) break;
+      }
     }
 
     // Hasher le mot de passe
@@ -172,7 +221,7 @@ router.post('/login', async (req, res) => {
 
     // Générer le token JWT
     const token = jwt.sign(
-      { id: user.id, username: user.username || null, email: user.email },
+      { id: user.id, username: user.username || null, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -317,7 +366,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
 });
 
 // Ajouts pour OTP (SMS/Email)
-const axios = require('axios');
+// axios déjà importé en haut du fichier
 let nodemailer; // chargé à la volée si disponible
 
 const ensureOtpSchema = async () => {
@@ -353,6 +402,37 @@ const ensureUsersColumns = async () => {
   for (const stmt of statements) {
     await db.exec(stmt + ';');
   }
+};
+
+// Ensure roles and user_roles tables exist (for Supabase users defaulting to 'user')
+const ensureRolesSchema = async () => {
+  const ddl = `
+    CREATE TABLE IF NOT EXISTS roles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE CHECK (name IN ('user','contributor','admin','super_admin'))
+    );
+    CREATE TABLE IF NOT EXISTS user_roles (
+      user_id TEXT NOT NULL,
+      role_id INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, role_id),
+      FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id);
+  `;
+  await db.exec(ddl);
+};
+
+const getRoleId = async (name) => {
+  const [rows] = await db.execute('SELECT id FROM roles WHERE name = ? LIMIT 1', [name]);
+  if (!rows || rows.length === 0) {
+    await db.execute('INSERT OR IGNORE INTO roles (name) VALUES (?)', [name]);
+    const [rows2] = await db.execute('SELECT id FROM roles WHERE name = ? LIMIT 1', [name]);
+    return rows2 && rows2[0] ? rows2[0].id : null;
+  }
+  return rows[0].id;
 };
 
 // Demande d'OTP
@@ -437,7 +517,7 @@ router.post('/verify-otp', async (req, res) => {
   try {
     await ensureOtpSchema();
     await ensureUsersColumns();
-    const { phone, code, email, firstName, lastName, password, role = 'contributor' } = req.body;
+    const { phone, code, email, firstName, lastName, password, role = 'user' } = req.body;
 
     if (!isValidPhone(phone)) {
       return res.status(400).json({ success: false, message: 'Numéro invalide. Format: 01xxxxxxxx' });
@@ -451,7 +531,7 @@ router.post('/verify-otp', async (req, res) => {
     if (!firstName || !lastName) {
       return res.status(400).json({ success: false, message: 'Prénom et nom requis' });
     }
-    if (!['contributor', 'admin'].includes(role)) {
+    if (!['user', 'contributor', 'admin'].includes(role)) {
       return res.status(400).json({ success: false, message: 'Rôle invalide' });
     }
 
@@ -477,7 +557,21 @@ router.post('/verify-otp', async (req, res) => {
     // Créer/Mettre à jour l'utilisateur dans la table users
     const userId = phone.trim(); // Utiliser le téléphone comme identifiant TEXT
     const normalizedEmail = (email && String(email).trim()) || `${userId}@otp.lokali`;
-    const username = [String(firstName || '').trim(), String(lastName || '').trim()].filter(Boolean).join(' ') || null;
+
+    // Générer un username auto-généré unique basé sur prénom/nom ou email/phone
+    const nameBase = [String(firstName || '').trim(), String(lastName || '').trim()].filter(Boolean).join(' ');
+    const baseRaw = nameBase || String(normalizedEmail).split('@')[0] || userId;
+    const base = (baseRaw || '').toLowerCase().replace(/[^a-z0-9]/g, '') || 'lokali';
+    let username = base;
+    const [u0] = await db.execute('SELECT id FROM users WHERE username = ?', [username]);
+    if (u0 && u0.length > 0) {
+      for (let i = 0; i < 5; i++) {
+        const suffix = Math.random().toString(36).slice(2, 8);
+        username = `${base}-${suffix}`;
+        const [uCheck] = await db.execute('SELECT id FROM users WHERE username = ?', [username]);
+        if (!uCheck || uCheck.length === 0) break;
+      }
+    }
 
     // Hash du mot de passe
     const saltRounds = 10;
@@ -512,7 +606,6 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-// ... existing code ...
 // GET /api/auth/verify-email - Vérifie l’email via lien
 router.get('/verify-email', async (req, res) => {
   try {
@@ -548,4 +641,66 @@ router.get('/verify-email', async (req, res) => {
   }
 });
 
-module.exports = { router, authenticateToken };
+// GET /api/auth/roles - Récupère les rôles locaux (SQLite) pour l'utilisateur Supabase
+router.get('/roles', authenticateSupabaseToken, async (req, res) => {
+  try {
+    const userId = req.supabaseUser?.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'Utilisateur introuvable' });
+    }
+
+    // Log debug pour vérifier l’ID et l’email Supabase et les rôles trouvés
+    console.log('[auth/roles] supabaseUser', req.supabaseUser);
+
+    const [rows] = await db.execute(
+      'SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = ?',
+      [userId]
+    );
+    const roleList = Array.isArray(rows) ? rows.map(r => r.name) : [];
+
+    // Fallback: inclure le rôle stocké dans users.role via l’email si présent
+    let userRoleRow = null;
+    if (req.supabaseUser?.email) {
+      const [userRows] = await db.execute('SELECT role FROM users WHERE email = ? LIMIT 1', [req.supabaseUser.email]);
+      userRoleRow = (Array.isArray(userRows) && userRows.length) ? userRows[0] : null;
+    }
+
+    const rolesSet = new Set(roleList);
+    const candidate = userRoleRow?.role;
+    if (candidate && ['user','contributor','admin','super_admin'].includes(candidate)) {
+      rolesSet.add(candidate);
+    }
+
+    // If no roles found, assign default 'user' to Supabase user
+    if (rolesSet.size === 0) {
+      await ensureUsersColumns();
+      await ensureRolesSchema();
+      const email = req.supabaseUser?.email || null;
+      // Ensure local users row exists for Supabase user id
+      await db.execute(
+        'INSERT OR IGNORE INTO users (id, email, role) VALUES (?, ?, ?)',
+        [userId, email, 'user']
+      );
+      const userRoleId = await getRoleId('user');
+      if (userRoleId) {
+        await db.execute(
+          'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
+          [userId, userRoleId]
+        );
+        rolesSet.add('user');
+      }
+    }
+
+    let roles = Array.from(rolesSet);
+    // Si super_admin présent, lui attribuer admin, contributor et user
+    if (roles.includes('super_admin')) {
+      roles = Array.from(new Set([...roles, 'admin', 'contributor', 'user']));
+    }
+    console.log('[auth/roles] roles', roles);
+    return res.json({ success: true, data: { roles } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+module.exports = { router, authenticateToken, authenticateSupabaseToken };

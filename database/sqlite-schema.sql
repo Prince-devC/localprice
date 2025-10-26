@@ -3,8 +3,13 @@
 -- Table des utilisateurs
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
+    username TEXT,
     email TEXT UNIQUE NOT NULL,
-    role TEXT DEFAULT 'contributor' CHECK (role IN ('guest', 'contributor', 'admin')),
+    password_hash TEXT,
+    email_verified INTEGER DEFAULT 0,
+    email_verification_token TEXT,
+    email_verification_expires INTEGER,
+    role TEXT DEFAULT 'user' CHECK (role IN ('user', 'contributor', 'admin', 'super_admin')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -333,3 +338,89 @@ CREATE INDEX IF NOT EXISTS idx_product_prices_product ON product_prices(product_
 CREATE INDEX IF NOT EXISTS idx_product_prices_store ON product_prices(store_id);
 CREATE INDEX IF NOT EXISTS idx_product_prices_status ON product_prices(status);
 CREATE INDEX IF NOT EXISTS idx_product_prices_date ON product_prices(date);
+
+-- Table des demandes de contribution
+CREATE TABLE IF NOT EXISTS contribution_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+    address TEXT,
+    commune TEXT,
+    activity TEXT,
+    cooperative_member INTEGER DEFAULT 0 CHECK (cooperative_member IN (0,1)),
+    cooperative_name TEXT,
+    has_smartphone INTEGER DEFAULT 1 CHECK (has_smartphone IN (0,1)),
+    has_internet INTEGER DEFAULT 1 CHECK (has_internet IN (0,1)),
+    submission_method TEXT DEFAULT 'web' CHECK (submission_method IN ('web','mobile','sms','whatsapp','offline')),
+    contact_phone TEXT,
+    notes TEXT,
+    reviewed_by TEXT,
+    rejection_reason TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_contrib_requests_user ON contribution_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_contrib_requests_status ON contribution_requests(status);
+CREATE INDEX IF NOT EXISTS idx_contrib_requests_created ON contribution_requests(created_at);
+
+
+-- ==========================================
+-- Rôles et liaison utilisateurs (pivot local)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE CHECK (name IN ('user','contributor','admin','super_admin'))
+);
+
+CREATE TABLE IF NOT EXISTS user_roles (
+    user_id TEXT NOT NULL,
+    role_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, role_id),
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id);
+
+-- ==========================================
+-- Offres payantes et souscriptions premium
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS offers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    price REAL NOT NULL,
+    currency TEXT DEFAULT 'XOF',
+    period TEXT NOT NULL CHECK (period IN ('monthly','yearly')),
+    features TEXT, -- JSON as TEXT in SQLite
+    is_active INTEGER DEFAULT 1 CHECK (is_active IN (0,1)),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    offer_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','canceled','paused')),
+    start_date DATE NOT NULL,
+    end_date DATE,
+    auto_renew INTEGER DEFAULT 1 CHECK (auto_renew IN (0,1)),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (offer_id) REFERENCES offers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_offers_active ON offers(is_active);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_offer ON subscriptions(offer_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);

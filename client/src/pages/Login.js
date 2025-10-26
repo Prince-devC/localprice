@@ -183,9 +183,19 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      navigate('/');
+      // Réinitialiser le formulaire et retarder la redirection pour une meilleure UX
+      setFormData({ email: '', password: '' });
+      setShowPassword(false);
+      setTimeout(() => navigate('/'), 800);
     } else {
-      setError(result.message);
+      let message = result.message || 'Erreur de connexion';
+      // Mapping des erreurs Supabase en messages utilisateurs
+      if (/email.*not.*confirmed/i.test(message) || /non vérifié/i.test(message)) {
+        message = 'Email non vérifié. Veuillez valider votre adresse avant de vous connecter.';
+      } else if (/invalid login credentials/i.test(message)) {
+        message = 'Identifiants invalides. Vérifiez votre email et mot de passe.';
+      }
+      setError(message);
     }
   };
 

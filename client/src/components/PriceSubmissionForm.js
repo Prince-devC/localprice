@@ -139,8 +139,28 @@ const InfoMessage = styled.div`
   border: 1px solid #bee5eb;
 `;
 
+const HubActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+`;
+
+const HubButton = styled.button`
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  color: var(--gray-800);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  &:hover { background: #eef2ff; }
+  &:disabled { cursor: not-allowed; opacity: 0.6; }
+`;
+
 const PriceSubmissionForm = () => {
-  const { user } = useAuth();
+  const { user, roles, isAuthenticated } = useAuth();
+  const [activeTab, setActiveTab] = useState('price');
   const [formData, setFormData] = useState({
     product_id: '',
     locality_id: '',
@@ -199,12 +219,25 @@ const PriceSubmissionForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!user) {
+    const isAdmin = !!(
+      (roles && (roles.includes('admin') || roles.includes('super_admin'))) ||
+      (user?.user_metadata && (user.user_metadata.role === 'admin' || user.user_metadata.role === 'super_admin')) ||
+      (user?.app_metadata && (user.app_metadata.role === 'admin' || user.app_metadata.role === 'super_admin')) ||
+      (user?.role === 'admin' || user?.role === 'super_admin')
+    );
+    const isContributor = !!(
+      (roles && roles.includes('contributor')) ||
+      (user?.user_metadata && user.user_metadata.role === 'contributor') ||
+      (user?.app_metadata && user.app_metadata.role === 'contributor') ||
+      user?.role === 'contributor'
+    );
+
+    if (!isAuthenticated || !user) {
       setError('Vous devez être connecté pour soumettre un prix');
       return;
     }
 
-    if (user.role !== 'contributor' && user.role !== 'admin') {
+    if (!isContributor && !isAdmin) {
       setError('Seuls les contributeurs peuvent soumettre des prix');
       return;
     }
@@ -236,7 +269,7 @@ const PriceSubmissionForm = () => {
     }
   };
 
-  if (!user) {
+  if (!isAuthenticated || !user) {
     return (
       <FormContainer>
         <InfoMessage>
@@ -246,7 +279,20 @@ const PriceSubmissionForm = () => {
     );
   }
 
-  if (user.role !== 'contributor' && user.role !== 'admin') {
+  const isAdmin = !!(
+    (roles && (roles.includes('admin') || roles.includes('super_admin'))) ||
+    (user?.user_metadata && (user.user_metadata.role === 'admin' || user.user_metadata.role === 'super_admin')) ||
+    (user?.app_metadata && (user.app_metadata.role === 'admin' || user.app_metadata.role === 'super_admin')) ||
+    (user?.role === 'admin' || user?.role === 'super_admin')
+  );
+  const isContributor = !!(
+    (roles && roles.includes('contributor')) ||
+    (user?.user_metadata && user.user_metadata.role === 'contributor') ||
+    (user?.app_metadata && user.app_metadata.role === 'contributor') ||
+    user?.role === 'contributor'
+  );
+
+  if (!isContributor && !isAdmin) {
     return (
       <FormContainer>
         <InfoMessage>
@@ -259,6 +305,11 @@ const PriceSubmissionForm = () => {
   return (
     <FormContainer>
       <Title>Soumettre un Prix Agricole</Title>
+      <HubActions>
+        <HubButton onClick={() => setActiveTab('price')}>Ajouter un prix</HubButton>
+        <HubButton disabled onClick={() => setActiveTab('supplier')}>Ajouter un fournisseur</HubButton>
+        <HubButton disabled onClick={() => setActiveTab('store')}>Ajouter un magasin</HubButton>
+      </HubActions>
       
       {success && (
         <SuccessMessage>
@@ -272,7 +323,8 @@ const PriceSubmissionForm = () => {
         </ErrorMessage>
       )}
 
-      <Form onSubmit={handleSubmit}>
+      {activeTab === 'price' ? (
+        <Form onSubmit={handleSubmit}>
         <FormGroup>
           <Label>
             Catégorie de produit <Required>*</Required>
@@ -394,6 +446,9 @@ const PriceSubmissionForm = () => {
           {loading ? <LoadingSpinner /> : 'Soumettre le prix'}
         </Button>
       </Form>
+      ) : (
+        <InfoMessage>Fonctionnalité à venir</InfoMessage>
+      )}
     </FormContainer>
   );
 };

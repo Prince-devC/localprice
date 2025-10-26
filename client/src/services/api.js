@@ -37,8 +37,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expiré ou invalide
+    const status = error?.response?.status;
+    const url = error?.config?.url || '';
+    if (status === 401 && !url.includes('/auth/roles')) {
+      // Token expiré ou invalide (hors récupération des rôles)
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -108,11 +110,12 @@ export const comparisonService = {
 export const authService = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (firstName, lastName, email, password) => 
-    api.post('/auth/register', { username: `${firstName} ${lastName}`.trim(), email, password }),
+    api.post('/auth/register', { email, password }),
   getProfile: () => api.get('/auth/profile'),
   updateProfile: (data) => api.put('/auth/profile', data),
   changePassword: (currentPassword, newPassword) => 
     api.post('/auth/change-password', { currentPassword, newPassword }),
+  getRoles: () => api.get('/auth/roles'),
 };
 
 // Services pour les catégories
@@ -190,15 +193,41 @@ export const costService = {
   delete: (id) => api.delete(`/costs/${id}`)
 };
 
+// API pour les contributions (demande de statut contributeur)
+export const contributionsService = {
+  apply: (data) => api.post('/contributions/apply', data),
+  getMyRequest: () => api.get('/contributions/me'),
+};
+
 // API pour l'administration
 export const adminService = {
   getDashboard: () => api.get('/admin/dashboard'),
   getPendingPrices: (params = {}) => api.get('/admin/pending-prices', { params }),
   getUsers: (params = {}) => api.get('/admin/users', { params }),
-  updateUserRole: (id, data) => api.put(`/admin/users/${id}/role`, data),
+  addUserRole: (id, role) => api.post(`/admin/users/${id}/roles/${role}`),
+  removeUserRole: (id, role) => api.delete(`/admin/users/${id}/roles/${role}`),
   getAuditLogs: (params = {}) => api.get('/admin/audit-logs', { params }),
   validatePrice: (id, data) => api.post(`/admin/validate-price/${id}`, data),
-  rejectPrice: (id, data) => api.post(`/admin/reject-price/${id}`, data)
+  rejectPrice: (id, data) => api.post(`/admin/reject-price/${id}`, data),
+  // Demandes de contribution
+  getContributionRequests: (params = {}) => api.get('/admin/contribution-requests', { params }),
+  approveContributionRequest: (id) => api.post(`/admin/contribution-requests/${id}/approve`),
+  rejectContributionRequest: (id, data) => api.post(`/admin/contribution-requests/${id}/reject`, data),
+  // Offres payantes
+  getOffers: (params = {}) => api.get('/admin/offers', { params }),
+  createOffer: (data) => api.post('/admin/offers', data),
+  updateOffer: (id, data) => api.put(`/admin/offers/${id}`, data),
+  deleteOffer: (id) => api.delete(`/admin/offers/${id}`),
+  updateOfferStatus: (id, isActive) => api.put(`/admin/offers/${id}/status`, { is_active: isActive }),
+  // Souscriptions
+  getSubscriptions: (params = {}) => api.get('/admin/subscriptions', { params }),
+  createSubscription: (data) => api.post('/admin/subscriptions', data),
+  updateSubscription: (id, data) => api.put(`/admin/subscriptions/${id}`, data),
+  cancelSubscription: (id) => api.post(`/admin/subscriptions/${id}/cancel`),
+
+  // Modération multi-sélection
+  banUsers: (userIds, isBanned = true) => api.put('/admin/users/ban', { user_ids: userIds, is_banned: isBanned }),
+  deleteUsers: (userIds) => api.post('/admin/users/bulk-delete', { user_ids: userIds }),
 };
 
 // API pour les options de filtres

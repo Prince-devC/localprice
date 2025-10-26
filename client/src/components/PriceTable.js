@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { FiArrowRight, FiRefreshCw } from 'react-icons/fi';
 import { agriculturalPriceService } from '../services/api';
@@ -77,8 +77,19 @@ const TradingTable = styled.div`
   margin-bottom: 2rem;
   display: flex;
   flex-direction: column;
+  position: relative; /* pour overlay */
+  min-height: 220px;  /* assure une zone pour centrer le loader */
 `;
 
+const LoaderOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+  z-index: 10;
+`;
 const TradingHeader = styled.div`
   background: var(--gray-50);
   border-bottom: 1px solid var(--gray-200);
@@ -123,9 +134,15 @@ const TradingRow = styled.div`
   padding: 1rem;
   border-bottom: 1px solid var(--gray-100);
   transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+  border-left: 3px solid transparent;
 
   &:hover {
-    background: var(--gray-50);
+    background: var(--gray-100);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    border-left-color: var(--primary-color);
+    transform: translateY(-1px);
   }
 
   &:last-child {
@@ -233,6 +250,7 @@ const EmptyState = styled.div`
 const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, onDataLoaded }) => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const navigate = useNavigate();
 
   console.log('PriceTable: Received filters:', filters);
 
@@ -337,90 +355,102 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
         </div>
       </TableHeader>
 
-      {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
-          <LoadingSpinner />
-        </div>
-      ) : (
-        <>
-          <TradingTable>
-            <TradingHeader>
-              <TradingHeaderRow>
-                <TradingHeaderCell>Produit</TradingHeaderCell>
-                <TradingHeaderCell>Localité</TradingHeaderCell>
-                <TradingHeaderCell>Prix</TradingHeaderCell>
-                <TradingHeaderCell>Variation</TradingHeaderCell>
-                <TradingHeaderCell>Mis à jour</TradingHeaderCell>
-              </TradingHeaderRow>
-            </TradingHeader>
-            <TradingBody>
-              {isError ? (
-                <EmptyState>
-                  Erreur lors du chargement des prix: {error?.message || 'Erreur inconnue'}
-                </EmptyState>
-              ) : agriculturalPrices.length > 0 ? (
-                displayedPrices.map((price, index) => (
-                  <TradingRow key={price.id || `price-${index}`}>
-                    <TradingCell>
-                      <ProductInfo>
-                        <ProductName>{price.product_name || 'Produit inconnu'}</ProductName>
-                        <ProductCategory>{price.category_name || 'Catégorie inconnue'}</ProductCategory>
-                      </ProductInfo>
-                    </TradingCell>
-                    <TradingCell>
-                      <LocationInfo>
-                        <LocationName>{price.locality_name || 'Localité inconnue'}</LocationName>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
-                          {price.region_name || 'Région inconnue'}
-                        </div>
-                      </LocationInfo>
-                    </TradingCell>
-                    <TradingCell>
-                      <PriceValue>
-                        {price.price ? 
-                          `${new Intl.NumberFormat('fr-FR').format(price.price)} FCFA` : 
-                          'N/A'
-                        }
-                      </PriceValue>
-                    </TradingCell>
-                    <TradingCell>
-                      <PriceChange positive={price.price_change >= 0}>
-                        {price.price_change !== null && price.price_change !== undefined ? 
-                          `${price.price_change >= 0 ? '+' : ''}${price.price_change.toFixed(1)}%` : 
-                          'N/A'
-                        }
-                      </PriceChange>
-                    </TradingCell>
-                    <TradingCell>
-                      <LastUpdate>
-                        {price.date ? 
-                          new Date(price.date).toLocaleDateString('fr-FR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          }) : 
-                          'N/A'
-                        }
-                      </LastUpdate>
-                    </TradingCell>
-                  </TradingRow>
-                ))
-              ) : (
-                <EmptyState>
-                  📭 Aucune donnée disponible pour les filtres sélectionnés
-                </EmptyState>
-              )}
-            </TradingBody>
-          </TradingTable>
-          {showViewAllLink && (
-            <div style={{ textAlign: 'center' }}>
-              <ViewAllLink to="/all-prices">
-                Voir tous les prix
-                <FiArrowRight />
-              </ViewAllLink>
-            </div>
+      {/* Toujours afficher le tableau, avec un overlay pendant le chargement */}
+      <TradingTable>
+        {(isLoading || isFetching) && (
+          <LoaderOverlay>
+            <LoadingSpinner />
+          </LoaderOverlay>
+        )}
+        <TradingHeader>
+          <TradingHeaderRow>
+            <TradingHeaderCell>Produit</TradingHeaderCell>
+            <TradingHeaderCell>Localité</TradingHeaderCell>
+            <TradingHeaderCell>Prix</TradingHeaderCell>
+            <TradingHeaderCell>Variation</TradingHeaderCell>
+            <TradingHeaderCell>Mis à jour</TradingHeaderCell>
+          </TradingHeaderRow>
+        </TradingHeader>
+        <TradingBody>
+          {isError ? (
+            <EmptyState>
+              Erreur lors du chargement des prix: {error?.message || 'Erreur inconnue'}
+            </EmptyState>
+          ) : agriculturalPrices.length > 0 ? (
+            displayedPrices.map((price, index) => (
+              <TradingRow key={price.id || `price-${index}`}
+                onClick={() => navigate(`/price/${price.id}`, { state: { price } })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/price/${price.id}`, { state: { price } });
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                title={`Voir le détail: ${price.product_name || ''} à ${price.locality_name || ''}`}
+                aria-label={`Voir le détail du prix de ${price.product_name} à ${price.locality_name}`}
+              >
+                <TradingCell>
+                  <ProductInfo>
+                    <ProductName>{price.product_name || 'Produit inconnu'}</ProductName>
+                    <ProductCategory>{price.category_name || 'Catégorie inconnue'}</ProductCategory>
+                  </ProductInfo>
+                </TradingCell>
+                <TradingCell>
+                  <LocationInfo>
+                    <LocationName>{price.locality_name || 'Localité inconnue'}</LocationName>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--gray-500)' }}>
+                      {price.region_name || 'Région inconnue'}
+                    </div>
+                  </LocationInfo>
+                </TradingCell>
+                <TradingCell>
+                  <PriceValue>
+                    {price.price ? 
+                      `${new Intl.NumberFormat('fr-FR').format(price.price)} FCFA` : 
+                      'N/A'
+                    }
+                  </PriceValue>
+                </TradingCell>
+                <TradingCell>
+                  <PriceChange positive={price.price_change >= 0}>
+                    {price.price_change !== null && price.price_change !== undefined ? 
+                      `${price.price_change >= 0 ? '+' : ''}${price.price_change.toFixed(1)}%` : 
+                      'N/A'
+                    }
+                  </PriceChange>
+                </TradingCell>
+                <TradingCell>
+                  <LastUpdate>
+                    {price.date ? 
+                      new Date(price.date).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      }) : 
+                      'N/A'
+                    }
+                  </LastUpdate>
+                  <FiArrowRight style={{ marginLeft: 'auto', color: 'var(--gray-400)' }} />
+                </TradingCell>
+              </TradingRow>
+            ))
+          ) : (
+            <EmptyState>
+              📭 Aucune donnée disponible pour les filtres sélectionnés
+            </EmptyState>
           )}
-        </>
+        </TradingBody>
+      </TradingTable>
+
+      {showViewAllLink && (
+        <div style={{ textAlign: 'center' }}>
+          <ViewAllLink to="/all-prices">
+            Voir tous les prix
+            <FiArrowRight />
+          </ViewAllLink>
+        </div>
       )}
     </PriceTableContainer>
   );

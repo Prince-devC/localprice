@@ -5,6 +5,8 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const app = express();
+// Trust first proxy to correctly interpret X-Forwarded-For for rate limiting
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5001;
 
 // Middleware de sécurité
@@ -62,6 +64,7 @@ app.use('/api/units', require('./routes/units'));
 app.use('/api/costs', require('./routes/costs'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/filter-options', require('./routes/filter-options'));
+app.use('/api/contributions', require('./routes/contributions'));
 
 // Route de test
 app.get('/api/test', (req, res) => {

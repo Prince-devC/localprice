@@ -154,7 +154,7 @@ const Profile = () => {
   const { user, updateProfile, changePassword, loading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    username: user?.username || '',
+    username: (user?.user_metadata && user.user_metadata.username) || '',
     email: user?.email || ''
   });
   const [passwordData, setPasswordData] = useState({
@@ -212,11 +212,25 @@ const Profile = () => {
 
   const cancelEdit = () => {
     setFormData({
-      username: user?.username || '',
+      username: (user?.user_metadata && user.user_metadata.username) || '',
       email: user?.email || ''
     });
     setIsEditing(false);
   };
+
+  // Déterminer un rôle lisible depuis Supabase
+  const roleSource = (user?.app_metadata && user.app_metadata.role) 
+    || (user?.user_metadata && user.user_metadata.role) 
+    || user?.role;
+  const displayRole = roleSource === 'super_admin'
+    ? 'Super Admin'
+    : roleSource === 'admin' 
+      ? 'Admin' 
+      : roleSource === 'contributor' 
+        ? 'Contributeur' 
+        : (roleSource === 'user' || roleSource === 'authenticated' || roleSource === 'guest' || !roleSource)
+          ? 'Utilisateur' 
+          : roleSource;
 
   if (!user) {
     return (
@@ -244,7 +258,7 @@ const Profile = () => {
             <UserInfo>
               <InfoItem>
                 <InfoLabel>Rôle</InfoLabel>
-                <InfoValue>{user.role || 'Utilisateur'}</InfoValue>
+                <InfoValue>{displayRole}</InfoValue>
               </InfoItem>
               <InfoItem>
                 <InfoLabel>Membre depuis</InfoLabel>

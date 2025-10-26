@@ -5,7 +5,8 @@ class AgriculturalPrice {
   static async getValidatedPrices(filters = {}) {
     try {
       let query = `
-        SELECT p.id, pr.name as product_name, pc.name as category_name, pc.type as category_type,
+        SELECT p.id, p.product_id as product_id, p.locality_id as locality_id,
+               pr.name as product_name, pc.name as category_name, pc.type as category_type,
                l.name as locality_name, r.name as region_name, u.name as unit_name, u.symbol as unit_symbol,
                p.price, p.date, p.created_at,
                -- Calcul de la variation de prix par rapport au prix précédent du même produit dans la même localité
@@ -42,6 +43,11 @@ class AgriculturalPrice {
       
       const params = [];
       
+      if (filters.id) {
+        query += ` AND p.id = ?`;
+        params.push(filters.id);
+      }
+
       if (filters.product_id) {
         query += ` AND p.product_id = ?`;
         params.push(filters.product_id);
@@ -310,7 +316,11 @@ class AgriculturalPrice {
   static async getPriceEvolution(filters = {}) {
     try {
       let query = `
-        SELECT p.date, AVG(p.price) as avg_price, COUNT(*) as price_count
+        SELECT p.date,
+               AVG(p.price) as avg_price,
+               COUNT(*) as price_count,
+               MIN(p.price) as min_price,
+               MAX(p.price) as max_price
         FROM prices p
         WHERE p.status = 'validated'
       `;
