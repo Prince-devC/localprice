@@ -98,7 +98,7 @@ const StoreList = () => {
   };
 
   if (isLoading) {
-    return <LoadingSpinner text="Chargement des magasins..." />;
+    return <LoadingSpinner text="Chargement des magasins de stockage..." />;
   }
 
   if (error) {
@@ -107,7 +107,7 @@ const StoreList = () => {
         <div className="container">
           <NoResults>
             <h3>Erreur lors du chargement</h3>
-            <p>Impossible de charger la liste des magasins.</p>
+            <p>Impossible de charger la liste des magasins de stockage.</p>
           </NoResults>
         </div>
       </StoreListContainer>
@@ -118,7 +118,7 @@ const StoreList = () => {
     <StoreListContainer>
       <div className="container">
         <SearchHeader>
-          <SearchTitle>Nos magasins partenaires</SearchTitle>
+          <SearchTitle>Nos magasins de stockage partenaires</SearchTitle>
           <SearchForm onSubmit={handleSearch}>
             <SearchInput
               type="text"

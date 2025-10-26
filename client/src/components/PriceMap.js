@@ -617,7 +617,7 @@ const PriceMap = ({
             fontWeight: 'bold',
             color: 'white'
           }}>S</div>
-          <span>Fournisseurs (magasins et marchés)</span>
+          <span>Fournisseurs (magasins de stockage et marchés)</span>
         </div>
       </div>
     </div>

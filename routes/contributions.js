@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/connection');
-const { authenticateToken } = require('./auth');
+const { authenticateSupabaseToken } = require('./auth');
 
 // Ensure table exists at runtime (defensive)
 const ensureContributionSchema = async () => {
@@ -36,10 +36,13 @@ const ensureContributionSchema = async () => {
 };
 
 // POST /api/contributions/apply - Soumettre une demande pour devenir contributeur
-router.post('/apply', authenticateToken, async (req, res) => {
+router.post('/apply', authenticateSupabaseToken, async (req, res) => {
   try {
     await ensureContributionSchema();
-    const userId = req.user.id;
+    const userId = req.supabaseUser?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Utilisateur non authentifié' });
+    }
     const {
       address,
       commune,
@@ -53,14 +56,21 @@ router.post('/apply', authenticateToken, async (req, res) => {
       notes = null,
     } = req.body || {};
 
-    // Récupère le rôle actuel depuis la table users
-    const [users] = await db.execute('SELECT role FROM users WHERE id = ?', [userId]);
-    if (!users || users.length === 0) {
-      return res.status(404).json({ success: false, message: 'Utilisateur introuvable' });
+    // Vérifier si l'utilisateur est déjà contributeur/admin via le mapping user_roles
+    const [roleRows] = await db.execute(
+      'SELECT r.name FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = ?',
+      [userId]
+    );
+    const roleNames = Array.isArray(roleRows) ? roleRows.map(r => r.name) : [];
+    // Fallback via email si présent
+    let userRoleCandidate = null;
+    if (req.supabaseUser?.email) {
+      const [userRows] = await db.execute('SELECT role FROM users WHERE email = ? LIMIT 1', [req.supabaseUser.email]);
+      userRoleCandidate = (Array.isArray(userRows) && userRows.length) ? userRows[0]?.role : null;
     }
-    const currentRole = users[0].role;
-
-    if (currentRole === 'contributor' || currentRole === 'admin') {
+    const isAlreadyContributor = roleNames.includes('contributor') || roleNames.includes('admin') ||
+      (userRoleCandidate === 'contributor' || userRoleCandidate === 'admin' || userRoleCandidate === 'super_admin');
+    if (isAlreadyContributor) {
       return res.status(400).json({ success: false, message: 'Vous êtes déjà contributeur' });
     }
 
@@ -106,10 +116,13 @@ router.post('/apply', authenticateToken, async (req, res) => {
 });
 
 // GET /api/contributions/me - Récupère la dernière demande de l’utilisateur
-router.get('/me', authenticateToken, async (req, res) => {
+router.get('/me', authenticateSupabaseToken, async (req, res) => {
   try {
     await ensureContributionSchema();
-    const userId = req.user.id;
+    const userId = req.supabaseUser?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Utilisateur non authentifié' });
+    }
 
     const [rows] = await db.execute(
       `SELECT cr.*, u.email, u.username

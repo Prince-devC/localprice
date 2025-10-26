@@ -534,6 +534,13 @@ const Header = () => {
     || user?.role === 'contributor'
   );
 
+  const hasUserSpace = !!(
+    (roles && (roles.includes('user') || roles.includes('contributor')))
+    || (user?.user_metadata && (user.user_metadata.role === 'user' || user.user_metadata.role === 'contributor'))
+    || (user?.app_metadata && (user.app_metadata.role === 'user' || user.app_metadata.role === 'contributor'))
+    || (user?.role === 'user' || user?.role === 'contributor')
+  );
+
   const displayName = user?.user_metadata?.firstName
     ? `${user.user_metadata.firstName} ${user.user_metadata.lastName || ''}`.trim()
     : (user?.user_metadata?.username || user?.email || 'Utilisateur');
@@ -595,7 +602,7 @@ const Header = () => {
                   Fournisseurs
                 </ToolsDropdownItem>
                 <ToolsDropdownItem to="/stores">
-                  Magasins de stockages
+                  Magasins de stockage
                 </ToolsDropdownItem>
               </DropdownMenu>
             </DropdownContainer>
@@ -637,7 +644,7 @@ const Header = () => {
                     Espace Admin
                   </UserDropdownItem>
                 )}
-                {(roles?.includes('contributor') || roles?.includes('user')) && (
+                {hasUserSpace && (
                   <UserDropdownItem to="/dashboard">
                     <FiHome />
                     Mon Espace
@@ -688,7 +695,7 @@ const Header = () => {
             Fournisseurs
           </MobileNavLink>
           <MobileNavLink to="/stores" style={{paddingLeft: '2rem'}}>
-            Magasins de stockages
+            Magasins de stockage
           </MobileNavLink>
         </MobileDropdownSection>
         

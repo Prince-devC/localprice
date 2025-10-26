@@ -23,6 +23,7 @@ import SupplierContact from './pages/SupplierContact';
 import PriceDetail from './pages/PriceDetail';
 import CostComparator from './components/CostComparator';
 import { AuthProvider } from './contexts/AuthContext';
+import { Toaster } from 'react-hot-toast';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -40,6 +41,7 @@ function App() {
     <AuthProvider>
       <AppContainer>
         <Header />
+        <Toaster position="top-right" />
         <MainContent>
           <Routes>
             <Route path="/" element={<Home />} />

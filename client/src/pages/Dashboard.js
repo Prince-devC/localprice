@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { FiUser, FiSettings, FiLogOut, FiHome, FiClipboard, FiShield } from 'react-icons/fi';
+import { FiUser, FiSettings, FiLogOut, FiHome, FiClipboard, FiShield, FiClock, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { contributionsService, localityService, authService } from '../services/api';
@@ -268,10 +268,13 @@ const SubmitRequestButton = styled.button`
 const StatusBox = styled.div`
   padding: 0.75rem 1rem;
   border-radius: 8px;
-  border: 1px solid var(--gray-200);
-  background: var(--gray-50);
-  color: var(--gray-800);
+  border: 1px solid ${props => props.$variant === 'pending' ? '#F59E0B' : props.$variant === 'success' ? '#10B981' : props.$variant === 'error' ? '#EF4444' : 'var(--gray-200)'};
+  background: ${props => props.$variant === 'pending' ? '#FEF3C7' : props.$variant === 'success' ? '#ECFDF5' : props.$variant === 'error' ? '#FEE2E2' : 'var(--gray-50)'};
+  color: ${props => props.$variant === 'pending' ? '#92400E' : props.$variant === 'success' ? '#065F46' : props.$variant === 'error' ? '#7F1D1D' : 'var(--gray-800)'};
   margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 `;
 
 const Dashboard = () => {
@@ -333,14 +336,9 @@ const Dashboard = () => {
   const handleMenuClick = (key) => (e) => {
     e.preventDefault();
     if (key === 'contribute') {
-      if (canContribute) {
-        setActiveMenu('contribute');
-        window.location.hash = 'contribute';
-      } else {
-        setActiveMenu('apply');
-        window.location.hash = 'apply';
-        setShowApplyForm(true);
-      }
+      setActiveMenu('contribute');
+      window.location.hash = 'contribute';
+      setShowApplyForm(!canContribute);
       return;
     }
     setActiveMenu(key);
@@ -362,6 +360,10 @@ const Dashboard = () => {
   const [hasInternet, setHasInternet] = React.useState(true);
   const [contactPhone, setContactPhone] = React.useState('');
   const [notes, setNotes] = React.useState('');
+  // Nouveaux champs: méthode de soumission et préférences de données
+  const [submissionPreference, setSubmissionPreference] = React.useState('web');
+  const [preferredData, setPreferredData] = React.useState({ prices: false, suppliers: false, stores: false });
+  const togglePreferred = (key) => setPreferredData(prev => ({ ...prev, [key]: !prev[key] }));
   const [showApplyForm, setShowApplyForm] = React.useState(false);
 
   // Charger les communes depuis l’API
@@ -377,6 +379,7 @@ const Dashboard = () => {
       onSuccess: () => {
         toast.success('Demande soumise avec succès');
         queryClient.invalidateQueries(['contribution-me']);
+        setShowApplyForm(false);
       },
       onError: (err) => {
         const msg = err?.response?.data?.message || 'Erreur lors de la soumission';
@@ -387,7 +390,9 @@ const Dashboard = () => {
 
   const handleSubmitContribution = (e) => {
     e.preventDefault();
-    applyMutation.mutate({
+    const selectedPrefs = Object.keys(preferredData).filter(k => preferredData[k]);
+    const preferredDataStr = selectedPrefs.length ? selectedPrefs.join(',') : null;
+    const payload = {
       address: address || null,
       commune: commune || null,
       activity: activity || null,
@@ -397,19 +402,35 @@ const Dashboard = () => {
       has_internet: hasInternet ? 1 : 0,
       contact_phone: contactPhone || null,
       notes: notes || null,
-      submission_method: 'web',
-    });
+      submission_method: (submissionPreference === 'kobocollect' || submissionPreference === 'openforis_ground') ? 'mobile' : (submissionPreference || 'web'),
+      preferred_data: preferredDataStr,
+    };
+    if (submissionPreference === 'kobocollect' || submissionPreference === 'openforis_ground') {
+      payload.submission_tool = submissionPreference;
+    }
+    applyMutation.mutate(payload);
   };
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('apply') === '1') {
+      setActiveMenu('contribute');
+      window.location.hash = 'contribute';
       setShowApplyForm(true);
       if (applySectionRef.current) {
         applySectionRef.current.scrollIntoView({ behavior: 'smooth' });
       }
     }
   }, [location]);
+
+  // Synchroniser la méthode de soumission avec la disponibilité d’Internet
+  React.useEffect(() => {
+    if (hasInternet) {
+      setSubmissionPreference('web');
+    } else if (submissionPreference === 'web') {
+      setSubmissionPreference('kobocollect');
+    }
+  }, [hasInternet]);
 
   return (
     <DashboardContainer>
@@ -436,9 +457,6 @@ const Dashboard = () => {
         <NavList>
           <NavAnchor href="#overview" onClick={handleMenuClick('overview')} $active={activeMenu === 'overview'}><FiHome /> Aperçu</NavAnchor>
           <NavAnchor href="#profile" onClick={handleMenuClick('profile')} $active={activeMenu === 'profile'}><FiUser /> Mon Profil</NavAnchor>
-          {showApplySection && (
-            <NavAnchor href="#apply" onClick={handleMenuClick('apply')} $active={activeMenu === 'apply'}><FiClipboard /> Devenir contributeur</NavAnchor>
-          )}
           <NavAnchor href="#contribute" onClick={handleMenuClick('contribute')} $active={activeMenu === 'contribute'}><FiClipboard /> Contribuer</NavAnchor>
           {isAdmin && (
             <NavItem to="/admin" $active={location.pathname === '/admin'}><FiShield /> Espace Admin</NavItem>
@@ -467,20 +485,15 @@ const Dashboard = () => {
           </ActionCard>
           <ActionCard
             as="a"
-            href={canContribute ? '#contribute' : '#apply'}
+            href="#contribute"
             onClick={(e) => {
               e.preventDefault();
-              if (canContribute) {
-                setActiveMenu('contribute');
-                window.location.hash = 'contribute';
-              } else {
-                setActiveMenu('apply');
-                window.location.hash = 'apply';
-                setShowApplyForm(true);
-              }
+              setActiveMenu('contribute');
+              window.location.hash = 'contribute';
+              setShowApplyForm(!canContribute);
             }}
           >
-            <FiClipboard /> Soumettre un prix
+            <FiClipboard /> Contribuer
           </ActionCard>
           {isAdmin && (
             <ActionCard to="/admin">
@@ -498,19 +511,19 @@ const Dashboard = () => {
             <Profile />
           </section>
         )}
-        {showApplySection && activeMenu === 'apply' && (
+        {activeMenu === 'contribute' && !canContribute && (
           <ContributionSection ref={applySectionRef}>
             <SectionTitle>Devenir contributeur</SectionTitle>
             {isMyReqLoading ? (
-              <StatusBox>Chargement du statut de votre demande...</StatusBox>
+              <StatusBox $variant="pending"><FiClock /> Chargement du statut de votre demande...</StatusBox>
             ) : myRequest ? (
               myRequest.status === 'pending' ? (
-                <StatusBox>Votre demande est en attente de validation par un administrateur.</StatusBox>
+                <StatusBox $variant="pending"><FiClock /> Votre demande est en attente de validation par un administrateur.</StatusBox>
               ) : myRequest.status === 'approved' ? (
-                <StatusBox>Votre demande a été approuvée. Merci pour votre engagement !</StatusBox>
+                <StatusBox $variant="success"><FiCheckCircle /> Votre demande a été approuvée. Merci pour votre engagement !</StatusBox>
               ) : (
-                <StatusBox>
-                  Votre demande a été rejetée{myRequest.rejection_reason ? `: ${myRequest.rejection_reason}` : ''}.
+                <StatusBox $variant="error">
+                  <FiAlertTriangle /> Votre demande a été rejetée{myRequest.rejection_reason ? `: ${myRequest.rejection_reason}` : ''}.
                 </StatusBox>
               )
             ) : (
@@ -518,20 +531,84 @@ const Dashboard = () => {
                 {showApplyForm ? (
                   <form onSubmit={handleSubmitContribution}>
                     <InfoGrid>
-                      <InputField placeholder="Adresse" value={address} onChange={e => setAddress(e.target.value)} />
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--gray-700)' }}>Adresse (village/quartier/hameau)</label>
+                        <InputField placeholder="Nom du village, quartier ou hameau" value={address} onChange={e => setAddress(e.target.value)} />
+                      </div>
                       {localitiesLoading || localitiesError ? (
-                      <InputField placeholder="Commune" value={commune} onChange={e => setCommune(e.target.value)} />
-                    ) : (
-                      <SelectField value={commune} onChange={e => setCommune(e.target.value)} aria-label="Sélectionner une commune">
-                        <option value="">Sélectionner une commune</option>
-                        {localities.map(loc => (
-                          <option key={loc.id} value={loc.name}>{loc.name}</option>
-                        ))}
-                      </SelectField>
-                    )}
-                      <InputField placeholder="Activité" value={activity} onChange={e => setActivity(e.target.value)} />
-                      <InputField placeholder="Téléphone" value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--gray-700)' }}>Commune</label>
+                          <InputField placeholder="Commune" value={commune} onChange={e => setCommune(e.target.value)} />
+                        </div>
+                      ) : (
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--gray-700)' }}>Commune</label>
+                          <SelectField value={commune} onChange={e => setCommune(e.target.value)} aria-label="Sélectionner une commune">
+                            <option value="">Sélectionner une commune</option>
+                            {localities.map(loc => (
+                              <option key={loc.id} value={loc.name}>{loc.name}</option>
+                            ))}
+                          </SelectField>
+                        </div>
+                      )}
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--gray-700)' }}>Activité</label>
+                        <InputField placeholder="Activité" value={activity} onChange={e => setActivity(e.target.value)} />
+                      </div>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--gray-700)' }}>Téléphone</label>
+                        <InputField placeholder="01xxxxxxxx" value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
+                      </div>
                     </InfoGrid>
+                    <SectionTitle style={{ fontSize: '1rem', marginTop: '0.75rem' }}>Conditions de collecte</SectionTitle>
+                    <InfoGrid>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <CheckboxRow>
+                          <input type="checkbox" checked={hasSmartphone} onChange={e => setHasSmartphone(e.target.checked)} />
+                          Je dispose d'un smartphone
+                        </CheckboxRow>
+                        <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--gray-600)' }}>
+                          Un smartphone est nécessaire pour utiliser KoboCollect ou Open Foris Ground.
+                        </small>
+                      </div>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <CheckboxRow>
+                          <input type="checkbox" checked={hasInternet} onChange={e => setHasInternet(e.target.checked)} />
+                          J'ai internet sur le lieu de collecte des données
+                        </CheckboxRow>
+                        <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--gray-600)' }}>
+                          Si Internet est disponible au lieu de collecte, utilisez le formulaire web.
+                        </small>
+                      </div>
+                    </InfoGrid>
+
+                    <SectionTitle style={{ fontSize: '1rem', marginTop: '0.75rem' }}>Méthode de soumission</SectionTitle>
+                    <InfoGrid>
+                      {hasInternet ? (
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--gray-700)' }}>Formulaire Web</label>
+                          <SelectField value={submissionPreference} onChange={e => setSubmissionPreference(e.target.value)} aria-label="Méthode de soumission" disabled>
+                            <option value="web">Formulaire (Web)</option>
+                          </SelectField>
+                          <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--gray-600)' }}>
+                            Internet disponible au lieu de collecte: utilisez notre formulaire web.
+                          </small>
+                        </div>
+                      ) : (
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--gray-700)' }}>Application mobile</label>
+                          <SelectField value={submissionPreference} onChange={e => setSubmissionPreference(e.target.value)} aria-label="Méthode de soumission">
+                            <option value="kobocollect">KoboCollect (Mobile)</option>
+                            <option value="openforis_ground">Open Foris Ground (Mobile)</option>
+                          </SelectField>
+                          <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--gray-600)' }}>
+                            Configurez l’application avec Internet avant d’aller sur le terrain. La collecte peut ensuite se faire hors-ligne.
+                          </small>
+                        </div>
+                      )}
+                      <div />
+                    </InfoGrid>
+
                     <CheckboxRow>
                       <input type="checkbox" checked={cooperativeMember} onChange={e => setCooperativeMember(e.target.checked)} />
                       Membre d'une coopérative
@@ -539,18 +616,37 @@ const Dashboard = () => {
                     {cooperativeMember && (
                     <StandaloneField placeholder="Nom de la coopérative" value={cooperativeName} onChange={e => setCooperativeName(e.target.value)} />
                   )}
+                    <SectionTitle style={{ fontSize: '1rem', marginTop: '0.75rem' }}>Données que je souhaite soumettre</SectionTitle>
                     <InfoGrid>
-                      <CheckboxRow>
-                        <input type="checkbox" checked={hasSmartphone} onChange={e => setHasSmartphone(e.target.checked)} />
-                        Je dispose d'un smartphone
-                      </CheckboxRow>
-                      <CheckboxRow>
-                        <input type="checkbox" checked={hasInternet} onChange={e => setHasInternet(e.target.checked)} />
-                        Je dispose d'Internet
-                      </CheckboxRow>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <CheckboxRow>
+                          <input type="checkbox" checked={preferredData.prices} onChange={() => togglePreferred('prices')} /> Prix
+                        </CheckboxRow>
+                        <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--gray-600)' }}>
+                          Observations de prix des produits agricoles, relevées sur le terrain.
+                        </small>
+                      </div>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <CheckboxRow>
+                          <input type="checkbox" checked={preferredData.suppliers} onChange={() => togglePreferred('suppliers')} /> Fournisseurs
+                        </CheckboxRow>
+                        <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--gray-600)' }}>
+                          Informations sur les fournisseurs (nom, contact, zones desservies).
+                        </small>
+                      </div>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <CheckboxRow>
+                          <input type="checkbox" checked={preferredData.stores} onChange={() => togglePreferred('stores')} /> Magasins
+                        </CheckboxRow>
+                        <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--gray-600)' }}>
+                          Détails des magasins de stockage (adresse, horaires, type de magasin).
+                        </small>
+                      </div>
                     </InfoGrid>
                     <TextareaField placeholder="Notes (optionnel)" value={notes} onChange={e => setNotes(e.target.value)} />
-                    <SubmitRequestButton type="submit">Soumettre ma demande</SubmitRequestButton>
+                    <SubmitRequestButton type="submit" disabled={applyMutation.isLoading} aria-busy={applyMutation.isLoading}>
+                      {applyMutation.isLoading ? 'Envoi...' : 'Soumettre ma demande'}
+                    </SubmitRequestButton>
                   </form>
                 ) : (
                   <>
@@ -566,7 +662,7 @@ const Dashboard = () => {
             )}
           </ContributionSection>
         )}
-        {activeMenu === 'contribute' && (
+        {activeMenu === 'contribute' && canContribute && (
           <section>
             <PriceSubmissionForm />
           </section>

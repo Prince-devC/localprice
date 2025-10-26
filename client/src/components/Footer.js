@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { FiMapPin, FiPhone, FiMail, FiGithub, FiTwitter, FiFacebook } from 'react-icons/fi';
+import { productCategoryService } from '../services/api';
 
 const FooterContainer = styled.footer`
   background-color: var(--gray-800);
@@ -108,6 +109,27 @@ const FooterBottom = styled.div`
 `;
 
 const Footer = () => {
+  const [categories, setCategories] = useState([]);
+  const [catLoading, setCatLoading] = useState(true);
+  const [catError, setCatError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    productCategoryService.getAll()
+      .then(res => {
+        if (!mounted) return;
+        setCategories(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+      })
+      .catch(err => {
+        if (!mounted) return;
+        setCatError('Impossible de charger les catégories');
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setCatLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
   return (
     <FooterContainer>
       <FooterContent>
@@ -117,7 +139,7 @@ const Footer = () => {
               <img src="/assets/lokali_white.svg" alt="Lokali" />
             </div>
             <p style={{ color: 'var(--gray-300)', marginBottom: '1rem' }}>
-              Comparez les prix dans vos magasins locaux et trouvez les meilleures offres près de chez vous.
+              Comparez les prix observés des produits agricoles et trouvez les meilleures offres près de chez vous.
             </p>
             <SocialLinks>
               <SocialLink href="#" aria-label="Facebook">
@@ -137,7 +159,7 @@ const Footer = () => {
             <ul>
               <li><Link to="/">Accueil</Link></li>
               <li><Link to="/search">Rechercher</Link></li>
-              <li><Link to="/stores">Magasins</Link></li>
+              <li><Link to="/stores">Magasins de stockage</Link></li>
               <li><Link to="/compare">Comparer</Link></li>
             </ul>
           </FooterSection>
@@ -145,12 +167,14 @@ const Footer = () => {
           <FooterSection>
             <h3>Catégories</h3>
             <ul>
-              <li><Link to="/search?category=1">Alimentation</Link></li>
-              <li><Link to="/search?category=2">Électronique</Link></li>
-              <li><Link to="/search?category=3">Vêtements</Link></li>
-              <li><Link to="/search?category=4">Maison & Jardin</Link></li>
-              <li><Link to="/search?category=5">Santé & Beauté</Link></li>
-              <li><Link to="/search?category=6">Sports & Loisirs</Link></li>
+              {catLoading && <li style={{ color: 'var(--gray-400)' }}>Chargement des catégories...</li>}
+              {!catLoading && catError && <li style={{ color: 'var(--danger-color)' }}>{catError}</li>}
+              {!catLoading && !catError && categories.length === 0 && (
+                <li style={{ color: 'var(--gray-400)' }}>Aucune catégorie disponible</li>
+              )}
+              {!catLoading && !catError && categories.map(cat => (
+                <li key={cat.id}><Link to={`/search?category=${cat.id}`}>{cat.name}</Link></li>
+              ))}
             </ul>
           </FooterSection>
           
@@ -158,11 +182,11 @@ const Footer = () => {
             <h3>Contact</h3>
             <ContactInfo>
               <FiMapPin />
-              <span>123 Rue de la Paix, 75001 Paris</span>
+              <span>Cotonou, Bénin</span>
             </ContactInfo>
             <ContactInfo>
               <FiPhone />
-              <span>01 23 45 67 89</span>
+              <span>+2290167659717</span>
             </ContactInfo>
             <ContactInfo>
               <FiMail />

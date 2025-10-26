@@ -3,18 +3,25 @@ import { costService, localityService } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import styled from 'styled-components';
 
+const PageContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+`;
 const ComparatorContainer = styled.div`
   background: white;
   border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  margin: 2rem 0;
+  border: 1px solid var(--gray-100);
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  margin: 0;
 `;
 
-const Title = styled.h2`
-  color: #2c3e50;
-  margin-bottom: 1.5rem;
-  text-align: center;
+const Title = styled.h1`
+  font-size: 1.5rem;
+  color: var(--gray-800);
+  margin-bottom: 1rem;
+  text-align: left;
 `;
 
 const FormGrid = styled.div`
@@ -32,69 +39,77 @@ const FormGroup = styled.div`
 const Label = styled.label`
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #34495e;
+  color: var(--gray-700);
 `;
 
 const Input = styled.input`
-  padding: 0.75rem;
-  border: 2px solid #e0e0e0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gray-200);
   border-radius: 8px;
+  background: white;
+  color: var(--gray-800);
   font-size: 1rem;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.2s ease;
 
   &:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #3b82f6;
   }
 `;
 
 const Select = styled.select`
-  padding: 0.75rem;
-  border: 2px solid #e0e0e0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gray-200);
   border-radius: 8px;
   font-size: 1rem;
   background: white;
-  transition: border-color 0.3s ease;
+  color: var(--gray-800);
+  appearance: none;
+  transition: border-color 0.2s ease;
 
   &:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #3b82f6;
   }
 `;
 
 const Button = styled.button`
-  background: linear-gradient(135deg, #3498db, #2980b9);
-  color: white;
-  border: none;
-  padding: 1rem 2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
   border-radius: 8px;
+  border: 1px solid #2563eb;
+  background: #3b82f6;
+  color: white;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.2s ease;
 
   &:hover {
-    transform: translateY(-2px);
+    background: #2563eb;
   }
 
   &:disabled {
-    background: #bdc3c7;
+    background: #cbd5e1;
+    border-color: #cbd5e1;
     cursor: not-allowed;
-    transform: none;
   }
 `;
 
 const ResultsContainer = styled.div`
-  background: #f8f9fa;
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
   border-radius: 8px;
-  padding: 1.5rem;
-  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
 `;
 
 const ResultsTitle = styled.h3`
-  color: #2c3e50;
-  margin-bottom: 1rem;
-  text-align: center;
+  color: var(--gray-800);
+  margin-bottom: 0.75rem;
+  text-align: left;
 `;
 
 const CostBreakdown = styled.div`
@@ -109,19 +124,20 @@ const CostItem = styled.div`
   padding: 1rem;
   border-radius: 8px;
   text-align: center;
-  border-left: 4px solid #3498db;
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid #3b82f6;
 `;
 
 const CostLabel = styled.div`
   font-size: 0.9rem;
-  color: #7f8c8d;
+  color: var(--gray-700);
   margin-bottom: 0.5rem;
 `;
 
 const CostValue = styled.div`
   font-size: 1.2rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--gray-800);
 `;
 
 const TotalCost = styled.div`
@@ -144,9 +160,10 @@ const TotalValue = styled.div`
 `;
 
 const ErrorMessage = styled.div`
-  background: #e74c3c;
-  color: white;
-  padding: 1rem;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid var(--gray-200);
+  padding: 0.75rem 1rem;
   border-radius: 8px;
   text-align: center;
   margin-top: 1rem;
@@ -261,141 +278,143 @@ const CostComparator = () => {
   };
 
   return (
-    <ComparatorContainer>
-      <Title>Comparateur de Coûts Agricoles</Title>
-      
-      <FormGrid>
-        <FormGroup>
-          <Label>Origine</Label>
-          <Select
-            name="origin"
-            value={formData.origin}
-            onChange={handleInputChange}
+    <PageContainer>
+      <ComparatorContainer>
+        <Title>Comparateur de Coûts Agricoles</Title>
+        
+        <FormGrid>
+          <FormGroup>
+            <Label>Origine</Label>
+            <Select
+              name="origin"
+              value={formData.origin}
+              onChange={handleInputChange}
+            >
+              <option value="">Sélectionner une localité</option>
+              {localities.map(locality => (
+                <option key={locality.id} value={locality.name}>
+                  {locality.name}
+                </option>
+              ))}
+            </Select>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Destination</Label>
+            <Select
+              name="destination"
+              value={formData.destination}
+              onChange={handleInputChange}
+            >
+              <option value="">Sélectionner une localité</option>
+              {localities.map(locality => (
+                <option key={locality.id} value={locality.name}>
+                  {locality.name}
+                </option>
+              ))}
+            </Select>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Distance (km)</Label>
+            <Input
+              type="number"
+              name="distance"
+              value={formData.distance}
+              onChange={handleInputChange}
+              placeholder="Distance en kilomètres"
+              min="0"
+              step="0.1"
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Volume</Label>
+            <Input
+              type="number"
+              name="volume"
+              value={formData.volume}
+              onChange={handleInputChange}
+              min="0"
+              step="0.1"
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Unité</Label>
+            <Select
+              name="unit"
+              value={formData.unit}
+              onChange={handleInputChange}
+            >
+              <option value="kg">Kilogramme (kg)</option>
+              <option value="tonne">Tonne (t)</option>
+              <option value="q">Quintal (q)</option>
+            </Select>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Durée de stockage (jours)</Label>
+            <Input
+              type="number"
+              name="storageDays"
+              value={formData.storageDays}
+              onChange={handleInputChange}
+              min="0"
+              step="1"
+            />
+          </FormGroup>
+        </FormGrid>
+
+        <div style={{ textAlign: 'center' }}>
+          <Button 
+            onClick={handleCalculate} 
+            disabled={loading || !formData.origin || !formData.destination}
           >
-            <option value="">Sélectionner une localité</option>
-            {localities.map(locality => (
-              <option key={locality.id} value={locality.name}>
-                {locality.name}
-              </option>
-            ))}
-          </Select>
-        </FormGroup>
+            {loading ? <LoadingSpinner /> : 'Calculer les coûts'}
+          </Button>
+        </div>
 
-        <FormGroup>
-          <Label>Destination</Label>
-          <Select
-            name="destination"
-            value={formData.destination}
-            onChange={handleInputChange}
-          >
-            <option value="">Sélectionner une localité</option>
-            {localities.map(locality => (
-              <option key={locality.id} value={locality.name}>
-                {locality.name}
-              </option>
-            ))}
-          </Select>
-        </FormGroup>
+        {error && (
+          <ErrorMessage>
+            {error}
+          </ErrorMessage>
+        )}
 
-        <FormGroup>
-          <Label>Distance (km)</Label>
-          <Input
-            type="number"
-            name="distance"
-            value={formData.distance}
-            onChange={handleInputChange}
-            placeholder="Distance en kilomètres"
-            min="0"
-            step="0.1"
-          />
-        </FormGroup>
-
-        <FormGroup>
-          <Label>Volume</Label>
-          <Input
-            type="number"
-            name="volume"
-            value={formData.volume}
-            onChange={handleInputChange}
-            min="0"
-            step="0.1"
-          />
-        </FormGroup>
-
-        <FormGroup>
-          <Label>Unité</Label>
-          <Select
-            name="unit"
-            value={formData.unit}
-            onChange={handleInputChange}
-          >
-            <option value="kg">Kilogramme (kg)</option>
-            <option value="tonne">Tonne (t)</option>
-            <option value="q">Quintal (q)</option>
-          </Select>
-        </FormGroup>
-
-        <FormGroup>
-          <Label>Durée de stockage (jours)</Label>
-          <Input
-            type="number"
-            name="storageDays"
-            value={formData.storageDays}
-            onChange={handleInputChange}
-            min="0"
-            step="1"
-          />
-        </FormGroup>
-      </FormGrid>
-
-      <div style={{ textAlign: 'center' }}>
-        <Button 
-          onClick={handleCalculate} 
-          disabled={loading || !formData.origin || !formData.destination}
-        >
-          {loading ? <LoadingSpinner /> : 'Calculer les coûts'}
-        </Button>
-      </div>
-
-      {error && (
-        <ErrorMessage>
-          {error}
-        </ErrorMessage>
-      )}
-
-      {results && (
-        <ResultsContainer>
-          <ResultsTitle>Résultats du calcul</ResultsTitle>
-          
-          <CostBreakdown>
-            <CostItem>
-              <CostLabel>Distance</CostLabel>
-              <CostValue>{results.distance.toFixed(1)} km</CostValue>
-            </CostItem>
+        {results && (
+          <ResultsContainer>
+            <ResultsTitle>Résultats du calcul</ResultsTitle>
             
-            <CostItem>
-              <CostLabel>Volume</CostLabel>
-              <CostValue>{results.volume} {results.unit}</CostValue>
-            </CostItem>
-            
-            <CostItem>
-              <CostLabel>Coût transport</CostLabel>
-              <CostValue>{results.transportCost.toFixed(0)} FCFA</CostValue>
-            </CostItem>
-            
-            <CostItem>
-              <CostLabel>Coût stockage</CostLabel>
-              <CostValue>{results.storageCost.toFixed(0)} FCFA</CostValue>
-            </CostItem>
-          </CostBreakdown>
+            <CostBreakdown>
+              <CostItem>
+                <CostLabel>Distance</CostLabel>
+                <CostValue>{results.distance.toFixed(1)} km</CostValue>
+              </CostItem>
+              
+              <CostItem>
+                <CostLabel>Volume</CostLabel>
+                <CostValue>{results.volume} {results.unit}</CostValue>
+              </CostItem>
+              
+              <CostItem>
+                <CostLabel>Coût transport</CostLabel>
+                <CostValue>{results.transportCost.toFixed(0)} FCFA</CostValue>
+              </CostItem>
+              
+              <CostItem>
+                <CostLabel>Coût stockage</CostLabel>
+                <CostValue>{results.storageCost.toFixed(0)} FCFA</CostValue>
+              </CostItem>
+            </CostBreakdown>
 
-          <TotalCost>
-            <TotalLabel>Coût total estimé</TotalLabel>
-            <TotalValue>{results.totalCost.toFixed(0)} FCFA</TotalValue>
-          </TotalCost>
-        </ResultsContainer>
-      )}
-    </ComparatorContainer>
+            <TotalCost>
+              <TotalLabel>Coût total estimé</TotalLabel>
+              <TotalValue>{results.totalCost.toFixed(0)} FCFA</TotalValue>
+            </TotalCost>
+          </ResultsContainer>
+        )}
+      </ComparatorContainer>
+    </PageContainer>
   );
 };
 

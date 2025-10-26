@@ -650,7 +650,7 @@ router.get('/roles', authenticateSupabaseToken, async (req, res) => {
     }
 
     // Log debug pour vérifier l’ID et l’email Supabase et les rôles trouvés
-    console.log('[auth/roles] supabaseUser', req.supabaseUser);
+    // [auth/roles] supabaseUser log removed
 
     const [rows] = await db.execute(
       'SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = ?',
@@ -671,32 +671,22 @@ router.get('/roles', authenticateSupabaseToken, async (req, res) => {
       rolesSet.add(candidate);
     }
 
-    // If no roles found, assign default 'user' to Supabase user
-    if (rolesSet.size === 0) {
-      await ensureUsersColumns();
-      await ensureRolesSchema();
-      const email = req.supabaseUser?.email || null;
-      // Ensure local users row exists for Supabase user id
-      await db.execute(
-        'INSERT OR IGNORE INTO users (id, email, role) VALUES (?, ?, ?)',
-        [userId, email, 'user']
-      );
-      const userRoleId = await getRoleId('user');
-      if (userRoleId) {
-        await db.execute(
-          'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
-          [userId, userRoleId]
-        );
-        rolesSet.add('user');
-      }
-    }
+    // S'assurer que la ligne utilisateur locale existe, sans ajouter automatiquement le pivot 'user'
+    await ensureUsersColumns();
+    const email = req.supabaseUser?.email || null;
+    await db.execute(
+      'INSERT OR IGNORE INTO users (id, email, role) VALUES (?, ?, ?)',
+      [userId, email, 'user']
+    );
+    // Ne pas forcer l'ajout du rôle 'user' dans user_roles ici.
+    // Les rôles retournés s'appuieront sur le pivot et/ou la colonne users.role déjà existante.
 
     let roles = Array.from(rolesSet);
     // Si super_admin présent, lui attribuer admin, contributor et user
     if (roles.includes('super_admin')) {
       roles = Array.from(new Set([...roles, 'admin', 'contributor', 'user']));
     }
-    console.log('[auth/roles] roles', roles);
+    // [auth/roles] roles log removed
     return res.json({ success: true, data: { roles } });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

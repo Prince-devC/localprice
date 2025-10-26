@@ -382,9 +382,7 @@ const AdminDashboard = () => {
 
   // Gestion des rôles (super-admin)
   const [roleSelection, setRoleSelection] = React.useState({});
-
-  // Rôles disponibles (liste statique côté client pour simplicité)
-  const availableRoles = ['user', 'contributor', 'admin'];
+  const availableRoles = ['contributor', 'admin'];
   const loadingRoles = false;
 
   const addRoleMutation = useMutation(
@@ -417,6 +415,8 @@ const AdminDashboard = () => {
     (ids) => adminService.deleteUsers(ids),
     { onSuccess: () => { queryClient.invalidateQueries('admin-users'); clearSelection(); } }
   );
+
+  // Gestion actions sur sélection
   const handleBulkBan = (ban) => {
     if (selectedIds.length > 0) banUsersMutation.mutate({ ids: selectedIds, ban });
   };
@@ -425,12 +425,12 @@ const AdminDashboard = () => {
       deleteUsersMutation.mutate(selectedIds);
     }
   };
-
   const handleAddRole = (userId) => {
     const role = roleSelection[userId];
     if (role) addRoleMutation.mutate({ userId, role });
   };
 
+  // Mutations approbation/rejet des demandes de contribution
   const approveContributionMutation = useMutation(
     (id) => adminService.approveContributionRequest(id),
     {
@@ -446,10 +446,14 @@ const AdminDashboard = () => {
   );
 
   const handleApproveRequest = (id) => {
-    approveContributionMutation.mutate(id);
+    if (window.confirm('Confirmer l\u2019approbation de cette demande ?')) {
+      approveContributionMutation.mutate(id);
+    }
   };
 
   const handleRejectRequest = (id) => {
+    const ok = window.confirm('Confirmer le rejet de cette demande ?');
+    if (!ok) return;
     const reason = prompt('Raison du rejet:');
     if (reason) {
       rejectContributionMutation.mutate({ id, rejection_reason: reason });
@@ -680,9 +684,11 @@ const AdminDashboard = () => {
                 {contributionRequests?.map((req) => (
                   <TableRow key={req.id}>
                     <TableCell>
-                      <strong>{req.username || req.email}</strong>
+                      <strong>{req.display_name || req.username || req.email || 'Utilisateur introuvable'}</strong>
                       <br />
-                      <small style={{ color: '#6b7280' }}>{req.email}</small>
+                      {(req.email || req.user_id) && (
+                        <small style={{ color: '#6b7280' }}>{req.email ? req.email : `ID: ${req.user_id}`}</small>
+                      )}
                     </TableCell>
                     <TableCell>
                       {req.commune || '-'}
@@ -700,11 +706,11 @@ const AdminDashboard = () => {
                       {new Date(req.created_at).toLocaleDateString('fr-FR')}
                     </TableCell>
                     <TableCell>
-                      <ValidateButton onClick={() => handleApproveRequest(req.id)} disabled={approveContributionMutation.isLoading}>
-                        <FiCheck /> Approuver
+                      <ValidateButton onClick={() => handleApproveRequest(req.id)} disabled={approveContributionMutation.isLoading} aria-label="Approuver" title="Approuver">
+                        <FiCheck />
                       </ValidateButton>
-                      <RejectButton onClick={() => handleRejectRequest(req.id)} disabled={rejectContributionMutation.isLoading}>
-                        <FiX /> Rejeter
+                      <RejectButton onClick={() => handleRejectRequest(req.id)} disabled={rejectContributionMutation.isLoading} aria-label="Rejeter" title="Rejeter">
+                        <FiX />
                       </RejectButton>
                     </TableCell>
                   </TableRow>
@@ -833,32 +839,36 @@ const AdminDashboard = () => {
               onClick={() => toggleSelectAll(users.filter(u => !((u.roles || []).includes('super_admin'))))}
               style={{ padding:'0.4rem 0.8rem', border:'1px solid #e5e7eb', borderRadius:'8px', background:'#fff', color:'#111827' }}
               title="Sélectionner/Désélectionner tout"
+              aria-label="Sélectionner/Désélectionner tout"
             >
-              {selectedIds.length === (users?.filter(u => !((u.roles || []).includes('super_admin')))?.length || 0) ? <FiCheckSquare /> : <FiSquare />} Tout
+              {selectedIds.length === (users?.filter(u => !((u.roles || []).includes('super_admin')))?.length || 0) ? <FiCheckSquare /> : <FiSquare />}
             </button>
             <button
               onClick={() => handleBulkBan(true)}
               disabled={selectedIds.length === 0 || banUsersMutation.isLoading}
               style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#f59e0b', color:'#fff' }}
               title="Bannir la sélection"
+              aria-label="Bannir la sélection"
             >
-              <FiUserX /> Bannir sélection
+              <FiUserX />
             </button>
             <button
               onClick={() => handleBulkBan(false)}
               disabled={selectedIds.length === 0 || banUsersMutation.isLoading}
               style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#10b981', color:'#fff' }}
               title="Débannir la sélection"
+              aria-label="Débannir la sélection"
             >
-              <FiCheck /> Débannir sélection
+              <FiCheck />
             </button>
             <button
               onClick={handleBulkDelete}
               disabled={selectedIds.length === 0 || deleteUsersMutation.isLoading}
               style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#ef4444', color:'#fff' }}
               title="Supprimer (soft) la sélection"
+              aria-label="Supprimer (soft) la sélection"
             >
-              <FiTrash /> Supprimer sélection
+              <FiTrash />
             </button>
             <span style={{ marginLeft:'auto', color:'#6b7280' }}>
               {selectedIds.length} sélectionné(s)
@@ -936,18 +946,20 @@ const AdminDashboard = () => {
                             </button>
                           </div>
                           <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            {(u.roles || []).map((role) => (
-                              <button
-                                key={role}
-                                onClick={() => removeRoleMutation.mutate({ userId: u.id, role })}
-                                disabled={removeRoleMutation.isLoading || (role === 'super_admin' && u.id === user?.id)}
-                                style={{ padding: '0.25rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
-                                title={role === 'super_admin' && u.id === user?.id ? 'Impossible de retirer votre propre rôle super_admin' : `Retirer le rôle ${role}`}
-                                aria-label={`Retirer le rôle ${role}`}
-                              >
-                                <FiMinusCircle />
-                              </button>
-                            ))}
+                            {(u.roles || [])
+                              .filter((role) => role !== 'user')
+                              .map((role) => (
+                                <button
+                                  key={role}
+                                  onClick={() => removeRoleMutation.mutate({ userId: u.id, role })}
+                                  disabled={removeRoleMutation.isLoading || (role === 'super_admin' && u.id === user?.id)}
+                                  style={{ padding: '0.25rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
+                                  title={role === 'super_admin' && u.id === user?.id ? 'Impossible de retirer votre propre rôle super_admin' : `Retirer le rôle ${role}`}
+                                  aria-label={`Retirer le rôle ${role}`}
+                                >
+                                  <FiMinusCircle />
+                                </button>
+                              ))}
                           </div>
                         </TableCell>
                         <TableCell>

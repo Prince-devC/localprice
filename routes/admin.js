@@ -390,6 +390,10 @@ router.delete('/users/:id/roles/:role', requireRole('super_admin'), async (req, 
       'DELETE FROM user_roles WHERE user_id = ? AND role_id = ?',
       [id, roleRow.id]
     );
+    // Si on retire le rôle 'user', nettoyer également la colonne principale users.role
+    if (role === 'user') {
+      await db.execute('UPDATE users SET role = NULL WHERE id = ?', [id]);
+    }
     res.json({ success: true, message: 'Rôle retiré' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -479,6 +483,55 @@ router.get('/contribution-requests', requireAdmin, async (req, res) => {
     }
     query += ` ORDER BY cr.created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
     const [rows] = await db.execute(query, params);
+
+    // Enrichir via Supabase Admin API si infos manquantes et clé service disponible
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && serviceKey && Array.isArray(rows) && rows.length > 0) {
+      const baseUrl = supabaseUrl.replace(/\/$/, '');
+      const ids = Array.from(new Set(rows.map(r => String(r.user_id)).filter(Boolean)));
+
+      const fetchUser = async (id) => {
+        try {
+          const url = `${baseUrl}/auth/v1/admin/users/${id}`;
+          const resp = await axios.get(url, {
+            headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+            timeout: 8000,
+          });
+          const u = resp?.data || {};
+          const umd = u.user_metadata || u.user_metadata || {}; // camelCase
+          const rmd = u.raw_user_meta_data || {}; // legacy
+          const identity = Array.isArray(u.identities)
+            ? u.identities.find(i => i && i.identity_data && (i.identity_data.full_name || i.identity_data.name || i.identity_data.given_name || i.identity_data.family_name))
+            : null;
+          const idData = (identity && identity.identity_data) || {};
+          let first_name = umd.firstName || rmd.firstName || idData.given_name || null;
+          let last_name = umd.lastName || rmd.lastName || idData.family_name || null;
+          const display = (
+            (umd.firstName || rmd.firstName || idData.given_name || null) &&
+            `${umd.firstName || rmd.firstName || idData.given_name || ''} ${umd.lastName || rmd.lastName || idData.family_name || ''}`.trim()
+          ) || umd.full_name || rmd.full_name || idData.full_name || idData.name || umd.username || rmd.username || null;
+          return { id: String(u.id), email: u.email || null, username: umd.username || rmd.username || null, display_name: display };
+        } catch (_) {
+          return { id: String(id), email: null, username: null, display_name: null };
+        }
+      };
+
+      const results = await Promise.all(ids.map(fetchUser));
+      const byId = results.reduce((acc, u) => { acc[u.id] = u; return acc; }, {});
+
+      const enriched = rows.map((r) => {
+        const su = byId[String(r.user_id)] || {};
+        return {
+          ...r,
+          email: r.email || su.email || null,
+          username: r.username || su.username || null,
+          display_name: su.display_name || r.username || r.email || null,
+        };
+      });
+      return res.json({ success: true, data: enriched });
+    }
+
     return res.json({ success: true, data: rows });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

@@ -254,7 +254,7 @@ const ProductDetail = () => {
                   <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--gray-700)' }}>
                     {stats.store_count}
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>Magasins</div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>Magasins de stockage</div>
                 </div>
               </div>
             )}
@@ -262,7 +262,7 @@ const ProductDetail = () => {
         </ProductCard>
 
         <PricesContainer>
-          <PricesTitle>Prix dans les magasins</PricesTitle>
+          <PricesTitle>Prix observés dans les magasins de stockage</PricesTitle>
           {loadingPrices ? (
             <LoadingSpinner text="Chargement des prix..." />
           ) : prices && prices.length > 0 ? (
@@ -287,7 +287,7 @@ const ProductDetail = () => {
             <NoPrices>
               <FiTrendingUp style={{ fontSize: '3rem', marginBottom: '1rem', color: 'var(--gray-300)' }} />
               <h3>Aucun prix disponible</h3>
-              <p>Ce produit n'est actuellement disponible dans aucun magasin.</p>
+              <p>Ce produit n'est actuellement observé dans aucun magasin de stockage.</p>
             </NoPrices>
           )}
         </PricesContainer>
