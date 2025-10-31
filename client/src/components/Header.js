@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, NavLink as RouterNavLink, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { FiUser, FiLogOut, FiMenu, FiX, FiChevronDown, FiTrendingUp, FiHome, FiShield } from 'react-icons/fi';
-import { FaCalculator } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/api';
 
@@ -84,7 +83,7 @@ const Nav = styled.nav`
   }
 `;
 
-const NavLink = styled(Link)`
+const NavLink = styled(RouterNavLink)`
   color: var(--gray-700);
   text-decoration: none;
   font-weight: 500;
@@ -106,6 +105,12 @@ const NavLink = styled(Link)`
     transform: translateY(0);
     box-shadow: 0 1px 4px rgba(59, 130, 246, 0.1);
   }
+
+  &[aria-current="page"] {
+    color: var(--primary-color);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%);
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.2);
+  }
 `;
 
 // Dropdown pour regrouper "Calculer les coûts" et "Comparer"
@@ -118,8 +123,8 @@ const DropdownButton = styled.button`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--gray-700);
-  background: none;
+  color: ${props => (props.$isOpen || props.$active) ? 'var(--primary-color)' : 'var(--gray-700)'};
+  background: ${props => (props.$isOpen || props.$active) ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%)' : 'none'};
   border: none;
   font-weight: 500;
   padding: 0.625rem 0.875rem;
@@ -174,7 +179,7 @@ const DropdownMenu = styled.div`
   }
 `;
 
-const ToolsDropdownItem = styled(Link)`
+const ToolsDropdownItem = styled(RouterNavLink)`
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -198,6 +203,11 @@ const ToolsDropdownItem = styled(Link)`
   
   &:last-child {
     margin-bottom: 0.5rem;
+  }
+
+  &[aria-current="page"] {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%);
+    color: var(--primary-color);
   }
 `;
 
@@ -440,7 +450,7 @@ const MobileMenu = styled.div`
   }
 `;
 
-const MobileNavLink = styled(Link)`
+const MobileNavLink = styled(RouterNavLink)`
   display: block;
   padding: 1rem 1.25rem;
   color: var(--gray-700);
@@ -463,6 +473,11 @@ const MobileNavLink = styled(Link)`
   @media (max-width: 480px) {
     padding: 0.875rem 1rem;
     font-size: 0.875rem;
+  }
+
+  &[aria-current="page"] {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%);
+    color: var(--primary-color);
   }
 `;
 
@@ -507,6 +522,7 @@ const Header = () => {
   const [isToolsDropdownOpen, setIsToolsDropdownOpen] = useState(false);
   const [isDirectoryDropdownOpen, setIsDirectoryDropdownOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // using roles from AuthContext; removed local fetch
   // const [roles, setRoles] = useState([]);
@@ -586,6 +602,7 @@ const Header = () => {
               <DropdownButton 
                 onClick={() => setIsDirectoryDropdownOpen(!isDirectoryDropdownOpen)}
                 $isOpen={isDirectoryDropdownOpen}
+                $active={location.pathname.startsWith('/suppliers') || location.pathname.startsWith('/stores')}
               >
                 Ressources
                 <FiChevronDown />
@@ -604,15 +621,12 @@ const Header = () => {
               <DropdownButton 
                 onClick={() => setIsToolsDropdownOpen(!isToolsDropdownOpen)}
                 $isOpen={isToolsDropdownOpen}
+                $active={location.pathname.startsWith('/compare')}
               >
                 Outils
                 <FiChevronDown />
               </DropdownButton>
               <DropdownMenu $isOpen={isToolsDropdownOpen}>
-                <ToolsDropdownItem to="/cost-comparator">
-                  <FaCalculator />
-                  Calculer les coûts
-                </ToolsDropdownItem>
                 <ToolsDropdownItem to="/compare">
                   <FiTrendingUp />
                   Comparer prix
@@ -631,16 +645,16 @@ const Header = () => {
                 {displayName}
               </UserButton>
               <Dropdown $isOpen={isUserMenuOpen}>
+                {(isAuthenticated) && (
+                  <UserDropdownItem to="/dashboard">
+                    <FiHome />
+                    Mon Espace
+                  </UserDropdownItem>
+                )}
                 {isAdmin && (
                   <UserDropdownItem to="/admin">
                     <FiShield />
                     Espace Admin
-                  </UserDropdownItem>
-                )}
-                {(roles?.includes('contributor') || roles?.includes('user')) && (
-                  <UserDropdownItem to="/dashboard">
-                    <FiHome />
-                    Mon Espace
                   </UserDropdownItem>
                 )}
 
@@ -695,10 +709,6 @@ const Header = () => {
         {/* Section Outils */}
         <MobileDropdownSection>
           <MobileDropdownHeader>Outils</MobileDropdownHeader>
-          <MobileNavLink to="/cost-comparator" style={{paddingLeft: '2rem'}}>
-            <FaCalculator />
-            Calculer les coûts
-          </MobileNavLink>
           <MobileNavLink to="/compare" style={{paddingLeft: '2rem'}}>
             <FiTrendingUp />
             Comparer prix
@@ -706,11 +716,14 @@ const Header = () => {
         </MobileDropdownSection>
         
         <MobileNavLink to={isAuthenticated ? ((isContributor || isAdmin) ? '/submit-price' : '/dashboard?apply=1') : '/login'}>Contribuer</MobileNavLink>
-        {/* Retiré: Espace Admin et Mon Espace du menu mobile principal */}
+        {/* Accès directs sur mobile */}
         
         {isAuthenticated ? (
           <>
-            {/* Garder seulement les options Profil/Déconnexion ici; accès Admin/Espace via menu profil */}
+            <MobileNavLink to="/dashboard">Mon Espace</MobileNavLink>
+            {isAdmin && (
+              <MobileNavLink to="/admin">Espace Admin</MobileNavLink>
+            )}
             <MobileNavLink to="/profile">Mon Profil</MobileNavLink>
             <MobileNavLink to="#" onClick={handleLogout}>Déconnexion</MobileNavLink>
           </>

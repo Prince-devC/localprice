@@ -8,6 +8,20 @@ const Cost = require('../models/Cost');
 const { requireAdmin, requireRole } = require('../middleware/roleAuth');
 const db = require('../database/connection');
 const axios = require('axios');
+const { sendContributionStatusEmail, sendPriceStatusEmail } = require('../utils/mailer');
+// Ensure optional column for submission method exists
+async function ensureSubmissionMethodColumn() {
+  try {
+    await db.exec(`ALTER TABLE prices ADD COLUMN submission_method TEXT;`);
+  } catch (e) {
+    // ignore if exists
+  }
+  try {
+    await db.exec(`UPDATE prices SET submission_method = 'Formulaire Web' WHERE submission_method IS NULL;`);
+  } catch (e) {
+    // ignore
+  }
+}
 
 // Modération: tables bannis/supprimés (créées à la volée)
 async function ensureModerationTables() {
@@ -144,6 +158,47 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
       FROM localities
     `);
 
+    // Statistiques des demandes de contribution
+    const [[{ pending: contrib_pending }]] = await db.execute(`
+      SELECT COUNT(*) as pending FROM contribution_requests WHERE status = 'pending'
+    `);
+    const [[{ approved: contrib_approved }]] = await db.execute(`
+      SELECT COUNT(*) as approved FROM contribution_requests WHERE status = 'approved'
+    `);
+    const [[{ rejected: contrib_rejected }]] = await db.execute(`
+      SELECT COUNT(*) as rejected FROM contribution_requests WHERE status = 'rejected'
+    `);
+    const contributionStats = {
+      pending: contrib_pending || 0,
+      approved: contrib_approved || 0,
+      rejected: contrib_rejected || 0,
+    };
+
+    // Statistiques de modération (bannis/supprimés)
+    await ensureModerationTables();
+    const [[{ banned_users }]] = await db.execute(`
+      SELECT COUNT(*) as banned_users FROM banned_users
+    `);
+    const [[{ deleted_users }]] = await db.execute(`
+      SELECT COUNT(*) as deleted_users FROM deleted_users
+    `);
+    const moderationStats = {
+      banned_users: banned_users || 0,
+      deleted_users: deleted_users || 0,
+    };
+
+    // Statistiques des offres
+    const [[{ total_offers }]] = await db.execute(`
+      SELECT COUNT(*) as total_offers FROM offers
+    `);
+    const [[{ active_offers }]] = await db.execute(`
+      SELECT COUNT(*) as active_offers FROM offers WHERE is_active = 1
+    `);
+    const offerStats = {
+      total_offers: total_offers || 0,
+      active_offers: active_offers || 0,
+    };
+
     // Prix récents
     const [recentPrices] = await db.execute(`
       SELECT p.id, pr.name as product_name, l.name as locality_name, 
@@ -162,6 +217,9 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
         userStats,
         productStats: productStats[0],
         localityStats: localityStats[0],
+        contributionStats,
+        moderationStats,
+        offerStats,
         recentPrices
       }
     });
@@ -350,6 +408,118 @@ router.get('/users', requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/admin/contributors - Liste des contributeurs acceptés avec stats et préférences
+router.get('/contributors', requireAdmin, async (req, res) => {
+  try {
+    await ensureModerationTables();
+    const { limit = 100, offset = 0, active_only } = req.query;
+
+    // Récupérer les utilisateurs ayant le rôle contributor
+    const [contributorsRows] = await db.execute(
+      `SELECT DISTINCT u.id, u.email, u.username
+       FROM user_roles ur
+       JOIN roles r ON ur.role_id = r.id
+       LEFT JOIN users u ON u.id = ur.user_id
+       LEFT JOIN banned_users bu ON bu.user_id = u.id
+       LEFT JOIN deleted_users du ON du.user_id = u.id
+       WHERE r.name = 'contributor'
+         AND du.user_id IS NULL
+         AND u.id NOT IN (
+           SELECT ur2.user_id
+           FROM user_roles ur2
+           JOIN roles r2 ON r2.id = ur2.role_id
+           WHERE r2.name = 'super_admin'
+         )
+       ORDER BY u.created_at DESC
+       LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`
+    );
+
+    // Compter les prix soumis par utilisateur
+    const [countRows] = await db.execute(`
+      SELECT submitted_by AS user_id,
+             COUNT(*) AS total_prices,
+             SUM(CASE WHEN status = 'validated' THEN 1 ELSE 0 END) AS validated_prices,
+             SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_prices,
+             SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) AS rejected_prices
+      FROM prices
+      WHERE submitted_by IS NOT NULL
+      GROUP BY submitted_by
+    `);
+    const countMap = new Map((countRows || []).map(r => [String(r.user_id), r]));
+
+    // Préférences du compte
+    const [prefRows] = await db.execute(`
+      SELECT user_id,
+             has_smartphone_default AS pref_has_smartphone,
+             has_internet_default AS pref_has_internet,
+             preferred_method
+      FROM user_preferences
+    `);
+    const prefMap = new Map((prefRows || []).map(r => [String(r.user_id), r]));
+
+    // Enrichir avec Supabase (affichage)
+    let enriched = contributorsRows || [];
+    try {
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+      if (supabaseUrl && serviceKey) {
+        const base = `${supabaseUrl.replace(/\/$/, '')}/auth/v1`;
+        const promises = (contributorsRows || []).map(async (u) => {
+          try {
+            const resp = await axios.get(`${base}/admin/users/${u.id}`, {
+              headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+              timeout: 8000,
+            });
+            const supaUser = resp?.data || null;
+            const firstName = supaUser?.user_metadata?.firstName || null;
+            const lastName = supaUser?.user_metadata?.lastName || null;
+            const usernameMeta = supaUser?.user_metadata?.username || null;
+            const displayName = ([firstName, lastName].filter(Boolean).join(' ').trim()) || usernameMeta || u.username || u.email || 'Utilisateur';
+            return { ...u, display_name: displayName, first_name: firstName || null, last_name: lastName || null };
+          } catch (_) {
+            const displayName = u.username || u.email || 'Utilisateur';
+            return { ...u, display_name: displayName };
+          }
+        });
+        enriched = await Promise.all(promises);
+      }
+    } catch (_) {
+      enriched = contributorsRows || [];
+    }
+
+    // Fusionner stats et préférences
+    let data = (enriched || []).map(u => {
+      const stats = countMap.get(String(u.id)) || { total_prices: 0, validated_prices: 0, pending_prices: 0, rejected_prices: 0 };
+      const prefs = prefMap.get(String(u.id)) || { pref_has_smartphone: 1, pref_has_internet: 1, preferred_method: 'web' };
+      return {
+        id: u.id,
+        email: u.email,
+        username: u.username,
+        display_name: u.display_name,
+        total_prices: stats.total_prices || 0,
+        validated_prices: stats.validated_prices || 0,
+        pending_prices: stats.pending_prices || 0,
+        rejected_prices: stats.rejected_prices || 0,
+        pref_has_smartphone: prefs.pref_has_smartphone,
+        pref_has_internet: prefs.pref_has_internet,
+        preferred_method: prefs.preferred_method,
+      };
+    });
+
+    const onlyActive = String(active_only || '').toLowerCase() === 'true';
+    if (onlyActive) {
+      data = data.filter(d => (d.validated_prices || 0) > 0 || (d.total_prices || 0) > 0);
+    }
+
+    // Trier par prix validés puis total
+    data.sort((a, b) => (b.validated_prices - a.validated_prices) || (b.total_prices - a.total_prices));
+
+    return res.json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // === Gestion des rôles via pivot (super admin) ===
 // POST /api/admin/users/:id/roles/:role - Ajouter un rôle
 router.post('/users/:id/roles/:role', requireRole('super_admin'), async (req, res) => {
@@ -420,10 +590,61 @@ router.post('/validate-price/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { comment } = req.body;
-    
+    await ensureSubmissionMethodColumn();
     const success = await AgriculturalPrice.validatePrice(id, req.user.id, comment);
     
     if (success) {
+      // Notify contributor by email
+      try {
+        const row = await db.get(
+          `SELECT p.id, p.price, p.date, p.comment, p.submitted_by,
+                  pr.name AS product_name,
+                  l.name AS locality_name,
+                  un.name AS unit_name, un.symbol AS unit_symbol,
+                  usr.email AS user_email, usr.username AS user_username
+           FROM prices p
+           JOIN products pr ON p.product_id = pr.id
+           JOIN localities l ON p.locality_id = l.id
+           JOIN units un ON p.unit_id = un.id
+           LEFT JOIN users usr ON p.submitted_by = usr.id
+           WHERE p.id = ?
+           LIMIT 1`,
+          [id]
+        );
+        const recipient = row && row.user_email;
+        let displayName = null;
+        try {
+          const supabaseUrl = process.env.SUPABASE_URL;
+          const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+          if (supabaseUrl && serviceKey && row && row.submitted_by) {
+            const base = `${supabaseUrl.replace(/\/$/, '')}/auth/v1`;
+            const resp = await axios.get(`${base}/admin/users/${row.submitted_by}`, {
+              headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+              timeout: 8000,
+            });
+            const supaUser = resp?.data || null;
+            const firstName = supaUser?.user_metadata?.firstName || null;
+            const lastName = supaUser?.user_metadata?.lastName || null;
+            const usernameMeta = supaUser?.user_metadata?.username || null;
+            displayName = ([firstName, lastName].filter(Boolean).join(' ').trim()) || usernameMeta || row.user_username || row.user_email || 'Utilisateur';
+          }
+        } catch (_) {
+          displayName = row?.user_username || row?.user_email || 'Utilisateur';
+        }
+        if (!displayName) displayName = row?.user_username || row?.user_email || 'Utilisateur';
+        if (recipient) await sendPriceStatusEmail(recipient, 'approved', {
+          name: displayName,
+          productName: row?.product_name,
+          localityName: row?.locality_name,
+          unitName: row?.unit_name,
+          unitSymbol: row?.unit_symbol,
+          price: row?.price,
+          date: row?.date,
+          comment: row?.comment,
+        });
+      } catch (e) {
+        console.warn('[admin] Échec envoi email validation prix:', e?.message || e);
+      }
       res.json({ success: true, message: 'Prix validé avec succès' });
     } else {
       res.status(404).json({ success: false, message: 'Prix non trouvé ou déjà traité' });
@@ -445,10 +666,61 @@ router.post('/reject-price/:id', requireAdmin, async (req, res) => {
         message: 'La raison du rejet est obligatoire'
       });
     }
-    
+    await ensureSubmissionMethodColumn();
     const success = await AgriculturalPrice.rejectPrice(id, req.user.id, rejection_reason);
     
     if (success) {
+      // Notify contributor by email with rejection reason
+      try {
+        const row = await db.get(
+          `SELECT p.id, p.price, p.date, p.comment, p.submitted_by,
+                  pr.name AS product_name,
+                  l.name AS locality_name,
+                  un.name AS unit_name, un.symbol AS unit_symbol,
+                  usr.email AS user_email, usr.username AS user_username
+           FROM prices p
+           JOIN products pr ON p.product_id = pr.id
+           JOIN localities l ON p.locality_id = l.id
+           JOIN units un ON p.unit_id = un.id
+           LEFT JOIN users usr ON p.submitted_by = usr.id
+           WHERE p.id = ?
+           LIMIT 1`,
+          [id]
+        );
+        const recipient = row && row.user_email;
+        let displayName = null;
+        try {
+          const supabaseUrl = process.env.SUPABASE_URL;
+          const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+          if (supabaseUrl && serviceKey && row && row.submitted_by) {
+            const base = `${supabaseUrl.replace(/\/$/, '')}/auth/v1`;
+            const resp = await axios.get(`${base}/admin/users/${row.submitted_by}`, {
+              headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+              timeout: 8000,
+            });
+            const supaUser = resp?.data || null;
+            const firstName = supaUser?.user_metadata?.firstName || null;
+            const lastName = supaUser?.user_metadata?.lastName || null;
+            const usernameMeta = supaUser?.user_metadata?.username || null;
+            displayName = ([firstName, lastName].filter(Boolean).join(' ').trim()) || usernameMeta || row.user_username || row.user_email || 'Utilisateur';
+          }
+        } catch (_) {
+          displayName = row?.user_username || row?.user_email || 'Utilisateur';
+        }
+        if (!displayName) displayName = row?.user_username || row?.user_email || 'Utilisateur';
+        if (recipient) await sendPriceStatusEmail(recipient, 'rejected', {
+          name: displayName,
+          productName: row?.product_name,
+          localityName: row?.locality_name,
+          unitName: row?.unit_name,
+          unitSymbol: row?.unit_symbol,
+          price: row?.price,
+          date: row?.date,
+          reason: rejection_reason,
+        });
+      } catch (e) {
+        console.warn('[admin] Échec envoi email rejet prix:', e?.message || e);
+      }
       res.json({ success: true, message: 'Prix rejeté avec succès' });
     } else {
       res.status(404).json({ success: false, message: 'Prix non trouvé ou déjà traité' });
@@ -479,7 +751,38 @@ router.get('/contribution-requests', requireAdmin, async (req, res) => {
     }
     query += ` ORDER BY cr.created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
     const [rows] = await db.execute(query, params);
-    return res.json({ success: true, data: rows });
+
+    // Enrichir avec le nom d'affichage depuis Supabase (firstName/lastName/username)
+    let enriched = rows;
+    try {
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+      if (supabaseUrl && serviceKey) {
+        const base = `${supabaseUrl.replace(/\/$/, '')}/auth/v1`;
+        const promises = (rows || []).map(async (r) => {
+          try {
+            const resp = await axios.get(`${base}/admin/users/${r.user_id}`, {
+              headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+              timeout: 8000,
+            });
+            const supaUser = resp?.data || null;
+            const firstName = supaUser?.user_metadata?.firstName || null;
+            const lastName = supaUser?.user_metadata?.lastName || null;
+            const usernameMeta = supaUser?.user_metadata?.username || null;
+            const displayName = ([firstName, lastName].filter(Boolean).join(' ').trim()) || usernameMeta || r.username || r.email || 'Utilisateur';
+            return { ...r, display_name: displayName, first_name: firstName || null, last_name: lastName || null };
+          } catch (_) {
+            const displayName = r.username || r.email || 'Utilisateur';
+            return { ...r, display_name: displayName };
+          }
+        });
+        enriched = await Promise.all(promises);
+      }
+    } catch (_) {
+      enriched = rows;
+    }
+
+    return res.json({ success: true, data: enriched });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -509,6 +812,34 @@ router.post('/contribution-requests/:id/approve', requireAdmin, async (req, res)
     }
     await db.execute('INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)', [request.user_id, roleId]);
 
+    // Envoi d'email (meilleure expérience utilisateur)
+    try {
+      const [[userRow]] = await db.execute('SELECT email, username FROM users WHERE id = ? LIMIT 1', [request.user_id]);
+      const recipient = userRow && userRow.email;
+      let displayName = null;
+      try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+        if (supabaseUrl && serviceKey) {
+          const base = `${supabaseUrl.replace(/\/$/, '')}/auth/v1`;
+          const resp = await axios.get(`${base}/admin/users/${request.user_id}`, {
+            headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+            timeout: 8000,
+          });
+          const supaUser = resp?.data || null;
+          const firstName = supaUser?.user_metadata?.firstName || null;
+          const lastName = supaUser?.user_metadata?.lastName || null;
+          const usernameMeta = supaUser?.user_metadata?.username || null;
+          displayName = ([firstName, lastName].filter(Boolean).join(' ').trim()) || usernameMeta || userRow?.username || userRow?.email || 'Utilisateur';
+        }
+      } catch (_) {
+        displayName = userRow?.username || userRow?.email || 'Utilisateur';
+      }
+      await sendContributionStatusEmail(recipient, 'approved', { name: displayName });
+    } catch (e) {
+      console.warn('[admin] Échec envoi email approuvé:', e?.message || e);
+    }
+
     return res.json({ success: true, message: 'Demande approuvée, utilisateur promu contributeur' });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -524,14 +855,43 @@ router.post('/contribution-requests/:id/reject', requireAdmin, async (req, res) 
     }
 
     // Vérifie la demande
-    const [rows] = await db.execute('SELECT id FROM contribution_requests WHERE id = ?', [id]);
+    const [rows] = await db.execute('SELECT user_id FROM contribution_requests WHERE id = ?', [id]);
     if (!rows || rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Demande non trouvée' });
     }
+    const userId = rows[0].user_id;
     await db.execute(
       'UPDATE contribution_requests SET status = "rejected", reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = ? WHERE id = ?',
       [req.user.id, rejection_reason, id]
     );
+
+    // Envoi d'email (feedback en cas de rejet)
+    try {
+      const [[userRow]] = await db.execute('SELECT email, username FROM users WHERE id = ? LIMIT 1', [userId]);
+      const recipient = userRow && userRow.email;
+      let displayName = null;
+      try {
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+        if (supabaseUrl && serviceKey) {
+          const base = `${supabaseUrl.replace(/\/$/, '')}/auth/v1`;
+          const resp = await axios.get(`${base}/admin/users/${userId}`, {
+            headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
+            timeout: 8000,
+          });
+          const supaUser = resp?.data || null;
+          const firstName = supaUser?.user_metadata?.firstName || null;
+          const lastName = supaUser?.user_metadata?.lastName || null;
+          const usernameMeta = supaUser?.user_metadata?.username || null;
+          displayName = ([firstName, lastName].filter(Boolean).join(' ').trim()) || usernameMeta || userRow?.username || userRow?.email || 'Utilisateur';
+        }
+      } catch (_) {
+        displayName = userRow?.username || userRow?.email || 'Utilisateur';
+      }
+      await sendContributionStatusEmail(recipient, 'rejected', { name: displayName, reason: rejection_reason });
+    } catch (e) {
+      console.warn('[admin] Échec envoi email rejet:', e?.message || e);
+    }
 
     return res.json({ success: true, message: 'Demande rejetée' });
   } catch (error) {

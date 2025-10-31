@@ -147,7 +147,10 @@ export const agriculturalPriceService = {
   getMap: (params = {}) => api.get('/agricultural-prices/map', { params }),
   getBasketIndex: (params = {}) => api.get('/agricultural-prices/basket-index', { params }),
   submit: (data) => api.post('/agricultural-prices', data),
+  getMyPrices: (params = {}) => api.get('/agricultural-prices/my', { params }),
   getPending: (params = {}) => api.get('/agricultural-prices/pending', { params }),
+  update: (id, data) => api.put(`/agricultural-prices/${id}`, data),
+  delete: (id) => api.delete(`/agricultural-prices/${id}`),
   validate: (id, data) => api.post(`/agricultural-prices/${id}/validate`, data),
   reject: (id, data) => api.post(`/agricultural-prices/${id}/reject`, data)
 };
@@ -181,13 +184,19 @@ export const unitService = {
   delete: (id) => api.delete(`/units/${id}`)
 };
 
+// API pour les langues de communication
+export const languageService = {
+  getAll: () => api.get('/languages'),
+  create: (name) => api.post('/languages', { name }),
+  update: (id, name) => api.put(`/languages/${id}`, { name }),
+  delete: (id) => api.delete(`/languages/${id}`)
+};
+
 // API pour les coûts
 export const costService = {
   getAll: () => api.get('/costs'),
   getTransport: () => api.get('/costs/transport'),
   getStorage: () => api.get('/costs/storage'),
-  calculateTransport: (params) => api.get('/costs/calculate-transport', { params }),
-  calculateStorage: (params) => api.get('/costs/calculate-storage', { params }),
   create: (data) => api.post('/costs', data),
   update: (id, data) => api.put(`/costs/${id}`, data),
   delete: (id) => api.delete(`/costs/${id}`)
@@ -197,6 +206,8 @@ export const costService = {
 export const contributionsService = {
   apply: (data) => api.post('/contributions/apply', data),
   getMyRequest: () => api.get('/contributions/me'),
+  getPreferences: () => api.get('/contributions/preferences'),
+  updatePreferences: (data) => api.put('/contributions/preferences', data),
 };
 
 // API pour l'administration
@@ -213,6 +224,8 @@ export const adminService = {
   getContributionRequests: (params = {}) => api.get('/admin/contribution-requests', { params }),
   approveContributionRequest: (id) => api.post(`/admin/contribution-requests/${id}/approve`),
   rejectContributionRequest: (id, data) => api.post(`/admin/contribution-requests/${id}/reject`, data),
+  // Contributeurs actifs
+  getContributors: (params = {}) => api.get('/admin/contributors', { params }),
   // Offres payantes
   getOffers: (params = {}) => api.get('/admin/offers', { params }),
   createOffer: (data) => api.post('/admin/offers', data),
@@ -228,6 +241,12 @@ export const adminService = {
   // Modération multi-sélection
   banUsers: (userIds, isBanned = true) => api.put('/admin/users/ban', { user_ids: userIds, is_banned: isBanned }),
   deleteUsers: (userIds) => api.post('/admin/users/bulk-delete', { user_ids: userIds }),
+};
+
+// API pour les paramètres applicatifs
+export const settingsService = {
+  getKoboSettings: () => api.get('/settings/kobo'),
+  updateKoboSettings: (data) => api.put('/settings/kobo', data),
 };
 
 // API pour les options de filtres

@@ -8,9 +8,13 @@ const spin = keyframes`
 
 const SpinnerContainer = styled.div`
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 2rem;
+  width: 100%;
+  min-height: 220px; /* assure un centrage visuel dans les panneaux */
+  padding: 1.5rem;
+  text-align: center;
 `;
 
 const Spinner = styled.div`
@@ -23,7 +27,7 @@ const Spinner = styled.div`
 `;
 
 const LoadingText = styled.p`
-  margin-top: 1rem;
+  margin: 0 0 0.75rem 0; /* texte au-dessus du spinner */
   color: var(--gray-600);
   font-size: 0.875rem;
 `;
@@ -34,16 +38,14 @@ const LoadingSpinner = ({ text = 'Chargement...', size = 'medium' }) => {
 
   return (
     <SpinnerContainer>
-      <div style={{ textAlign: 'center' }}>
-        <Spinner 
-          style={{ 
-            width: spinnerSize, 
-            height: spinnerSize,
-            borderWidth: borderWidth
-          }} 
-        />
-        {text && <LoadingText>{text}</LoadingText>}
-      </div>
+      {text && <LoadingText>{text}</LoadingText>}
+      <Spinner 
+        style={{ 
+          width: spinnerSize, 
+          height: spinnerSize,
+          borderWidth: borderWidth
+        }} 
+      />
     </SpinnerContainer>
   );
 };

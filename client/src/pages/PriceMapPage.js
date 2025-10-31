@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FiMapPin, FiFilter, FiRefreshCw } from 'react-icons/fi';
 import PriceMap from '../components/PriceMap';
 import AdvancedFilters from '../components/AdvancedFilters';
+import { useSearchParams } from 'react-router-dom';
 
 const PriceMapPageContainer = styled.div`
   min-height: 100vh;
@@ -125,6 +126,7 @@ const MapInfo = styled.div`
 
 const PriceMapPage = () => {
   const [useAdvancedFilters, setUseAdvancedFilters] = useState(false);
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState({
     categories: [],
     localities: [],
@@ -134,6 +136,32 @@ const PriceMapPage = () => {
     minPrice: '',
     maxPrice: ''
   });
+
+  // Pré-remplir les filtres via paramètres d'URL (product_id, locality_id)
+  useEffect(() => {
+    const productId = parseInt(searchParams.get('product_id') || '', 10);
+    const localityId = parseInt(searchParams.get('locality_id') || '', 10);
+    const search = searchParams.get('search') || '';
+    const next = { ...filters };
+    let changed = false;
+    if (!isNaN(productId) && productId > 0) {
+      next.products = [{ id: productId }];
+      changed = true;
+    }
+    if (!isNaN(localityId) && localityId > 0) {
+      next.localities = [{ id: localityId }];
+      changed = true;
+    }
+    if (search) {
+      next.search = search;
+      changed = true;
+    }
+    if (changed) {
+      setFilters(next);
+      setUseAdvancedFilters(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFiltersChange = (newFilters) => {
     setFilters(newFilters);
@@ -193,6 +221,13 @@ const PriceMapPage = () => {
     // Ici vous pouvez ajouter une logique pour afficher plus de détails
   };
 
+  // Lire lat/lng/zoom depuis l’URL pour centrer/zoomer la carte
+  const latParam = parseFloat(searchParams.get('lat'));
+  const lngParam = parseFloat(searchParams.get('lng'));
+  const zoomParam = parseInt(searchParams.get('zoom') || '', 10);
+  const centerFromParams = (!isNaN(latParam) && !isNaN(lngParam)) ? [latParam, lngParam] : null;
+  const zoomFromParams = (!isNaN(zoomParam) && zoomParam > 0) ? zoomParam : null;
+
   return (
     <PriceMapPageContainer>
       <PageHeader>
@@ -249,8 +284,9 @@ const PriceMapPage = () => {
               filters={mapFiltersForAPI(filters)}
               onMarkerClick={handleMarkerClick}
               height="100%"
-              center={[9.3077, 2.3158]} // Centre du Bénin
-              zoom={7} // Zoom adapté pour couvrir le Bénin
+              center={centerFromParams || [9.3077, 2.3158]}
+              zoom={zoomFromParams ?? (centerFromParams ? 14 : 7)}
+              disableInitialAutoFit={Boolean(centerFromParams)}
             />
           </MapWrapper>
         </MapContainer>

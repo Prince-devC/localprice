@@ -53,7 +53,13 @@ const authenticateSupabaseToken = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Token Supabase invalide' });
     }
 
-    req.supabaseUser = { id: supaUser.id, email: supaUser.email };
+    // Expose richer supabase user info to downstream routes (id, email, metadata)
+    req.supabaseUser = {
+      id: supaUser.id,
+      email: supaUser.email,
+      user_metadata: supaUser.user_metadata || {},
+      app_metadata: supaUser.app_metadata || {},
+    };
     next();
   } catch (err) {
     const status = err?.response?.status;
@@ -61,6 +67,52 @@ const authenticateSupabaseToken = async (req, res, next) => {
       return res.status(status).json({ success: false, message: 'Token Supabase invalide ou expiré' });
     }
     return res.status(500).json({ success: false, message: 'Erreur de vérification du token Supabase' });
+  }
+};
+
+// Middleware hybride: tente Supabase, sinon JWT local
+const authenticateAnyToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Token d\'accès requis' });
+  }
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && anonKey) {
+    try {
+      const url = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`;
+      const resp = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}`, apikey: anonKey },
+        timeout: 10000,
+      });
+      const supaUser = resp?.data || null;
+      if (supaUser && supaUser.id) {
+        req.supabaseUser = {
+          id: supaUser.id,
+          email: supaUser.email,
+          user_metadata: supaUser.user_metadata || {},
+          app_metadata: supaUser.app_metadata || {},
+        };
+        return next();
+      }
+    } catch (_) {
+      // ignore and try JWT fallback
+    }
+  }
+  try {
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = user;
+    // exposer un objet supabaseUser-like pour compat
+    req.supabaseUser = req.supabaseUser || {
+      id: user.id,
+      email: user.email,
+      user_metadata: {},
+      app_metadata: {},
+    };
+    return next();
+  } catch (err) {
+    return res.status(401).json({ success: false, message: 'Token invalide' });
   }
 };
 
@@ -245,11 +297,21 @@ router.post('/login', async (req, res) => {
 });
 
 // GET /api/auth/profile - Profil utilisateur
-router.get('/profile', authenticateToken, async (req, res) => {
+router.get('/profile', authenticateAnyToken, async (req, res) => {
   try {
+    const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Utilisateur non authentifié' });
+    }
     const [users] = await db.execute(
-      'SELECT id, username, email, role, created_at FROM users WHERE id = ?',
-      [req.user.id]
+      `SELECT u.id, u.username, u.email, u.role, u.created_at,
+              CASE WHEN bu.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_banned,
+              CASE WHEN du.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_deleted
+       FROM users u
+       LEFT JOIN banned_users bu ON bu.user_id = u.id
+       LEFT JOIN deleted_users du ON du.user_id = u.id
+       WHERE u.id = ?`,
+      [userId]
     );
 
     if (users.length === 0) {
@@ -259,9 +321,10 @@ router.get('/profile', authenticateToken, async (req, res) => {
       });
     }
 
+    const payload = users[0];
     res.json({
       success: true,
-      data: users[0]
+      data: payload
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -269,15 +332,19 @@ router.get('/profile', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/auth/profile - Mettre à jour le profil
-router.put('/profile', authenticateToken, async (req, res) => {
+router.put('/profile', authenticateAnyToken, async (req, res) => {
   try {
+    const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Utilisateur non authentifié' });
+    }
     const { username, email } = req.body;
 
     // Vérifier si l'email est déjà utilisé par un autre utilisateur
     if (email) {
       const [existingUser] = await db.execute(
         'SELECT id FROM users WHERE email = ? AND id != ?',
-        [email, req.user.id]
+        [email, userId]
       );
 
       if (existingUser.length > 0) {
@@ -291,7 +358,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
     // Mettre à jour le profil
     const [result] = await db.execute(
       'UPDATE users SET username = COALESCE(?, username), email = COALESCE(?, email) WHERE id = ?',
-      [username, email, req.user.id]
+      [username, email, userId]
     );
 
     if (result.affectedRows === 0) {
@@ -311,9 +378,13 @@ router.put('/profile', authenticateToken, async (req, res) => {
 });
 
 // POST /api/auth/change-password - Changer le mot de passe
-router.post('/change-password', authenticateToken, async (req, res) => {
+router.post('/change-password', authenticateAnyToken, async (req, res) => {
   try {
     await ensureUsersColumns();
+    const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Utilisateur non authentifié' });
+    }
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
@@ -326,7 +397,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     // Récupérer le mot de passe actuel
     const [users] = await db.execute(
       'SELECT password_hash FROM users WHERE id = ?',
-      [req.user.id]
+      [userId]
     );
 
     if (users.length === 0) {
@@ -353,7 +424,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
     // Mettre à jour le mot de passe
     await db.execute(
       'UPDATE users SET password_hash = ? WHERE id = ?',
-      [hashedPassword, req.user.id]
+      [hashedPassword, userId]
     );
 
     res.json({
@@ -642,15 +713,14 @@ router.get('/verify-email', async (req, res) => {
 });
 
 // GET /api/auth/roles - Récupère les rôles locaux (SQLite) pour l'utilisateur Supabase
-router.get('/roles', authenticateSupabaseToken, async (req, res) => {
+router.get('/roles', authenticateAnyToken, async (req, res) => {
   try {
-    const userId = req.supabaseUser?.id;
+    const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
     if (!userId) {
       return res.status(400).json({ success: false, message: 'Utilisateur introuvable' });
     }
 
-    // Log debug pour vérifier l’ID et l’email Supabase et les rôles trouvés
-    console.log('[auth/roles] supabaseUser', req.supabaseUser);
+    // (logs retirés en production) évitez de journaliser des PII
 
     const [rows] = await db.execute(
       'SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = ?',
@@ -660,8 +730,9 @@ router.get('/roles', authenticateSupabaseToken, async (req, res) => {
 
     // Fallback: inclure le rôle stocké dans users.role via l’email si présent
     let userRoleRow = null;
-    if (req.supabaseUser?.email) {
-      const [userRows] = await db.execute('SELECT role FROM users WHERE email = ? LIMIT 1', [req.supabaseUser.email]);
+    const emailCandidate = (req.supabaseUser && req.supabaseUser.email) || (req.user && req.user.email) || null;
+    if (emailCandidate) {
+      const [userRows] = await db.execute('SELECT role FROM users WHERE email = ? LIMIT 1', [emailCandidate]);
       userRoleRow = (Array.isArray(userRows) && userRows.length) ? userRows[0] : null;
     }
 
@@ -675,7 +746,7 @@ router.get('/roles', authenticateSupabaseToken, async (req, res) => {
     if (rolesSet.size === 0) {
       await ensureUsersColumns();
       await ensureRolesSchema();
-      const email = req.supabaseUser?.email || null;
+      const email = emailCandidate || null;
       // Ensure local users row exists for Supabase user id
       await db.execute(
         'INSERT OR IGNORE INTO users (id, email, role) VALUES (?, ?, ?)',
@@ -696,11 +767,10 @@ router.get('/roles', authenticateSupabaseToken, async (req, res) => {
     if (roles.includes('super_admin')) {
       roles = Array.from(new Set([...roles, 'admin', 'contributor', 'user']));
     }
-    console.log('[auth/roles] roles', roles);
     return res.json({ success: true, data: { roles } });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-module.exports = { router, authenticateToken, authenticateSupabaseToken };
+module.exports = { router, authenticateToken, authenticateSupabaseToken, authenticateAnyToken };

@@ -5,14 +5,10 @@ class FilterOptions {
   static async getProductOptions() {
     try {
       const rows = await db.all(`
-        SELECT fpo.id, fpo.product_id, fpo.display_name, fpo.is_active, fpo.sort_order,
-               p.name as product_name, p.description as product_description,
-               pc.name as category_name, pc.type as category_type
-        FROM filter_product_options fpo
-        JOIN products p ON fpo.product_id = p.id
-        JOIN product_categories pc ON p.category_id = pc.id
-        WHERE fpo.is_active = 1
-        ORDER BY fpo.sort_order ASC, fpo.display_name ASC
+        SELECT p.id AS product_id,
+               p.name AS display_name
+        FROM products p
+        ORDER BY p.name ASC
       `);
       return rows;
     } catch (error) {
@@ -24,14 +20,10 @@ class FilterOptions {
   static async getLocalityOptions() {
     try {
       const rows = await db.all(`
-        SELECT flo.id, flo.locality_id, flo.display_name, flo.is_active, flo.sort_order,
-               l.name as locality_name, l.latitude, l.longitude,
-               r.name as region_name, r.code as region_code
-        FROM filter_locality_options flo
-        JOIN localities l ON flo.locality_id = l.id
-        JOIN regions r ON l.region_id = r.id
-        WHERE flo.is_active = 1
-        ORDER BY flo.sort_order ASC, flo.display_name ASC
+        SELECT l.id AS locality_id,
+               l.name AS display_name
+        FROM localities l
+        ORDER BY l.name ASC
       `);
       return rows;
     } catch (error) {
@@ -43,12 +35,10 @@ class FilterOptions {
   static async getRegionOptions() {
     try {
       const rows = await db.all(`
-        SELECT fro.id, fro.region_id, fro.display_name, fro.is_active, fro.sort_order,
-               r.name as region_name, r.code as region_code
-        FROM filter_region_options fro
-        JOIN regions r ON fro.region_id = r.id
-        WHERE fro.is_active = 1
-        ORDER BY fro.sort_order ASC, fro.display_name ASC
+        SELECT r.id AS region_id,
+               r.name AS display_name
+        FROM regions r
+        ORDER BY r.name ASC
       `);
       return rows;
     } catch (error) {
@@ -60,12 +50,10 @@ class FilterOptions {
   static async getCategoryOptions() {
     try {
       const rows = await db.all(`
-        SELECT fco.id, fco.category_id, fco.display_name, fco.is_active, fco.sort_order,
-               pc.name as category_name, pc.type as category_type, pc.description
-        FROM filter_category_options fco
-        JOIN product_categories pc ON fco.category_id = pc.id
-        WHERE fco.is_active = 1
-        ORDER BY fco.sort_order ASC, fco.display_name ASC
+        SELECT pc.id AS category_id,
+               pc.name AS display_name
+        FROM product_categories pc
+        ORDER BY pc.name ASC
       `);
       return rows;
     } catch (error) {
@@ -114,13 +102,7 @@ class FilterOptions {
   // Mettre à jour le statut d'une option de filtre
   static async updateOptionStatus(table, id, isActive) {
     try {
-      const validTables = [
-        'filter_product_options',
-        'filter_locality_options',
-        'filter_region_options',
-        'filter_category_options',
-        'filter_period_options'
-      ];
+      const validTables = ['filter_period_options'];
 
       if (!validTables.includes(table)) {
         throw new Error('Table non valide');
@@ -137,46 +119,24 @@ class FilterOptions {
     }
   }
 
-  // Ajouter une nouvelle option de filtre pour un produit
-  static async addProductOption(productId, displayName, sortOrder = 999) {
-    try {
-      const result = await db.run(
-        `INSERT INTO filter_product_options (product_id, display_name, is_active, sort_order)
-         VALUES (?, ?, 1, ?)`,
-        [productId, displayName, sortOrder]
-      );
-
-      return result.lastID;
-    } catch (error) {
-      throw new Error(`Erreur lors de l'ajout de l'option de produit: ${error.message}`);
-    }
+  // Ajouter une nouvelle option de filtre pour un produit (DÉPRÉCIÉ)
+  // Les options de produit sont désormais dérivées automatiquement de `products`.
+  // Cette méthode est conservée pour compatibilité mais ne fait rien.
+  static async addProductOption() {
+    throw new Error('addProductOption n\'est plus supportée avec des filtres dynamiques');
   }
 
-  // Ajouter une nouvelle option de filtre pour une localité
-  static async addLocalityOption(localityId, displayName, sortOrder = 999) {
-    try {
-      const result = await db.run(
-        `INSERT INTO filter_locality_options (locality_id, display_name, is_active, sort_order)
-         VALUES (?, ?, 1, ?)`,
-        [localityId, displayName, sortOrder]
-      );
-
-      return result.lastID;
-    } catch (error) {
-      throw new Error(`Erreur lors de l'ajout de l'option de localité: ${error.message}`);
-    }
+  // Ajouter une nouvelle option de filtre pour une localité (DÉPRÉCIÉ)
+  // Les options de localité sont désormais dérivées automatiquement de `localities`.
+  // Cette méthode est conservée pour compatibilité mais ne fait rien.
+  static async addLocalityOption() {
+    throw new Error('addLocalityOption n\'est plus supportée avec des filtres dynamiques');
   }
 
   // Supprimer une option de filtre
   static async deleteOption(table, id) {
     try {
-      const validTables = [
-        'filter_product_options',
-        'filter_locality_options',
-        'filter_region_options',
-        'filter_category_options',
-        'filter_period_options'
-      ];
+      const validTables = ['filter_period_options'];
 
       if (!validTables.includes(table)) {
         throw new Error('Table non valide');

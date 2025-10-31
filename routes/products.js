@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 const ProductPrice = require('../models/ProductPrice');
+const { requireAdmin, requireRole } = require('../middleware/roleAuth');
 
 // GET /api/products - Récupérer tous les produits
 router.get('/', async (req, res) => {
@@ -105,9 +106,24 @@ router.post('/search/advanced', async (req, res) => {
 });
 
 // POST /api/products - Créer un nouveau produit
-router.post('/', async (req, res) => {
+// Création autorisée aux utilisateurs (ajout depuis le formulaire de soumission)
+router.post('/', requireRole('user'), async (req, res) => {
   try {
-    const productId = await Product.create(req.body);
+    const { name, category_id } = req.body;
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Le nom du produit est requis' });
+    }
+    const normalizedName = String(name).trim().toLowerCase();
+    // Vérifier doublon par nom+catégorie (insensible casse/espaces)
+    const existing = await Product.searchByName(name, 1000);
+    if (existing && existing.length > 0) {
+      const match = existing.find(p => String(p.name).trim().toLowerCase() === normalizedName && (category_id ? p.category_id == category_id : true));
+      if (match) {
+        return res.status(409).json({ success: false, message: 'Produit déjà existant dans cette catégorie' });
+      }
+    }
+
+    const productId = await Product.create({ ...req.body, name: String(name).trim() });
     res.status(201).json({ 
       success: true, 
       message: 'Produit créé avec succès', 
@@ -119,7 +135,8 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/products/:id - Mettre à jour un produit
-router.put('/:id', async (req, res) => {
+// Mise à jour réservée aux admins
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const updated = await Product.update(req.params.id, req.body);
     if (!updated) {
@@ -132,7 +149,8 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/products/:id - Supprimer un produit
-router.delete('/:id', async (req, res) => {
+// Suppression réservée aux admins
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const deleted = await Product.delete(req.params.id);
     if (!deleted) {

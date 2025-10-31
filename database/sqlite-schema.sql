@@ -42,6 +42,13 @@ CREATE TABLE IF NOT EXISTS units (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Table des langues de communication
+CREATE TABLE IF NOT EXISTS languages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Table des régions
 CREATE TABLE IF NOT EXISTS regions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,6 +81,13 @@ CREATE TABLE IF NOT EXISTS prices (
     validated_by TEXT,
     validated_at DATETIME,
     comment TEXT,
+    latitude REAL,
+    longitude REAL,
+    source TEXT,
+    source_type TEXT,
+    source_contact_name TEXT,
+    source_contact_phone TEXT,
+    source_contact_relation TEXT,
     rejection_reason TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -123,49 +137,17 @@ CREATE INDEX IF NOT EXISTS idx_product_prices_product_price ON product_prices(pr
 
 -- Tables d'options pour les filtres (noms en anglais)
 
--- Table des options de produits pour les filtres
-CREATE TABLE IF NOT EXISTS filter_product_options (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    display_name TEXT NOT NULL,
-    is_active INTEGER DEFAULT 1,
-    sort_order INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-);
+-- Table des options de produits pour les filtres (SUPPRIMÉE)
+-- Les filtres produits sont désormais dérivés directement de la table `products`.
 
--- Table des options de localités pour les filtres
-CREATE TABLE IF NOT EXISTS filter_locality_options (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    locality_id INTEGER NOT NULL,
-    display_name TEXT NOT NULL,
-    is_active INTEGER DEFAULT 1,
-    sort_order INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (locality_id) REFERENCES localities(id) ON DELETE CASCADE
-);
+-- Table des options de localités pour les filtres (SUPPRIMÉE)
+-- Les filtres localités sont désormais dérivés directement de la table `localities`.
 
--- Table des options de régions pour les filtres
-CREATE TABLE IF NOT EXISTS filter_region_options (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    region_id INTEGER NOT NULL,
-    display_name TEXT NOT NULL,
-    is_active INTEGER DEFAULT 1,
-    sort_order INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (region_id) REFERENCES regions(id) ON DELETE CASCADE
-);
+-- Table des options de régions pour les filtres (SUPPRIMÉE)
+-- Les filtres régions sont désormais dérivés directement de la table `regions`.
 
--- Table des options de catégories pour les filtres
-CREATE TABLE IF NOT EXISTS filter_category_options (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id INTEGER NOT NULL,
-    display_name TEXT NOT NULL,
-    is_active INTEGER DEFAULT 1,
-    sort_order INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES product_categories(id) ON DELETE CASCADE
-);
+-- Table des options de catégories pour les filtres (SUPPRIMÉE)
+-- Les filtres catégories sont désormais dérivés directement de la table `product_categories`.
 
 -- Table des options de périodes pour les filtres
 CREATE TABLE IF NOT EXISTS filter_period_options (
@@ -230,8 +212,7 @@ CREATE INDEX IF NOT EXISTS idx_prices_validated_by ON prices(validated_by);
 CREATE INDEX IF NOT EXISTS idx_localities_coordinates ON localities(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 
--- Index pour les tables d'options
-CREATE INDEX IF NOT EXISTS idx_filter_product_options_active ON filter_product_options(is_active, sort_order);
+-- Index pour les tables d'options supprimé (les filtres produits lisent directement `products`).
 
 -- ==========================================
 -- Table des fournisseurs et liaisons aux prix
@@ -324,9 +305,7 @@ CREATE TABLE IF NOT EXISTS supplier_product_availability_history (
 CREATE INDEX IF NOT EXISTS idx_supplier_product_avail_hist_supplier ON supplier_product_availability_history(supplier_id);
 CREATE INDEX IF NOT EXISTS idx_supplier_product_avail_hist_product ON supplier_product_availability_history(product_id);
 CREATE INDEX IF NOT EXISTS idx_supplier_product_avail_hist_date ON supplier_product_availability_history(date);
-CREATE INDEX IF NOT EXISTS idx_filter_locality_options_active ON filter_locality_options(is_active, sort_order);
-CREATE INDEX IF NOT EXISTS idx_filter_region_options_active ON filter_region_options(is_active, sort_order);
-CREATE INDEX IF NOT EXISTS idx_filter_category_options_active ON filter_category_options(is_active, sort_order);
+-- Index supprimés: filtres localité/region/catégorie dérivés des tables de base.
 CREATE INDEX IF NOT EXISTS idx_filter_period_options_active ON filter_period_options(is_active, sort_order);
 
 -- Index pour la table des magasins
@@ -353,6 +332,8 @@ CREATE TABLE IF NOT EXISTS contribution_requests (
     has_internet INTEGER DEFAULT 1 CHECK (has_internet IN (0,1)),
     submission_method TEXT DEFAULT 'web' CHECK (submission_method IN ('web','mobile','sms','whatsapp','offline')),
     contact_phone TEXT,
+    has_whatsapp INTEGER DEFAULT 0 CHECK (has_whatsapp IN (0,1)),
+    experience_level TEXT CHECK (experience_level IN ('debutant','intermediaire','expert')),
     notes TEXT,
     reviewed_by TEXT,
     rejection_reason TEXT,
@@ -424,3 +405,16 @@ CREATE INDEX IF NOT EXISTS idx_offers_active ON offers(is_active);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_offer ON subscriptions(offer_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+
+-- Table des préférences utilisateur pour la collecte
+CREATE TABLE IF NOT EXISTS user_preferences (
+    user_id TEXT PRIMARY KEY,
+    has_smartphone_default INTEGER DEFAULT 1 CHECK (has_smartphone_default IN (0,1)),
+    has_internet_default INTEGER DEFAULT 1 CHECK (has_internet_default IN (0,1)),
+    preferred_method TEXT DEFAULT 'web' CHECK (preferred_method IN ('web','offline','whatsapp','sms','mobile')),
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id);

@@ -76,15 +76,20 @@ router.put('/:type/:id/status', requireAdmin, async (req, res) => {
       });
     }
 
-    const validTypes = ['product', 'locality', 'region', 'category', 'period'];
+    const validTypes = ['period'];
     if (!validTypes.includes(type)) {
       return res.status(400).json({
         success: false,
-        message: 'Type d\'option invalide'
+        message: 'Type d\'option invalide: seul "period" est supporté'
       });
     }
 
-    await FilterOptions.updateOptionStatus(type, id, is_active);
+    const table = 'filter_period_options';
+
+    const ok = await FilterOptions.updateOptionStatus(table, id, is_active);
+    if (!ok) {
+      return res.status(404).json({ success: false, message: 'Option non trouvée' });
+    }
     res.json({ success: true, message: 'Statut mis à jour avec succès' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -92,65 +97,32 @@ router.put('/:type/:id/status', requireAdmin, async (req, res) => {
 });
 
 // POST /api/filter-options/products - Ajouter une nouvelle option de produit (admin)
-router.post('/products', requireAdmin, async (req, res) => {
-  try {
-    const { product_id, display_name, sort_order } = req.body;
-
-    if (!product_id || !display_name) {
-      return res.status(400).json({
-        success: false,
-        message: 'L\'ID du produit et le nom d\'affichage sont requis'
-      });
-    }
-
-    const optionId = await FilterOptions.addProductOption(product_id, display_name, sort_order);
-    res.status(201).json({ 
-      success: true, 
-      message: 'Option de produit ajoutée avec succès',
-      data: { id: optionId }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+// Endpoint POST /api/filter-options/products supprimé:
+// Les options produits sont désormais dérivées dynamiquement de la table `products`.
 
 // POST /api/filter-options/localities - Ajouter une nouvelle option de localité (admin)
-router.post('/localities', requireAdmin, async (req, res) => {
-  try {
-    const { locality_id, display_name, sort_order } = req.body;
-
-    if (!locality_id || !display_name) {
-      return res.status(400).json({
-        success: false,
-        message: 'L\'ID de la localité et le nom d\'affichage sont requis'
-      });
-    }
-
-    const optionId = await FilterOptions.addLocalityOption(locality_id, display_name, sort_order);
-    res.status(201).json({ 
-      success: true, 
-      message: 'Option de localité ajoutée avec succès',
-      data: { id: optionId }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+// Endpoint POST /api/filter-options/localities supprimé:
+// Les options localités sont désormais dérivées dynamiquement de la table `localities`.
 
 // DELETE /api/filter-options/:type/:id - Supprimer une option de filtre (admin)
 router.delete('/:type/:id', requireAdmin, async (req, res) => {
   try {
     const { type, id } = req.params;
 
-    const validTypes = ['product', 'locality', 'region', 'category', 'period'];
+    const validTypes = ['period'];
     if (!validTypes.includes(type)) {
       return res.status(400).json({
         success: false,
-        message: 'Type d\'option invalide'
+        message: 'Type d\'option invalide: seul "period" est supporté'
       });
     }
 
-    await FilterOptions.deleteOption(type, id);
+    const table = 'filter_period_options';
+
+    const ok = await FilterOptions.deleteOption(table, id);
+    if (!ok) {
+      return res.status(404).json({ success: false, message: 'Option non trouvée' });
+    }
     res.json({ success: true, message: 'Option supprimée avec succès' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

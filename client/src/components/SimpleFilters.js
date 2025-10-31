@@ -307,6 +307,22 @@ const SimpleFilters = ({ filters, onFiltersChange, onReset }) => {
   const activeFilters = getActiveFilters();
   const hasActiveFilters = activeFilters.length > 0;
 
+  // Enrichir le filtre catégorie si seul l'ID est présent (pré-remplissage via URL)
+  useEffect(() => {
+    if (!categoriesLoading && !categoriesErrorFlag) {
+      if (localFilters.categories && localFilters.categories.length > 0) {
+        const cat = localFilters.categories[0];
+        if (cat && cat.id && !cat.name) {
+          const selectedCategory = categories.find(c => c.id === parseInt(cat.id));
+          if (selectedCategory) {
+            handleFilterChange('categories', [selectedCategory]);
+          }
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoriesLoading, categoriesErrorFlag, categories, localFilters.categories]);
+
   return (
     <FiltersContainer>
       <FiltersHeader>

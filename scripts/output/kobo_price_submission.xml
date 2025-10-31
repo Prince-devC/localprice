@@ -1,0 +1,830 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms" xmlns:odk="http://www.opendatakit.org/xforms">
+  <h:head>
+    <h:title>Soumettre un prix de produit agricole</h:title>
+    <model odk:xforms-version="1.0.0">
+      <instance>
+        <data id="price_submission" version="v1">
+          <intro_note/>
+          <submitted_username/>
+          <submitted_user_id/>
+          <kobo_setup_note/>
+          <category_id/>
+          <new_category_name/>
+          <new_category_type/>
+          <product_id/>
+          <new_product_name/>
+          <locality_id/>
+          <sub_locality/>
+          <price/>
+          <unit_id/>
+          <new_unit_name/>
+          <new_unit_symbol/>
+          <date/>
+          <comment/>
+          <source/>
+          <source_type/>
+          <source_contact_name/>
+          <source_contact_phone/>
+          <source_contact_relation/>
+          <gps/>
+          <source_language_id/>
+          <new_language_name/>
+          <sync_create_category/>
+          <sync_create_product/>
+          <sync_create_unit/>
+          <sync_create_language/>
+          <submission_source/>
+          <meta>
+            <instanceID/>
+          </meta>
+        </data>
+      </instance>
+      <instance id="categories">
+        <root>
+          <item>
+            <name>1</name>
+            <label>Céréales (brut)</label>
+          </item>
+          <item>
+            <name>5</name>
+            <label>Fruits (brut)</label>
+          </item>
+          <item>
+            <name>4</name>
+            <label>Légumes (brut)</label>
+          </item>
+          <item>
+            <name>3</name>
+            <label>Légumineuses (brut)</label>
+          </item>
+          <item>
+            <name>6</name>
+            <label>Produits transformés (transforme)</label>
+          </item>
+          <item>
+            <name>2</name>
+            <label>Tubercules (brut)</label>
+          </item>
+          <item>
+            <name>other</name>
+            <label>Autre (spécifier)</label>
+          </item>
+        </root>
+      </instance>
+      <instance id="products">
+        <root>
+          <item>
+            <name>18</name>
+            <label>Ananas</label>
+            <category_id>5</category_id>
+          </item>
+          <item>
+            <name>10</name>
+            <label>Arachide</label>
+            <category_id>3</category_id>
+          </item>
+          <item>
+            <name>22</name>
+            <label>Avocat</label>
+            <category_id>5</category_id>
+          </item>
+          <item>
+            <name>21</name>
+            <label>Banane</label>
+            <category_id>5</category_id>
+          </item>
+          <item>
+            <name>25</name>
+            <label>Farine de maïs</label>
+            <category_id>6</category_id>
+          </item>
+          <item>
+            <name>23</name>
+            <label>Gari</label>
+            <category_id>6</category_id>
+          </item>
+          <item>
+            <name>16</name>
+            <label>Gombo</label>
+            <category_id>4</category_id>
+          </item>
+          <item>
+            <name>26</name>
+            <label>Huile de palme</label>
+            <category_id>6</category_id>
+          </item>
+          <item>
+            <name>6</name>
+            <label>Igname</label>
+            <category_id>2</category_id>
+          </item>
+          <item>
+            <name>19</name>
+            <label>Mangue</label>
+            <category_id>5</category_id>
+          </item>
+          <item>
+            <name>7</name>
+            <label>Manioc</label>
+            <category_id>2</category_id>
+          </item>
+          <item>
+            <name>1</name>
+            <label>Maïs</label>
+            <category_id>1</category_id>
+          </item>
+          <item>
+            <name>4</name>
+            <label>Mil</label>
+            <category_id>1</category_id>
+          </item>
+          <item>
+            <name>9</name>
+            <label>Niébé</label>
+            <category_id>3</category_id>
+          </item>
+          <item>
+            <name>14</name>
+            <label>Oignon</label>
+            <category_id>4</category_id>
+          </item>
+          <item>
+            <name>20</name>
+            <label>Orange</label>
+            <category_id>5</category_id>
+          </item>
+          <item>
+            <name>8</name>
+            <label>Patate douce</label>
+            <category_id>2</category_id>
+          </item>
+          <item>
+            <name>15</name>
+            <label>Piment</label>
+            <category_id>4</category_id>
+          </item>
+          <item>
+            <name>2</name>
+            <label>Riz paddy</label>
+            <category_id>1</category_id>
+          </item>
+          <item>
+            <name>3</name>
+            <label>Riz étuvé</label>
+            <category_id>1</category_id>
+          </item>
+          <item>
+            <name>11</name>
+            <label>Soja</label>
+            <category_id>3</category_id>
+          </item>
+          <item>
+            <name>5</name>
+            <label>Sorgho</label>
+            <category_id>1</category_id>
+          </item>
+          <item>
+            <name>24</name>
+            <label>Tapioca</label>
+            <category_id>6</category_id>
+          </item>
+          <item>
+            <name>13</name>
+            <label>Tomate</label>
+            <category_id>4</category_id>
+          </item>
+          <item>
+            <name>12</name>
+            <label>Voandzou</label>
+            <category_id>3</category_id>
+          </item>
+          <item>
+            <name>17</name>
+            <label>Épinard</label>
+            <category_id>4</category_id>
+          </item>
+          <item>
+            <name>other_1</name>
+            <label>Autre (spécifier) — Céréales</label>
+            <category_id>1</category_id>
+          </item>
+          <item>
+            <name>other_5</name>
+            <label>Autre (spécifier) — Fruits</label>
+            <category_id>5</category_id>
+          </item>
+          <item>
+            <name>other_4</name>
+            <label>Autre (spécifier) — Légumes</label>
+            <category_id>4</category_id>
+          </item>
+          <item>
+            <name>other_3</name>
+            <label>Autre (spécifier) — Légumineuses</label>
+            <category_id>3</category_id>
+          </item>
+          <item>
+            <name>other_6</name>
+            <label>Autre (spécifier) — Produits transformés</label>
+            <category_id>6</category_id>
+          </item>
+          <item>
+            <name>other_2</name>
+            <label>Autre (spécifier) — Tubercules</label>
+            <category_id>2</category_id>
+          </item>
+          <item>
+            <name>other</name>
+            <label>Autre (spécifier) — Autre</label>
+            <category_id>other</category_id>
+          </item>
+        </root>
+      </instance>
+      <instance id="localities">
+        <root>
+          <item>
+            <name>67</name>
+            <label>Abomey</label>
+          </item>
+          <item>
+            <name>16</name>
+            <label>Abomey-Calavi</label>
+          </item>
+          <item>
+            <name>62</name>
+            <label>Adja-Ouèrè</label>
+          </item>
+          <item>
+            <name>53</name>
+            <label>Adjarra</label>
+          </item>
+          <item>
+            <name>54</name>
+            <label>Adjohoun</label>
+          </item>
+          <item>
+            <name>68</name>
+            <label>Agbangnizoun</label>
+          </item>
+          <item>
+            <name>55</name>
+            <label>Aguégués</label>
+          </item>
+          <item>
+            <name>56</name>
+            <label>Akpro-Missérété</label>
+          </item>
+          <item>
+            <name>17</name>
+            <label>Allada</label>
+          </item>
+          <item>
+            <name>36</name>
+            <label>Aplahoué</label>
+          </item>
+          <item>
+            <name>47</name>
+            <label>Athiémé</label>
+          </item>
+          <item>
+            <name>57</name>
+            <label>Avrankou</label>
+          </item>
+          <item>
+            <name>1</name>
+            <label>Banikoara</label>
+          </item>
+          <item>
+            <name>30</name>
+            <label>Bantè</label>
+          </item>
+          <item>
+            <name>42</name>
+            <label>Bassila</label>
+          </item>
+          <item>
+            <name>24</name>
+            <label>Bembèrèkè</label>
+          </item>
+          <item>
+            <name>69</name>
+            <label>Bohicon</label>
+          </item>
+          <item>
+            <name>58</name>
+            <label>Bonou</label>
+          </item>
+          <item>
+            <name>48</name>
+            <label>Bopa</label>
+          </item>
+          <item>
+            <name>7</name>
+            <label>Boukoumbé</label>
+          </item>
+          <item>
+            <name>8</name>
+            <label>Cobly</label>
+          </item>
+          <item>
+            <name>49</name>
+            <label>Comè</label>
+          </item>
+          <item>
+            <name>43</name>
+            <label>Copargo</label>
+          </item>
+          <item>
+            <name>46</name>
+            <label>Cotonou</label>
+          </item>
+          <item>
+            <name>70</name>
+            <label>Cové</label>
+          </item>
+          <item>
+            <name>59</name>
+            <label>Dangbo</label>
+          </item>
+          <item>
+            <name>31</name>
+            <label>Dassa-Zoumè</label>
+          </item>
+          <item>
+            <name>37</name>
+            <label>Djakotomey</label>
+          </item>
+          <item>
+            <name>71</name>
+            <label>Djidja</label>
+          </item>
+          <item>
+            <name>44</name>
+            <label>Djougou</label>
+          </item>
+          <item>
+            <name>38</name>
+            <label>Dogbo</label>
+          </item>
+          <item>
+            <name>32</name>
+            <label>Glazoué</label>
+          </item>
+          <item>
+            <name>2</name>
+            <label>Gogounou</label>
+          </item>
+          <item>
+            <name>50</name>
+            <label>Grand-Popo</label>
+          </item>
+          <item>
+            <name>51</name>
+            <label>Houéyogbé</label>
+          </item>
+          <item>
+            <name>63</name>
+            <label>Ifangni</label>
+          </item>
+          <item>
+            <name>25</name>
+            <label>Kalale</label>
+          </item>
+          <item>
+            <name>3</name>
+            <label>Kandi</label>
+          </item>
+          <item>
+            <name>4</name>
+            <label>Karimama</label>
+          </item>
+          <item>
+            <name>39</name>
+            <label>Klouékanmè</label>
+          </item>
+          <item>
+            <name>10</name>
+            <label>Kouandé</label>
+          </item>
+          <item>
+            <name>18</name>
+            <label>Kpomassè</label>
+          </item>
+          <item>
+            <name>9</name>
+            <label>Kérou</label>
+          </item>
+          <item>
+            <name>64</name>
+            <label>Kétou</label>
+          </item>
+          <item>
+            <name>40</name>
+            <label>Lalo</label>
+          </item>
+          <item>
+            <name>52</name>
+            <label>Lokossa</label>
+          </item>
+          <item>
+            <name>5</name>
+            <label>Malanville</label>
+          </item>
+          <item>
+            <name>11</name>
+            <label>Matéri</label>
+          </item>
+          <item>
+            <name>12</name>
+            <label>Natitingou</label>
+          </item>
+          <item>
+            <name>26</name>
+            <label>Nikki</label>
+          </item>
+          <item>
+            <name>45</name>
+            <label>Ouaké</label>
+          </item>
+          <item>
+            <name>19</name>
+            <label>Ouidah</label>
+          </item>
+          <item>
+            <name>72</name>
+            <label>Ouinhi</label>
+          </item>
+          <item>
+            <name>33</name>
+            <label>Ouèssè</label>
+          </item>
+          <item>
+            <name>27</name>
+            <label>Parakou</label>
+          </item>
+          <item>
+            <name>13</name>
+            <label>Pehunco</label>
+          </item>
+          <item>
+            <name>65</name>
+            <label>Pobè</label>
+          </item>
+          <item>
+            <name>60</name>
+            <label>Porto-Novo</label>
+          </item>
+          <item>
+            <name>28</name>
+            <label>Pèrèrè</label>
+          </item>
+          <item>
+            <name>66</name>
+            <label>Sakété</label>
+          </item>
+          <item>
+            <name>34</name>
+            <label>Savalou</label>
+          </item>
+          <item>
+            <name>35</name>
+            <label>Savè</label>
+          </item>
+          <item>
+            <name>29</name>
+            <label>Sinendé</label>
+          </item>
+          <item>
+            <name>61</name>
+            <label>Sèmè-Kpodji</label>
+          </item>
+          <item>
+            <name>6</name>
+            <label>Ségbana</label>
+          </item>
+          <item>
+            <name>20</name>
+            <label>Sô-Ava</label>
+          </item>
+          <item>
+            <name>14</name>
+            <label>Tanguiéta</label>
+          </item>
+          <item>
+            <name>21</name>
+            <label>Toffo</label>
+          </item>
+          <item>
+            <name>22</name>
+            <label>Tori-Bossito</label>
+          </item>
+          <item>
+            <name>15</name>
+            <label>Toucountouna</label>
+          </item>
+          <item>
+            <name>41</name>
+            <label>Toviklin</label>
+          </item>
+          <item>
+            <name>73</name>
+            <label>Za-Kpota</label>
+          </item>
+          <item>
+            <name>74</name>
+            <label>Zangnanado</label>
+          </item>
+          <item>
+            <name>75</name>
+            <label>Zogbodomey</label>
+          </item>
+          <item>
+            <name>23</name>
+            <label>Zè</label>
+          </item>
+        </root>
+      </instance>
+      <instance id="units">
+        <root>
+          <item>
+            <name>9</name>
+            <label>Boîte (boîte)</label>
+            <symbol>boîte</symbol>
+          </item>
+          <item>
+            <name>2</name>
+            <label>Gramme (g)</label>
+            <symbol>g</symbol>
+          </item>
+          <item>
+            <name>1</name>
+            <label>Kilogramme (kg)</label>
+            <symbol>kg</symbol>
+          </item>
+          <item>
+            <name>3</name>
+            <label>Litre (l)</label>
+            <symbol>l</symbol>
+          </item>
+          <item>
+            <name>10</name>
+            <label>Paquet (paquet)</label>
+            <symbol>paquet</symbol>
+          </item>
+          <item>
+            <name>7</name>
+            <label>Sac de 100kg (sac 100kg)</label>
+            <symbol>sac 100kg</symbol>
+          </item>
+          <item>
+            <name>4</name>
+            <label>Sac de 10kg (sac 10kg)</label>
+            <symbol>sac 10kg</symbol>
+          </item>
+          <item>
+            <name>5</name>
+            <label>Sac de 20kg (sac 20kg)</label>
+            <symbol>sac 20kg</symbol>
+          </item>
+          <item>
+            <name>6</name>
+            <label>Sac de 50kg (sac 50kg)</label>
+            <symbol>sac 50kg</symbol>
+          </item>
+          <item>
+            <name>8</name>
+            <label>Tohoungodo (tohoungodo)</label>
+            <symbol>tohoungodo</symbol>
+          </item>
+          <item>
+            <name>11</name>
+            <label>Unité (unité)</label>
+            <symbol>unité</symbol>
+          </item>
+          <item>
+            <name>other</name>
+            <label>Autre (spécifier)</label>
+          </item>
+        </root>
+      </instance>
+      <instance id="languages">
+        <root>
+          <item>
+            <name>4</name>
+            <label>Bariba</label>
+          </item>
+          <item>
+            <name>2</name>
+            <label>Fon</label>
+          </item>
+          <item>
+            <name>1</name>
+            <label>Français</label>
+          </item>
+          <item>
+            <name>3</name>
+            <label>Mina</label>
+          </item>
+          <item>
+            <name>other</name>
+            <label>Autre (spécifier)</label>
+          </item>
+        </root>
+      </instance>
+      <instance id="source_type">
+        <root>
+          <item>
+            <name>producteur</name>
+            <label>producteur</label>
+          </item>
+          <item>
+            <name>transformateur</name>
+            <label>transformateur</label>
+          </item>
+          <item>
+            <name>cooperative</name>
+            <label>cooperative</label>
+          </item>
+          <item>
+            <name>grossiste</name>
+            <label>grossiste</label>
+          </item>
+          <item>
+            <name>commercant</name>
+            <label>commercant</label>
+          </item>
+          <item>
+            <name>autre</name>
+            <label>autre</label>
+          </item>
+        </root>
+      </instance>
+      <instance id="source_relation">
+        <root>
+          <item>
+            <name>moi</name>
+            <label>moi</label>
+          </item>
+          <item>
+            <name>proche</name>
+            <label>proche</label>
+          </item>
+          <item>
+            <name>autre</name>
+            <label>autre</label>
+          </item>
+        </root>
+      </instance>
+      <bind nodeset="/data/intro_note" readonly="true()" type="string"/>
+      <bind nodeset="/data/submitted_username" type="string" required="true()" constraint="regex(., '^[A-Za-z0-9._-]{3,32}$')" jr:constraintMsg="Utilisez 3–32 caractères: lettres, chiffres, . _ -"/>
+      <bind nodeset="/data/submitted_user_id" type="string" constraint="string-length(.) = 0 or string-length(.) &gt;= 8" jr:constraintMsg="Facultatif, mais recommandé pour améliorer la fiabilité de l'association compte-soumissions."/>
+      <bind nodeset="/data/kobo_setup_note" readonly="true()" type="string"/>
+      <bind nodeset="/data/category_id" type="string" required="true()"/>
+      <bind nodeset="/data/new_category_name" type="string" required="true()" constraint="string-length(.) &gt;= 2" jr:constraintMsg="2 caractères minimum" relevant=" /data/category_id  = 'other'"/>
+      <bind nodeset="/data/new_category_type" type="string" required="true()" constraint="string-length(.) &gt;= 2" jr:constraintMsg="2 caractères minimum" relevant=" /data/category_id  = 'other'"/>
+      <bind nodeset="/data/product_id" type="string" required="true()" relevant=" /data/category_id  != ''"/>
+      <bind nodeset="/data/new_product_name" type="string" required="true()" constraint="string-length(.) &gt;= 2" jr:constraintMsg="2 caractères minimum" relevant=" /data/product_id  = 'other' or starts-with( /data/product_id , 'other_') or  /data/category_id  = 'other'"/>
+      <bind nodeset="/data/locality_id" type="string" required="true()"/>
+      <bind nodeset="/data/sub_locality" type="string"/>
+      <bind nodeset="/data/price" type="decimal" required="true()" constraint=". &gt;= 0" jr:constraintMsg="Le prix doit être positif"/>
+      <bind nodeset="/data/unit_id" type="string" required="true()"/>
+      <bind nodeset="/data/new_unit_name" type="string" required="true()" constraint="string-length(.) &gt;= 1" jr:constraintMsg="Indiquez l'unité (ex: kg, l, unité)" relevant=" /data/unit_id  = 'other'"/>
+      <bind nodeset="/data/new_unit_symbol" type="string" relevant=" /data/unit_id  = 'other'"/>
+      <bind nodeset="/data/date" type="date" required="true()" constraint=". &lt;= today()" jr:constraintMsg="La date ne peut pas être future"/>
+      <bind nodeset="/data/comment" type="string" constraint="string-length(.) &lt;= 500" jr:constraintMsg="500 caractères max"/>
+      <bind nodeset="/data/source" type="string" required="true()" jr:constraintMsg="La source est requise pour assurer la fiabilité"/>
+      <bind nodeset="/data/source_type" type="string" required="true()" jr:constraintMsg="Sélectionnez le type de source"/>
+      <bind nodeset="/data/source_contact_name" type="string"/>
+      <bind nodeset="/data/source_contact_phone" type="string" constraint="( /data/source_contact_phone  = '' or regex( /data/source_contact_phone , '^01\d{8}$'))" jr:constraintMsg="Format attendu: 01XXXXXXXX"/>
+      <bind nodeset="/data/source_contact_relation" type="string"/>
+      <bind nodeset="/data/gps" type="geopoint"/>
+      <bind nodeset="/data/source_language_id" type="string"/>
+      <bind nodeset="/data/new_language_name" type="string" required="true()" constraint="string-length(.) &gt;= 2" jr:constraintMsg="2 caractères minimum" relevant=" /data/source_language_id  = 'other'"/>
+      <bind nodeset="/data/sync_create_category" type="string" calculate="if(( /data/category_id  = 'other') and string-length( /data/new_category_name ) &gt; 0 and string-length( /data/new_category_type ) &gt; 0, 1, 0)"/>
+      <bind nodeset="/data/sync_create_product" type="string" calculate="if(((  /data/product_id  = 'other') or starts-with( /data/product_id , 'other_') or ( /data/category_id  = 'other')) and string-length( /data/new_product_name ) &gt; 0, 1, 0)"/>
+      <bind nodeset="/data/sync_create_unit" type="string" calculate="if(( /data/unit_id  = 'other') and string-length( /data/new_unit_name ) &gt; 0, 1, 0)"/>
+      <bind nodeset="/data/sync_create_language" type="string" calculate="if(( /data/source_language_id  = 'other') and string-length( /data/new_language_name ) &gt; 0, 1, 0)"/>
+      <bind nodeset="/data/submission_source" type="string" calculate="'kobo'"/>
+      <bind nodeset="/data/meta/instanceID" type="string" readonly="true()" jr:preload="uid"/>
+    </model>
+  </h:head>
+  <h:body>
+    <input ref="/data/intro_note">
+      <label>Formulaire réservé aux contributeurs/autorisés. Note: au début du formulaire Kobo, renseignez votre nom d'utilisateur Lokali (ex: amitystokes-63hws7) dans le champ "Nom d'utilisateur". Cela permet de lier vos soumissions à votre compte. Pour plus de fiabilité, renseignez également votre identifiant Supabase (ID).</label>
+    </input>
+    <input ref="/data/submitted_username">
+      <label>Votre nom d'utilisateur Lokali</label>
+      <hint>Saisissez votre nom d'utilisateur Lokali (ex: amitystokes-63hws7).</hint>
+    </input>
+    <input ref="/data/submitted_user_id">
+      <label>Votre identifiant Supabase (ID)</label>
+      <hint>Renseignez votre identifiant Supabase (ID) pour plus de fiabilité.</hint>
+    </input>
+    <input ref="/data/kobo_setup_note">
+      <label>Configurez KoboCollect/KoboToolbox avec votre compte. Pour plus de fiabilité, renseignez également votre identifiant Supabase (ID).</label>
+    </input>
+    <select1 ref="/data/category_id">
+      <label>Catégorie de produit</label>
+      <itemset nodeset="instance('categories')/root/item">
+        <value ref="name"/>
+        <label ref="label"/>
+      </itemset>
+    </select1>
+    <input ref="/data/new_category_name">
+      <label>Nouvelle catégorie</label>
+      <hint>Écrivez le nom exact.</hint>
+    </input>
+    <input ref="/data/new_category_type">
+      <label>Type de la catégorie</label>
+      <hint>Ex: racine, fruit, légume, céréale…</hint>
+    </input>
+    <select1 ref="/data/product_id">
+      <label>Produit</label>
+      <itemset nodeset="instance('products')/root/item[category_id= /data/category_id ]">
+        <value ref="name"/>
+        <label ref="label"/>
+      </itemset>
+    </select1>
+    <input ref="/data/new_product_name">
+      <label>Nouveau produit</label>
+      <hint>Écrivez le nom exact.</hint>
+    </input>
+    <select1 ref="/data/locality_id">
+      <label>Commune / Localité</label>
+      <itemset nodeset="instance('localities')/root/item">
+        <value ref="name"/>
+        <label ref="label"/>
+      </itemset>
+    </select1>
+    <input ref="/data/sub_locality">
+      <label>Village / Quartier / Hameau (optionnel)</label>
+      <hint>Décrivez la sous-localité précise si utile.</hint>
+    </input>
+    <input ref="/data/price">
+      <label>Prix (FCFA)</label>
+    </input>
+    <select1 ref="/data/unit_id">
+      <label>Unité</label>
+      <itemset nodeset="instance('units')/root/item">
+        <value ref="name"/>
+        <label ref="label"/>
+      </itemset>
+    </select1>
+    <input ref="/data/new_unit_name">
+      <label>Nouvelle unité</label>
+      <hint>Nom d'unité exact.</hint>
+    </input>
+    <input ref="/data/new_unit_symbol">
+      <label>Symbole de l'unité (optionnel)</label>
+      <hint>Ex: kg, l, t, u.</hint>
+    </input>
+    <input ref="/data/date">
+      <label>Date</label>
+    </input>
+    <input ref="/data/comment">
+      <label>Commentaire (optionnel)</label>
+      <hint>Informations supplémentaires sur ce prix...</hint>
+    </input>
+    <input ref="/data/source">
+      <label>Nom de la source</label>
+      <hint>Ex: K. Diarra, marché X</hint>
+    </input>
+    <select1 ref="/data/source_type">
+      <label>Type de source</label>
+      <itemset nodeset="instance('source_type')/root/item">
+        <value ref="name"/>
+        <label ref="label"/>
+      </itemset>
+    </select1>
+    <input ref="/data/source_contact_name">
+      <label>Nom du contact (optionnel)</label>
+    </input>
+    <input ref="/data/source_contact_phone">
+      <label>Téléphone du contact (01XXXXXXXX)</label>
+    </input>
+    <select1 ref="/data/source_contact_relation">
+      <label>Lien du contact (optionnel)</label>
+      <itemset nodeset="instance('source_relation')/root/item">
+        <value ref="name"/>
+        <label ref="label"/>
+      </itemset>
+    </select1>
+    <input ref="/data/gps" appearance="maps">
+      <label>Géolocalisation (idéalement ≤ 10 m)</label>
+      <hint>Activez la haute précision GPS et restez à ciel ouvert.</hint>
+    </input>
+    <select1 ref="/data/source_language_id">
+      <label>Langue de communication avec la source</label>
+      <hint>Par défaut: Français ou Fon si disponibles.</hint>
+      <itemset nodeset="instance('languages')/root/item">
+        <value ref="name"/>
+        <label ref="label"/>
+      </itemset>
+    </select1>
+    <input ref="/data/new_language_name">
+      <label>Nouvelle langue</label>
+      <hint>Nom de langue exact.</hint>
+    </input>
+  </h:body>
+</h:html>

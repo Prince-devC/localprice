@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/connection');
+const { requireAdmin } = require('../middleware/roleAuth');
 
 // GET /api/product_categories - Récupérer toutes les catégories
 router.get('/', async (req, res) => {
@@ -26,7 +27,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/product_categories - Créer une nouvelle catégorie
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { name, description } = req.body;
     
@@ -50,7 +51,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/product_categories/:id - Mettre à jour une catégorie
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { name, description } = req.body;
     
@@ -74,7 +75,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/product_categories/:id - Supprimer une catégorie
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const [result] = await db.execute('DELETE FROM product_categories WHERE id = ?', [req.params.id]);
     

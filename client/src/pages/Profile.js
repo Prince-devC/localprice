@@ -151,7 +151,7 @@ const InfoValue = styled.span`
 `;
 
 const Profile = () => {
-  const { user, updateProfile, changePassword, loading } = useAuth();
+  const { user, updateProfile, changePassword, loading, roles } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     username: (user?.user_metadata && user.user_metadata.username) || '',
@@ -222,15 +222,19 @@ const Profile = () => {
   const roleSource = (user?.app_metadata && user.app_metadata.role) 
     || (user?.user_metadata && user.user_metadata.role) 
     || user?.role;
-  const displayRole = roleSource === 'super_admin'
+  const hasSuperAdmin = roles?.includes?.('super_admin') || roleSource === 'super_admin';
+  const hasAdmin = roles?.includes?.('admin') || roleSource === 'admin';
+  const hasContributor = roles?.includes?.('contributor') || roleSource === 'contributor';
+  
+  const displayRole = hasSuperAdmin
     ? 'Super Admin'
-    : roleSource === 'admin' 
-      ? 'Admin' 
-      : roleSource === 'contributor' 
-        ? 'Contributeur' 
+    : hasAdmin
+      ? 'Admin'
+      : hasContributor
+        ? 'Contributeur'
         : (roleSource === 'user' || roleSource === 'authenticated' || roleSource === 'guest' || !roleSource)
-          ? 'Utilisateur' 
-          : roleSource;
+          ? 'Utilisateur'
+          : (roleSource || 'Utilisateur');
 
   if (!user) {
     return (

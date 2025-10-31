@@ -89,7 +89,7 @@ const InputIcon = styled.div`
   }
 `;
 
-const LoginButton = styled.button`
+  const LoginButton = styled.button`
   width: 100%;
   padding: 0.75rem 1rem;
   background: var(--primary-color);
@@ -109,7 +109,7 @@ const LoginButton = styled.button`
     opacity: 0.5;
     cursor: not-allowed;
   }
-`;
+  `;
 
 const Divider = styled.div`
   display: flex;
@@ -131,7 +131,7 @@ const Divider = styled.div`
   }
 `;
 
-const RegisterLink = styled(Link)`
+  const RegisterLink = styled(Link)`
   text-align: center;
   color: var(--primary-color);
   text-decoration: none;
@@ -141,6 +141,22 @@ const RegisterLink = styled(Link)`
   &:hover {
     text-decoration: underline;
   }
+  `;
+
+const AuxLinks = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+
+  a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  a:hover { text-decoration: underline; }
 `;
 
 const ErrorMessage = styled.div`
@@ -255,6 +271,10 @@ const Login = () => {
           <RegisterLink to="/register">
             Créer un compte
           </RegisterLink>
+
+          <AuxLinks>
+            <Link to="/forgot-password">Mot de passe oublié</Link>
+          </AuxLinks>
         </LoginForm>
       </LoginCard>
     </LoginContainer>

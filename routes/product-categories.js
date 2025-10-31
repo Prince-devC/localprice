@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ProductCategory = require('../models/ProductCategory');
-const { requireAdmin } = require('../middleware/roleAuth');
+const { requireAdmin, requireRole } = require('../middleware/roleAuth');
 
 // GET /api/product-categories - Récupérer toutes les catégories (public)
 router.get('/', async (req, res) => {
@@ -27,7 +27,9 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/product-categories - Créer une nouvelle catégorie (admin)
-router.post('/', requireAdmin, async (req, res) => {
+// Création autorisée aux utilisateurs connectés (ajout via formulaire),
+// mais modification/suppression restent réservées aux admins
+router.post('/', requireRole('user'), async (req, res) => {
   try {
     const { name, type, description } = req.body;
 
@@ -45,7 +47,14 @@ router.post('/', requireAdmin, async (req, res) => {
       });
     }
 
-    const categoryId = await ProductCategory.create(req.body);
+    // Empêcher les doublons (insensible casse/espaces)
+    const normalizedName = String(name).trim();
+    const existing = await ProductCategory.getAll();
+    if (existing.some(c => String(c.name).trim().toLowerCase() === normalizedName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: 'Catégorie déjà existante' });
+    }
+
+    const categoryId = await ProductCategory.create({ name: normalizedName, type, description });
     res.status(201).json({
       success: true,
       message: 'Catégorie créée avec succès',

@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { FiMapPin, FiPhone, FiMail, FiGithub, FiTwitter, FiFacebook } from 'react-icons/fi';
+import { categoryService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const FooterContainer = styled.footer`
   background-color: var(--gray-800);
   color: white;
-  padding: 3rem 0 1rem;
+  padding-top: 60px; /* Ajout d’un padding supérieur de 20px */
+  padding-bottom: 1rem;
   margin-top: auto;
 `;
 
@@ -108,6 +111,30 @@ const FooterBottom = styled.div`
 `;
 
 const Footer = () => {
+  const { isAuthenticated, roles } = useAuth();
+  const isContributor = roles?.includes('contributor');
+  const isAdmin = roles?.includes('admin');
+  const contributeLink = isAuthenticated ? ((isContributor || isAdmin) ? '/submit-price' : '/dashboard?apply=1') : '/login';
+
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    categoryService.getAll()
+      .then((res) => {
+        const data = res?.data?.data || [];
+        if (mounted) setCategories(data);
+      })
+      .catch((err) => {
+        console.error('[footer] Échec du chargement des catégories', err);
+      })
+      .finally(() => {
+        if (mounted) setLoadingCategories(false);
+      });
+    return () => { mounted = false; };
+  }, []);
+
   return (
     <FooterContainer>
       <FooterContent>
@@ -117,7 +144,7 @@ const Footer = () => {
               <img src="/assets/lokali_white.svg" alt="Lokali" />
             </div>
             <p style={{ color: 'var(--gray-300)', marginBottom: '1rem' }}>
-              Comparez les prix dans vos magasins locaux et trouvez les meilleures offres près de chez vous.
+              Consultez les prix par localité et connectez-vous directement aux fournisseurs.
             </p>
             <SocialLinks>
               <SocialLink href="#" aria-label="Facebook">
@@ -135,22 +162,30 @@ const Footer = () => {
           <FooterSection>
             <h3>Navigation</h3>
             <ul>
-              <li><Link to="/">Accueil</Link></li>
-              <li><Link to="/search">Rechercher</Link></li>
-              <li><Link to="/stores">Magasins</Link></li>
-              <li><Link to="/compare">Comparer</Link></li>
+              {/* Liens alignés sur la barre de navigation */}
+              <li><Link to="/all-prices">Tous les prix</Link></li>
+              <li><Link to="/price-map">Cartes</Link></li>
+              <li><Link to="/suppliers">Fournisseurs</Link></li>
+              <li><Link to="/stores">Magasins de stockages</Link></li>
+              <li><Link to="/compare">Comparer prix</Link></li>
+              <li><Link to={contributeLink}>Contribuer</Link></li>
             </ul>
           </FooterSection>
           
           <FooterSection>
             <h3>Catégories</h3>
             <ul>
-              <li><Link to="/search?category=1">Alimentation</Link></li>
-              <li><Link to="/search?category=2">Électronique</Link></li>
-              <li><Link to="/search?category=3">Vêtements</Link></li>
-              <li><Link to="/search?category=4">Maison & Jardin</Link></li>
-              <li><Link to="/search?category=5">Santé & Beauté</Link></li>
-              <li><Link to="/search?category=6">Sports & Loisirs</Link></li>
+              {loadingCategories ? (
+                <li style={{ color: 'var(--gray-400)' }}>Chargement…</li>
+              ) : categories && categories.length > 0 ? (
+                categories.slice(0, 6).map(cat => (
+                  <li key={cat.id}>
+                    <Link to={`/all-prices?category_id=${cat.id}`}>{cat.name}</Link>
+                  </li>
+                ))
+              ) : (
+                <li style={{ color: 'var(--gray-400)' }}>Aucune catégorie</li>
+              )}
             </ul>
           </FooterSection>
           
@@ -158,11 +193,11 @@ const Footer = () => {
             <h3>Contact</h3>
             <ContactInfo>
               <FiMapPin />
-              <span>123 Rue de la Paix, 75001 Paris</span>
+              <span>Cotonou, Bénin</span>
             </ContactInfo>
             <ContactInfo>
               <FiPhone />
-              <span>01 23 45 67 89</span>
+              <span>+229 01 67 65 97 17</span>
             </ContactInfo>
             <ContactInfo>
               <FiMail />

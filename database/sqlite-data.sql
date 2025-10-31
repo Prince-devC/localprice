@@ -179,148 +179,18 @@ INSERT OR IGNORE INTO units (name, symbol) VALUES
 ('Paquet', 'paquet'),
 ('Unité', 'unité');
 
--- Insertion des options de filtres pour les produits béninois
-INSERT OR IGNORE INTO filter_product_options (product_id, display_name, is_active, sort_order) VALUES
-(1, 'Maïs', 1, 1),
-(2, 'Riz paddy', 1, 2),
-(3, 'Riz étuvé', 1, 3),
-(4, 'Mil', 1, 4),
-(5, 'Sorgho', 1, 5),
-(6, 'Igname', 1, 6),
-(7, 'Manioc', 1, 7),
-(8, 'Patate douce', 1, 8),
-(9, 'Niébé', 1, 9),
-(10, 'Arachide', 1, 10),
-(11, 'Soja', 1, 11),
-(12, 'Voandzou', 1, 12),
-(13, 'Tomate', 1, 13),
-(14, 'Oignon', 1, 14),
-(15, 'Piment', 1, 15),
-(16, 'Gombo', 1, 16),
-(17, 'Épinard', 1, 17),
-(18, 'Ananas', 1, 18),
-(19, 'Mangue', 1, 19),
-(20, 'Orange', 1, 20),
-(21, 'Banane', 1, 21),
-(22, 'Avocat', 1, 22),
-(23, 'Gari', 1, 23),
-(24, 'Tapioca', 1, 24),
-(25, 'Farine de maïs', 1, 25),
-(26, 'Huile de palme', 1, 26);
+-- Insertion des options de filtres pour les produits (SUPPRIMÉE)
+-- Les filtres produits lisent directement la table `products`.
 
--- Insertion des options de filtres pour les localités (toutes les communes du Bénin)
-INSERT OR IGNORE INTO filter_locality_options (locality_id, display_name, is_active, sort_order) VALUES
--- Alibori
-(1, 'Banikoara', 1, 1),
-(2, 'Gogounou', 1, 2),
-(3, 'Kandi', 1, 3),
-(4, 'Karimama', 1, 4),
-(5, 'Malanville', 1, 5),
-(6, 'Ségbana', 1, 6),
--- Atacora
-(7, 'Boukoumbé', 1, 7),
-(8, 'Cobly', 1, 8),
-(9, 'Kérou', 1, 9),
-(10, 'Kouandé', 1, 10),
-(11, 'Matéri', 1, 11),
-(12, 'Natitingou', 1, 12),
-(13, 'Pehunco', 1, 13),
-(14, 'Tanguiéta', 1, 14),
-(15, 'Toucountouna', 1, 15),
--- Atlantique
-(16, 'Abomey-Calavi', 1, 16),
-(17, 'Allada', 1, 17),
-(18, 'Kpomassè', 1, 18),
-(19, 'Ouidah', 1, 19),
-(20, 'Sô-Ava', 1, 20),
-(21, 'Toffo', 1, 21),
-(22, 'Tori-Bossito', 1, 22),
-(23, 'Zè', 1, 23),
--- Borgou
-(24, 'Bembèrèkè', 1, 24),
-(25, 'Kalalé', 1, 25),
-(26, 'Nikki', 1, 26),
-(27, 'Parakou', 1, 27),
-(28, 'Pèrèrè', 1, 28),
-(29, 'Sinendé', 1, 29),
--- Collines
-(30, 'Bantè', 1, 30),
-(31, 'Dassa-Zoumè', 1, 31),
-(32, 'Glazoué', 1, 32),
-(33, 'Ouèssè', 1, 33),
-(34, 'Savalou', 1, 34),
-(35, 'Savè', 1, 35),
--- Couffo
-(36, 'Aplahoué', 1, 36),
-(37, 'Djakotomey', 1, 37),
-(38, 'Dogbo', 1, 38),
-(39, 'Klouékanmè', 1, 39),
-(40, 'Lalo', 1, 40),
-(41, 'Toviklin', 1, 41),
--- Donga
-(42, 'Bassila', 1, 42),
-(43, 'Copargo', 1, 43),
-(44, 'Djougou', 1, 44),
-(45, 'Ouaké', 1, 45),
--- Littoral
-(46, 'Cotonou', 1, 46),
--- Mono
-(47, 'Athiémé', 1, 47),
-(48, 'Bopa', 1, 48),
-(49, 'Comè', 1, 49),
-(50, 'Grand-Popo', 1, 50),
-(51, 'Houéyogbé', 1, 51),
-(52, 'Lokossa', 1, 52),
--- Ouémé
-(53, 'Adjarra', 1, 53),
-(54, 'Adjohoun', 1, 54),
-(55, 'Aguégués', 1, 55),
-(56, 'Akpro-Missérété', 1, 56),
-(57, 'Avrankou', 1, 57),
-(58, 'Bonou', 1, 58),
-(59, 'Dangbo', 1, 59),
-(60, 'Porto-Novo', 1, 60),
-(61, 'Sèmè-Kpodji', 1, 61),
--- Plateau
-(62, 'Adja-Ouèrè', 1, 62),
-(63, 'Ifangni', 1, 63),
-(64, 'Kétou', 1, 64),
-(65, 'Pobè', 1, 65),
-(66, 'Sakété', 1, 66),
--- Zou
-(67, 'Abomey', 1, 67),
-(68, 'Agbangnizoun', 1, 68),
-(69, 'Bohicon', 1, 69),
-(70, 'Cové', 1, 70),
-(71, 'Djidja', 1, 71),
-(72, 'Ouinhi', 1, 72),
-(73, 'Za-Kpota', 1, 73),
-(74, 'Zangnanado', 1, 74),
-(75, 'Zogbodomey', 1, 75);
+-- Insertion des options de filtres pour les localités (SUPPRIMÉE)
+-- Les filtres localités lisent directement la table `localities`.
 
--- Insertion des options de filtres pour les régions (départements du Bénin)
-INSERT OR IGNORE INTO filter_region_options (region_id, display_name, is_active, sort_order) VALUES
-(1, 'Alibori', 1, 1),
-(2, 'Atacora', 1, 2),
-(3, 'Atlantique', 1, 3),
-(4, 'Borgou', 1, 4),
-(5, 'Collines', 1, 5),
-(6, 'Couffo', 1, 6),
-(7, 'Donga', 1, 7),
-(8, 'Littoral', 1, 8),
-(9, 'Mono', 1, 9),
-(10, 'Ouémé', 1, 10),
-(11, 'Plateau', 1, 11),
-(12, 'Zou', 1, 12);
 
--- Insertion des options de filtres pour les catégories
-INSERT OR IGNORE INTO filter_category_options (category_id, display_name, is_active, sort_order) VALUES
-(1, 'Céréales', 1, 1),
-(2, 'Tubercules', 1, 2),
-(3, 'Légumineuses', 1, 3),
-(4, 'Légumes', 1, 4),
-(5, 'Fruits', 1, 5),
-(6, 'Produits transformés', 1, 6);
+-- Insertion des options de filtres pour les régions (SUPPRIMÉE)
+-- Les filtres régions lisent directement la table `regions`.
+
+-- Insertion des options de filtres pour les catégories (SUPPRIMÉE)
+-- Les filtres catégories lisent directement la table `product_categories`.
 
 -- Insertion des options de filtres pour les périodes
 INSERT OR IGNORE INTO filter_period_options (period_key, display_name, days_count, is_active, sort_order) VALUES
@@ -996,10 +866,10 @@ INSERT OR IGNORE INTO suppliers (name, type, contact_phone, contact_email, addre
 ('Coopérative Riziculteurs Porto-Novo', 'cooperative', '+229 20 00 00 23', 'coop.riz.porto@lokali.bj', 'Porto-Novo', 60);
 
 -- Insertion des prix mensuels 2025 pour Cotonou (46) et Porto-Novo (60)
+-- Réduction du dataset: 10 entrées (5 produits × 2 localités × 1 date)
+DELETE FROM prices;
 WITH months(mdate) AS (
-  VALUES ('2025-01-10'), ('2025-02-10'), ('2025-03-10'), ('2025-04-10'),
-         ('2025-05-10'), ('2025-06-10'), ('2025-07-10'), ('2025-08-10'),
-         ('2025-09-10'), ('2025-10-10')
+  VALUES ('2025-10-10')
 ),
 products(product_id, unit_id, base_price) AS (
   VALUES 
@@ -1007,8 +877,6 @@ products(product_id, unit_id, base_price) AS (
     (2, 1, 450.00),  -- Riz paddy (kg)
     (6, 1, 280.00),  -- Igname (kg)
     (13, 1, 500.00), -- Tomate (kg)
-    (14, 1, 300.00), -- Oignon (kg)
-    (23, 1, 260.00), -- Gari (kg)
     (26, 3, 800.00)  -- Huile de palme (l)
 ),
 locs(locality_id, price_factor) AS (

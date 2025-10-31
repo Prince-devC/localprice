@@ -150,8 +150,9 @@ const TradingRow = styled.div`
   }
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
+    /* Utiliser deux colonnes pour réduire l'espace vide sur mobile */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
     padding: 0.75rem;
   }
 `;
@@ -163,6 +164,14 @@ const TradingCell = styled.div`
 
   @media (max-width: 768px) {
     padding: 0.25rem;
+    min-width: 0; /* permet au contenu de se compacter dans la grille */
+  }
+
+  /* La 5e cellule (date + flèche) doit occuper toute la largeur sur mobile */
+  &:nth-child(5) {
+    @media (max-width: 768px) {
+      grid-column: 1 / -1;
+    }
   }
 `;
 

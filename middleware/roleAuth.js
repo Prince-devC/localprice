@@ -1,4 +1,4 @@
-const { authenticateSupabaseToken } = require('../routes/auth');
+const { authenticateAnyToken } = require('../routes/auth');
 const db = require('../database/connection');
 
 async function getUserRoles(userId) {
@@ -9,13 +9,32 @@ async function getUserRoles(userId) {
      WHERE ur.user_id = ?`,
     [userId]
   );
-  return (rows || []).map(r => r.name);
+  let roleList = (rows || []).map(r => r.name);
+
+  // Fallback: inclure le rôle stocké dans users.role si aucun rôle dans la table pivot
+  if (!roleList || roleList.length === 0) {
+    try {
+      const [urows] = await db.execute('SELECT role FROM users WHERE id = ? LIMIT 1', [userId]);
+      const candidate = (Array.isArray(urows) && urows.length) ? urows[0].role : null;
+      if (candidate && ['user','contributor','admin','super_admin'].includes(candidate)) {
+        roleList = [candidate];
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  // Si super_admin présent, lui attribuer admin, contributor et user
+  if (roleList.includes('super_admin')) {
+    roleList = Array.from(new Set([...roleList, 'admin', 'contributor', 'user']));
+  }
+  return roleList;
 }
 
 // Middleware pour vérifier les rôles utilisateur via la table pivot avec token Supabase
 const requireRole = (allowedRoles) => {
   return (req, res, next) => {
-    authenticateSupabaseToken(req, res, async () => {
+    authenticateAnyToken(req, res, async () => {
       try {
         const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
         const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
@@ -57,7 +76,7 @@ const optionalAuth = (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (token) {
-    authenticateSupabaseToken(req, res, async () => {
+    authenticateAnyToken(req, res, async () => {
       try {
         const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
         if (userId) {

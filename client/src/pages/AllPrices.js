@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { FiSettings, FiFilter, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import AdvancedFilters from '../components/AdvancedFilters';
@@ -126,6 +127,7 @@ const PriceTableWrapper = styled.div`
 `;
 
 const AllPrices = () => {
+  const [searchParams] = useSearchParams();
   const [useAdvancedFilters, setUseAdvancedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -145,6 +147,26 @@ const AllPrices = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Pré-remplir et mettre à jour le filtre de catégorie via paramètre d'URL (category_id)
+  useEffect(() => {
+    const catParam = searchParams.get('category_id') || searchParams.get('category');
+    const categoryId = parseInt(catParam || '', 10);
+    setFilters((prev) => {
+      // Si pas de catégorie dans l’URL, on ne modifie pas les autres filtres
+      if (isNaN(categoryId) || categoryId <= 0) {
+        // Si une catégorie était déjà sélectionnée via URL, la retirer
+        if (prev.categories && prev.categories.length > 0) {
+          return { ...prev, categories: [] };
+        }
+        return prev;
+      }
+      // Mettre à jour uniquement si l’ID change
+      const currentId = prev.categories && prev.categories.length > 0 ? prev.categories[0].id : null;
+      if (currentId === categoryId) return prev;
+      return { ...prev, categories: [{ id: categoryId }] };
+    });
+  }, [searchParams]);
 
   const handleDataLoaded = (data) => {
     console.log('handleDataLoaded received:', data);

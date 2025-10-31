@@ -165,7 +165,6 @@ const PricingPlans = () => {
               <PricingFeature>Tout du plan gratuit</PricingFeature>
               <PricingFeature>Alertes de prix personnalisées</PricingFeature>
               <PricingFeature>Historique des prix détaillé</PricingFeature>
-              <PricingFeature>Calculateur de coûts avancé</PricingFeature>
               <PricingFeature>Support prioritaire</PricingFeature>
             </PricingFeatures>
             <PricingButton featured={true} to="/register">Choisir Premium</PricingButton>

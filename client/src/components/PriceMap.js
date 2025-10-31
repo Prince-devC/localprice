@@ -299,7 +299,8 @@ const PriceMap = ({
   onMarkerClick, 
   height = '400px',
   center = [9.3077, 2.3158], // Centre du Bénin par défaut
-  zoom = 7 
+  zoom = 7,
+  disableInitialAutoFit = false
 }) => {
   const [prices, setPrices] = useState([]);
   const [stores, setStores] = useState([]);
@@ -488,10 +489,14 @@ const PriceMap = ({
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
       >
-        {bounds ? (
-          <FitBoundsOnData bounds={bounds} fitRequested={fitRequested} onDone={() => setFitRequested(false)} />
-        ) : (
-          <MapCenter center={center} zoom={zoom} />
+        <MapCenter center={center} zoom={zoom} />
+        {bounds && (
+          <FitBoundsOnData 
+            bounds={bounds} 
+            initialFitEnabled={!disableInitialAutoFit}
+            fitRequested={fitRequested} 
+            onDone={() => setFitRequested(false)} 
+          />
         )}
         <TileLayer
           attribution='&copy; OpenStreetMap & CartoDB'
@@ -626,11 +631,11 @@ const PriceMap = ({
 
 export default PriceMap;
 
-function FitBoundsOnData({ bounds, fitRequested, onDone }) {
+function FitBoundsOnData({ bounds, fitRequested, onDone, initialFitEnabled = true }) {
   const map = useMap();
   const didAutoFitRef = useRef(false);
   useEffect(() => {
-    if (bounds && !didAutoFitRef.current) {
+    if (bounds && !didAutoFitRef.current && initialFitEnabled) {
       map.fitBounds(bounds, { padding: [30, 30] });
       didAutoFitRef.current = true;
     }

@@ -21,8 +21,9 @@ import PriceMapPage from './pages/PriceMapPage';
 import SuppliersPage from './pages/SuppliersPage';
 import SupplierContact from './pages/SupplierContact';
 import PriceDetail from './pages/PriceDetail';
-import CostComparator from './components/CostComparator';
 import { AuthProvider } from './contexts/AuthContext';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -52,6 +53,8 @@ function App() {
             <Route path="/supplier/:id/contact" element={<SupplierContact />} />
             <Route path="/compare" element={<Comparison />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
             
@@ -61,7 +64,7 @@ function App() {
              <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/submit-price" element={<PriceSubmissionForm />} />
             <Route path="/price-map" element={<PriceMapPage />} />
-            <Route path="/cost-comparator" element={<CostComparator />} />
+
           </Routes>
         </MainContent>
         <Footer />

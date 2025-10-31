@@ -52,9 +52,12 @@ app.use('/api/stores', require('./routes/stores'));
 app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/comparisons', require('./routes/comparisons'));
+app.use('/api/languages', require('./routes/languages'));
 app.use('/api/auth', require('./routes/auth').router);
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/prices', require('./routes/prices'));
+// Webhook Kobo pour synchro automatique
+app.use('/api/kobo', require('./routes/kobo'));
 
 // Routes agricoles
 app.use('/api/agricultural-prices', require('./routes/agricultural-prices'));
@@ -65,6 +68,7 @@ app.use('/api/costs', require('./routes/costs'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/filter-options', require('./routes/filter-options'));
 app.use('/api/contributions', require('./routes/contributions'));
+app.use('/api/settings', require('./routes/settings'));
 
 // Route de test
 app.get('/api/test', (req, res) => {

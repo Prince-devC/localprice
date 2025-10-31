@@ -6,7 +6,7 @@ const ContributorSection = styled.section`
   background: var(--primary-color);
   color: white;
   padding: 4rem 0;
-  margin-bottom: 4rem;
+  margin-bottom: 0; /* Retirer l'espace blanc avant le footer */
   text-align: center;
 `;
 

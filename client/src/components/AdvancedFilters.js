@@ -303,7 +303,8 @@ const AdvancedFilters = ({ filters, onFiltersChange, onReset }) => {
     
     if (localFilters.products && localFilters.products.length > 0) {
       localFilters.products.forEach(product => {
-        active.push({ key: `product-${product.id}`, label: `Produit: ${product.name}`, type: 'product', value: product });
+        const productName = (product && (product.name ?? product.label ?? product.product_name ?? product.title)) || '';
+        active.push({ key: `product-${product.id}`, label: `Produit: ${productName || product.id}`, type: 'product', value: product });
       });
     }
     
@@ -365,6 +366,76 @@ const AdvancedFilters = ({ filters, onFiltersChange, onReset }) => {
   };
 
   const activeFilters = getActiveFilters();
+
+  // Enrichir le filtre catégorie si seul l'ID est présent (pré-remplissage via URL)
+  useEffect(() => {
+    if (categories && Array.isArray(categories) && categories.length > 0) {
+      if (localFilters.categories && localFilters.categories.length > 0) {
+        const cat = localFilters.categories[0];
+        if (cat && cat.id && !cat.name) {
+          const selectedCategory = categories.find(c => c.id === parseInt(cat.id));
+          if (selectedCategory) {
+            handleFilterChange('categories', [selectedCategory]);
+          }
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories, localFilters.categories]);
+
+  // Enrichir le filtre produit si seul l'ID est présent (pré-remplissage via URL)
+  useEffect(() => {
+    if (products && Array.isArray(products) && products.length > 0) {
+      if (localFilters.products && localFilters.products.length > 0) {
+        const prod = localFilters.products[0];
+        if (prod && prod.id && !prod.name) {
+          const selectedProduct = products.find(p => p.id === parseInt(prod.id));
+          if (selectedProduct) {
+            handleFilterChange('products', [selectedProduct]);
+          }
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, localFilters.products]);
+
+  // Fallback: charger le produit par ID si non trouvé dans la liste (évite "undefined")
+  useEffect(() => {
+    const prod = localFilters.products && localFilters.products[0];
+    const hasId = prod && prod.id;
+    const missingName = hasId && (!prod.name && !prod.label && !prod.product_name && !prod.title);
+    const notInList = hasId && !(products || []).some(p => p.id === parseInt(prod.id));
+    if (missingName && notInList) {
+      (async () => {
+        try {
+          const res = await productService.getById(prod.id);
+          const full = res?.data?.data;
+          if (full && full.id) {
+            handleFilterChange('products', [full]);
+          }
+        } catch (e) {
+          // silencieux: si l'API échoue, on garde l'ID pour éviter les crashes
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localFilters.products, products]);
+
+  // Enrichir le filtre localité si seul l'ID est présent (pré-remplissage via URL)
+  useEffect(() => {
+    if (localities && Array.isArray(localities) && localities.length > 0) {
+      if (localFilters.localities && localFilters.localities.length > 0) {
+        const loc = localFilters.localities[0];
+        if (loc && loc.id && !loc.name) {
+          const selectedLocality = localities.find(l => l.id === parseInt(loc.id));
+          if (selectedLocality) {
+            handleFilterChange('localities', [selectedLocality]);
+          }
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localities, localFilters.localities]);
 
   return (
     <FiltersContainer>

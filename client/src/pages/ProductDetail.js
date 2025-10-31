@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { FiArrowLeft, FiMapPin, FiTrendingUp, FiStar } from 'react-icons/fi';
 import { useQuery } from 'react-query';
@@ -68,6 +68,24 @@ const ProductDescription = styled.p`
   color: var(--gray-700);
   line-height: 1.6;
   margin-bottom: 2rem;
+`;
+
+const ViewOnMapLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius);
+  color: #10b981;
+  text-decoration: none;
+  background: white;
+  transition: var(--transition);
+
+  &:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-300);
+  }
 `;
 
 const PricesContainer = styled.div`
@@ -224,6 +242,15 @@ const ProductDetail = () => {
             {product.description && (
               <ProductDescription>{product.description}</ProductDescription>
             )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              <ViewOnMapLink 
+                to={`/price-map?product_id=${product.id}&search=${encodeURIComponent(product.name)}`}
+                aria-label="Voir sur la carte"
+                title="Voir sur la carte"
+              >
+                <FiMapPin /> Voir sur la carte
+              </ViewOnMapLink>
+            </div>
             
             {stats && (
               <div style={{ 
@@ -280,6 +307,14 @@ const ProductDetail = () => {
                     {formatPrice(price.price)}
                     {price.unit && <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: 'var(--gray-500)' }}> / {price.unit}</span>}
                   </Price>
+                  <Link 
+                    to={`/price-map?product_id=${product.id}${(price.latitude!=null && price.longitude!=null) ? `&lat=${price.latitude}&lng=${price.longitude}&zoom=14` : ''}`}
+                    style={{ marginLeft:'0.75rem', border:'1px solid var(--gray-200)', borderRadius:6, padding:'0.3rem', color:'#10b981', textDecoration:'none', display:'inline-flex', alignItems:'center' }}
+                    aria-label="Voir sur la carte"
+                    title="Voir sur la carte"
+                  >
+                    <FiMapPin />
+                  </Link>
                 </PriceItem>
               ))}
             </PriceList>

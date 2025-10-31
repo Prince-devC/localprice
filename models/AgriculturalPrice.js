@@ -186,10 +186,55 @@ class AgriculturalPrice {
   static async getPendingPrices(limit = 50, offset = 0) {
     try {
       const rows = await db.all(
-        `SELECT p.id, pr.name as product_name, pc.name as category_name,
-                l.name as locality_name, r.name as region_name, u.name as unit_name,
-                p.price, p.date, p.comment, p.created_at,
-                users.email as submitted_by_email
+        `SELECT 
+            p.id,
+            p.product_id,
+            p.locality_id,
+            p.unit_id,
+            pr.name as product_name,
+            pc.name as category_name,
+            l.name as locality_name,
+            r.name as region_name,
+            u.name as unit_name,
+            u.symbol as unit_symbol,
+            p.price,
+            p.date,
+            p.comment,
+            p.created_at,
+            p.status,
+            p.latitude,
+            p.longitude,
+            p.geo_accuracy,
+            p.sub_locality,
+            p.submission_method,
+            p.source,
+            p.source_type,
+            p.source_contact_name,
+            p.source_contact_phone,
+            p.source_contact_relation,
+            users.id as submitted_by_id,
+            users.username as submitted_by_username,
+            users.email as submitted_by_email,
+            (
+              SELECT cr.address 
+              FROM contribution_requests cr 
+              WHERE cr.user_id = users.id AND cr.status = 'approved'
+              ORDER BY COALESCE(cr.reviewed_at, cr.created_at) DESC
+              LIMIT 1
+            ) AS contributor_address,
+            (
+              SELECT cr.contact_phone 
+              FROM contribution_requests cr 
+              WHERE cr.user_id = users.id AND cr.status = 'approved'
+              ORDER BY COALESCE(cr.reviewed_at, cr.created_at) DESC
+              LIMIT 1
+            ) AS contributor_phone,
+            (
+              SELECT GROUP_CONCAT(lg.name, ', ')
+              FROM price_source_languages psl
+              JOIN languages lg ON psl.language_id = lg.id
+              WHERE psl.price_id = p.id
+            ) AS source_languages
          FROM prices p
          JOIN products pr ON p.product_id = pr.id
          JOIN product_categories pc ON pr.category_id = pc.id
@@ -228,6 +273,76 @@ class AgriculturalPrice {
     }
   }
 
+  // Mettre à jour un prix en attente (admin ou contributeur propriétaire)
+  static async updatePendingPrice(priceId, updates = {}, options = {}) {
+    try {
+      // Champs autorisés à la mise à jour
+      const allowed = new Set([
+        'product_id', 'locality_id', 'unit_id', 'price', 'date', 'comment',
+        'latitude', 'longitude', 'geo_accuracy', 'source', 'source_type',
+        'source_contact_name', 'source_contact_phone', 'source_contact_relation',
+        'sub_locality'
+      ]);
+      const keys = Object.keys(updates || {}).filter(k => allowed.has(k));
+      if (keys.length === 0) return false;
+
+      // Contrainte: ne mettre à jour que si status = 'pending'
+      const priceRow = await db.get(`SELECT id, status, submitted_by FROM prices WHERE id = ?`, [priceId]);
+      if (!priceRow) throw new Error('Prix introuvable');
+      if (priceRow.status !== 'pending') throw new Error('Impossible de modifier un prix non en attente');
+
+      // Si options.requireOwner = true, vérifier le propriétaire
+      if (options && options.requireOwner && options.userId) {
+        if (String(priceRow.submitted_by) !== String(options.userId)) {
+          throw new Error('Non autorisé à modifier ce prix');
+        }
+      }
+
+      // Construire la requête UPDATE
+      const setClauses = keys.map(k => `${k} = ?`).join(', ');
+      const values = keys.map(k => updates[k]);
+      values.push(priceId);
+
+      const result = await db.run(
+        `UPDATE prices SET ${setClauses}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        values
+      );
+
+      // Mettre à jour les langues de source si fournies
+      if (Array.isArray(updates.source_language_ids)) {
+        const langIds = [...new Set(updates.source_language_ids.map(id => parseInt(id)).filter(id => !Number.isNaN(id)))];
+        await db.run(`DELETE FROM price_source_languages WHERE price_id = ?`, [priceId]);
+        for (const langId of langIds) {
+          try {
+            await db.run(`INSERT OR IGNORE INTO price_source_languages (price_id, language_id) VALUES (?, ?)`, [priceId, langId]);
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Erreur lors de la mise à jour du prix: ${error.message}`);
+    }
+  }
+
+  // Supprimer un prix (autorisé si propriétaire et status pending/rejected)
+  static async deletePrice(priceId, userId) {
+    try {
+      // Vérifier l'existence et l'autorisation
+      const row = await db.get(`SELECT id, status, submitted_by FROM prices WHERE id = ?`, [priceId]);
+      if (!row) throw new Error('Prix introuvable');
+      if (String(row.submitted_by) !== String(userId)) throw new Error('Non autorisé à supprimer ce prix');
+      if (!['pending', 'rejected'].includes(String(row.status))) throw new Error('Seuls les prix en attente ou rejetés peuvent être supprimés');
+
+      const result = await db.run(`DELETE FROM prices WHERE id = ?`, [priceId]);
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Erreur lors de la suppression du prix: ${error.message}`);
+    }
+  }
+
   // Rejeter un prix (admin)
   static async rejectPrice(priceId, adminId, rejectionReason) {
     try {
@@ -251,17 +366,78 @@ class AgriculturalPrice {
   // Soumettre un nouveau prix (contributor)
   static async submitPrice(priceData, contributorId) {
     try {
-      const { product_id, locality_id, unit_id, price, date, comment } = priceData;
-      
-      const result = await db.run(
-        `INSERT INTO prices (product_id, locality_id, unit_id, price, date, submitted_by, comment, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
-        [product_id, locality_id, unit_id, price, date, contributorId, comment]
-      );
-      
+      const { product_id, locality_id, unit_id, price, date, comment, latitude = null, longitude = null, geo_accuracy = null, source = null,
+        source_type = null, source_contact_name = null, source_contact_phone = null, source_contact_relation = null, sub_locality = null,
+        submission_method = 'Formulaire Web' } = priceData;
+
+      // Détecter les colonnes réellement présentes dans la table `prices`
+      const cols = await db.all(`PRAGMA table_info(prices)`);
+      const has = (name) => cols.some(c => String(c.name) === String(name));
+
+      // Colonnes de base toujours présentes
+      const insertCols = ['product_id','locality_id','unit_id','price','date','submitted_by','comment','status'];
+      const insertVals = [product_id, locality_id, unit_id, price, date, contributorId, comment, 'pending'];
+
+      // Colonnes optionnelles selon le schéma courant
+      if (has('latitude')) { insertCols.push('latitude'); insertVals.push(latitude); }
+      if (has('longitude')) { insertCols.push('longitude'); insertVals.push(longitude); }
+      if (has('geo_accuracy')) { insertCols.push('geo_accuracy'); insertVals.push(geo_accuracy); }
+      if (has('source')) { insertCols.push('source'); insertVals.push(source); }
+      if (has('source_type')) { insertCols.push('source_type'); insertVals.push(source_type); }
+      if (has('source_contact_name')) { insertCols.push('source_contact_name'); insertVals.push(source_contact_name); }
+      if (has('source_contact_phone')) { insertCols.push('source_contact_phone'); insertVals.push(source_contact_phone); }
+      if (has('source_contact_relation')) { insertCols.push('source_contact_relation'); insertVals.push(source_contact_relation); }
+      if (has('sub_locality')) { insertCols.push('sub_locality'); insertVals.push(sub_locality); }
+      if (has('submission_method')) { insertCols.push('submission_method'); insertVals.push(submission_method); }
+
+      const placeholders = insertCols.map(() => '?').join(', ');
+      const sql = `INSERT INTO prices (${insertCols.join(', ')}) VALUES (${placeholders})`;
+      const result = await db.run(sql, insertVals);
       return result.lastID;
     } catch (error) {
       throw new Error(`Erreur lors de la soumission du prix: ${error.message}`);
+    }
+  }
+
+  // Récupérer les prix soumis par un utilisateur (avec jointures pour l'affichage)
+  static async getPricesByUser(userId, { status = 'all', limit = 50, offset = 0 } = {}) {
+    try {
+      let query = `
+        SELECT p.id, p.product_id, p.locality_id, p.unit_id, p.price, p.date, p.status,
+               p.comment, p.latitude, p.longitude, p.geo_accuracy, p.sub_locality, p.source, p.source_type,
+               p.rejection_reason,
+               p.source_contact_name, p.source_contact_phone, p.source_contact_relation, p.created_at,
+               pr.name as product_name, pc.name as category_name, pc.type as category_type,
+               l.name as locality_name, l.latitude as locality_latitude, l.longitude as locality_longitude,
+               r.name as region_name, u.name as unit_name, u.symbol as unit_symbol,
+               (
+                 SELECT GROUP_CONCAT(lg.name, ', ')
+                 FROM price_source_languages psl
+                 JOIN languages lg ON psl.language_id = lg.id
+                 WHERE psl.price_id = p.id
+               ) AS source_languages
+        FROM prices p
+        JOIN products pr ON p.product_id = pr.id
+        JOIN product_categories pc ON pr.category_id = pc.id
+        JOIN localities l ON p.locality_id = l.id
+        JOIN regions r ON l.region_id = r.id
+        JOIN units u ON p.unit_id = u.id
+        WHERE p.submitted_by = ?
+      `;
+      const params = [userId];
+
+      if (status && status !== 'all') {
+        query += ` AND p.status = ?`;
+        params.push(status);
+      }
+
+      query += ` ORDER BY p.created_at DESC LIMIT ? OFFSET ?`;
+      params.push(parseInt(limit), parseInt(offset));
+
+      const rows = await db.all(query, params);
+      return rows;
+    } catch (error) {
+      throw new Error(`Erreur lors de la récupération des prix utilisateur: ${error.message}`);
     }
   }
 
