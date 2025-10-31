@@ -1,0 +1,13 @@
+id,type,value,unit,description,created_at,updated_at
+1,transport,50.0,per_km_per_tonne,"Coût de transport par km et par tonne","2025-10-26 22:52:33","2025-10-26 22:52:33"
+2,stockage,100.0,per_day_per_tonne,"Coût de stockage par jour et par tonne","2025-10-26 22:52:33","2025-10-26 22:52:33"
+3,stockage,0.1,per_day_per_kg,"Coût de stockage par jour et par kg","2025-10-26 22:52:33","2025-10-26 22:52:33"
+4,stockage,1000.0,per_day_per_q,"Coût de stockage par jour et par quintal","2025-10-26 22:52:33","2025-10-26 22:52:33"
+5,transport,50.0,per_km_per_tonne,"Coût de transport par km et par tonne","2025-10-30 21:35:15","2025-10-30 21:35:15"
+6,stockage,100.0,per_day_per_tonne,"Coût de stockage par jour et par tonne","2025-10-30 21:35:15","2025-10-30 21:35:15"
+7,stockage,0.1,per_day_per_kg,"Coût de stockage par jour et par kg","2025-10-30 21:35:15","2025-10-30 21:35:15"
+8,stockage,1000.0,per_day_per_q,"Coût de stockage par jour et par quintal","2025-10-30 21:35:15","2025-10-30 21:35:15"
+9,transport,50.0,per_km_per_tonne,"Coût de transport par km et par tonne","2025-10-30 21:36:20","2025-10-30 21:36:20"
+10,stockage,100.0,per_day_per_tonne,"Coût de stockage par jour et par tonne","2025-10-30 21:36:20","2025-10-30 21:36:20"
+11,stockage,0.1,per_day_per_kg,"Coût de stockage par jour et par kg","2025-10-30 21:36:20","2025-10-30 21:36:20"
+12,stockage,1000.0,per_day_per_q,"Coût de stockage par jour et par quintal","2025-10-30 21:36:20","2025-10-30 21:36:20"

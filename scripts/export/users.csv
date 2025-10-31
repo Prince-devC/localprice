@@ -1,0 +1,9 @@
+id,username,email,password_hash,email_verified,email_verification_token,email_verification_expires,role,created_at,updated_at
+9d3ec36f-269f-42e5-8182-48e009838767,amitystokes-63hws7,jedecenivo@mailinator.com,,0,,,user,"2025-10-27 11:41:55","2025-10-27 11:41:55"
+d2ddaada-ba1f-49ed-8d93-dd4a598f346d,,admin@lokali.bj,,0,,,user,"2025-10-27 11:42:17","2025-10-27 11:42:17"
+f709cfa7-8962-4a54-8f66-594f31da50d6,,zeguzaxej@mailinator.com,,1,,,admin,"2025-10-27 14:35:19","2025-10-27 14:35:19"
+85a81c61-7ada-4152-8597-223b0af707f5,,robanukoku@mailinator.com,,1,,,user,"2025-10-27 14:35:19","2025-10-27 14:35:19"
+48e8eee1-bfb0-42b6-beb7-55c9e92a03fd,,gyqoka@mailinator.com,,1,,,,"2025-10-27 14:35:20","2025-10-27 14:35:20"
+94e7db28-7415-4b50-bdc9-7892fb7b0fb3,grayayala-couyoh,womy@mailinator.com,,0,,,user,"2025-10-28 11:26:11","2025-10-28 11:26:11"
+admin@lokali.dev,admin,admin@lokali.dev,$2a$10$oLBwDxF/CKVqgvxppneBAOZknR7iI.mz5QFqtfr48jjIx/RAJDTjq,1,,,admin,"2025-10-29 20:01:21","2025-10-29 20:01:21"
+d3979b45-18e2-47bf-bc4e-fc51d4d23557,,gagbahungba2019@gmail.com,,0,,,user,"2025-10-30 20:35:49","2025-10-30 20:35:49"

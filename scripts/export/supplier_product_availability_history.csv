@@ -1,0 +1,7 @@
+id,supplier_id,product_id,date,is_available,available_quantity,quantity_unit,expected_restock_date,period_start,period_end,notes,created_at
+1,1,1,2025-10-12,1,1500.0,kg,2025-10-25,2025-10-12,2025-10-20,"Annonce de disponibilité","2025-10-30 21:36:20"
+2,2,11,2025-10-08,1,2000.0,kg,2025-10-22,2025-10-08,2025-10-18,"Annonce de disponibilité","2025-10-30 21:36:20"
+3,3,13,2025-10-10,1,1200.0,kg,2025-10-21,2025-10-10,2025-10-17,"Annonce de disponibilité","2025-10-30 21:36:20"
+4,4,6,2025-10-11,1,2500.0,kg,2025-10-28,2025-10-11,2025-10-23,"Annonce de disponibilité","2025-10-30 21:36:20"
+5,5,26,2025-10-09,1,300.0,l,2025-10-24,2025-10-09,2025-10-19,"Annonce de disponibilité","2025-10-30 21:36:20"
+6,6,2,2025-10-07,1,4000.0,kg,2025-10-26,2025-10-07,2025-10-20,"Annonce de disponibilité","2025-10-30 21:36:20"

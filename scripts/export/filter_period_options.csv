@@ -1,0 +1,7 @@
+id,period_key,display_name,days_count,is_active,sort_order,created_at
+1,today,"Aujourd'hui",1,1,1,"2025-10-26 22:52:33"
+2,week,"Cette semaine",7,1,2,"2025-10-26 22:52:33"
+3,month,"Ce mois",30,1,3,"2025-10-26 22:52:33"
+4,quarter,"Ce trimestre",90,1,4,"2025-10-26 22:52:33"
+5,year,"Cette année",365,1,5,"2025-10-26 22:52:33"
+6,all,"Toutes les périodes",0,1,6,"2025-10-26 22:52:33"

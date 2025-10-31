@@ -1,0 +1,7 @@
+id,name,type,contact_phone,contact_email,address,locality_id,latitude,longitude,created_at,updated_at
+1,"Ferme Adjovi",producteur,"+229 21 00 00 11",ferme.adjovi@lokali.bj,Cotonou,46,,,"2025-10-30 21:36:20","2025-10-30 21:36:20"
+2,"Atelier de Transformation Soja Cotonou",transformateur,"+229 21 00 00 12",atelier.soja.cotonou@lokali.bj,Cotonou,46,,,"2025-10-30 21:36:20","2025-10-30 21:36:20"
+3,"Coopérative Maraîchers Cotonou",cooperative,"+229 21 00 00 13",coop.maraichers.cotonou@lokali.bj,Cotonou,46,,,"2025-10-30 21:36:20","2025-10-30 21:36:20"
+4,"Ferme Kpodo",producteur,"+229 20 00 00 21",ferme.kpodo@lokali.bj,Porto-Novo,60,,,"2025-10-30 21:36:20","2025-10-30 21:36:20"
+5,"Huilerie Porto-Novo",transformateur,"+229 20 00 00 22",huilerie.porto@lokali.bj,Porto-Novo,60,,,"2025-10-30 21:36:20","2025-10-30 21:36:20"
+6,"Coopérative Riziculteurs Porto-Novo",cooperative,"+229 20 00 00 23",coop.riz.porto@lokali.bj,Porto-Novo,60,,,"2025-10-30 21:36:20","2025-10-30 21:36:20"

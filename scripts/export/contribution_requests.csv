@@ -1,0 +1,3 @@
+id,user_id,status,address,commune,activity,cooperative_member,cooperative_name,has_smartphone,has_internet,submission_method,contact_phone,notes,reviewed_by,rejection_reason,created_at,updated_at,reviewed_at,has_whatsapp,experience_level
+2,9d3ec36f-269f-42e5-8182-48e009838767,approved,Sehlo,Abomey-Calavi,,1,ALLOWANOU,1,1,web,0161620887,Merci,d2ddaada-ba1f-49ed-8d93-dd4a598f346d,,"2025-10-28 10:27:02","2025-10-28 10:27:02","2025-10-28 10:45:38",1,debutant
+3,94e7db28-7415-4b50-bdc9-7892fb7b0fb3,approved,Gogounou,Gogounou,"Commerçant",1,AIBATIN,1,1,web,0165431232,Merci,d2ddaada-ba1f-49ed-8d93-dd4a598f346d,,"2025-10-28 11:27:36","2025-10-28 11:27:36","2025-10-29 07:55:34",1,intermediaire
