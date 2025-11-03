@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useQueryClient } from 'react-query';
 import { supabase } from '../services/supabase';
 import toast from 'react-hot-toast';
 import { authService } from '../services/api';
@@ -17,6 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState([]);
+  const queryClient = useQueryClient();
 
   const fetchRoles = async () => {
     try {
@@ -64,6 +66,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('user');
         setRoles([]);
         try { localStorage.removeItem('roles'); } catch (_) {}
+        try { queryClient.clear(); } catch (_) {}
       }
     });
 
@@ -141,10 +144,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (_) {}
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    setRoles([]);
+    try { localStorage.removeItem('token'); } catch (_) {}
+    try { localStorage.removeItem('user'); } catch (_) {}
+    try { localStorage.removeItem('roles'); } catch (_) {}
+    try { localStorage.removeItem('contrib-apply-draft'); } catch (_) {}
+    try { queryClient.clear(); } catch (_) {}
     toast.success('Déconnexion réussie');
   };
 

@@ -11,11 +11,14 @@ const FieldInput = ({ field, value, onChange }) => {
     background: 'white',
     color: 'var(--gray-800)'
   };
+  const isReadOnly = field?.readOnly === true || field?.readonly === true || field?.disabled === true || (field && (field.name === 'product_id' || field.name === 'locality_id'));
+  const style = { ...baseStyle, background: isReadOnly ? 'var(--gray-50)' : 'white', color: isReadOnly ? 'var(--gray-700)' : 'var(--gray-800)' };
   if (field.type === 'textarea') {
     return (
       <textarea
-        style={{ ...baseStyle, minHeight: 90 }}
+        style={{ ...style, minHeight: 90 }}
         value={value}
+        readOnly={isReadOnly}
         onChange={(e) => onChange(e.target.value)}
       />
     );
@@ -23,8 +26,9 @@ const FieldInput = ({ field, value, onChange }) => {
   if (field.type === 'select') {
     return (
       <select
-        style={baseStyle}
+        style={style}
         value={value}
+        disabled={isReadOnly}
         onChange={(e) => onChange(e.target.value)}
       >
         {(field.options || []).map((opt) => (
@@ -36,8 +40,9 @@ const FieldInput = ({ field, value, onChange }) => {
   return (
     <input
       type={field.type === 'number' ? 'number' : 'text'}
-      style={baseStyle}
+      style={style}
       value={value}
+      readOnly={isReadOnly}
       onChange={(e) => onChange(e.target.value)}
     />
   );
@@ -64,6 +69,8 @@ const FormModal = ({
     setValues(init);
   }, [fields, open]);
 
+  const [submitting, setSubmitting] = React.useState(false);
+
   const handleChange = (name, v) => {
     setValues((prev) => ({ ...prev, [name]: v }));
   };
@@ -75,9 +82,23 @@ const FormModal = ({
     return true;
   };
 
-  const handleSubmit = () => {
-    if (!isValid()) return;
-    onSubmit && onSubmit(values);
+  const handleSubmit = async () => {
+    if (!isValid() || submitting) return;
+    // Omettre les champs non modifiables (produit/localité) du payload
+    const payload = {};
+    const omit = new Set(['product_id', 'locality_id']);
+    Object.keys(values || {}).forEach((k) => {
+      if (!omit.has(k)) payload[k] = values[k];
+    });
+    try {
+      setSubmitting(true);
+      const result = onSubmit && onSubmit(payload);
+      if (result && typeof result.then === 'function') {
+        await result;
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -88,11 +109,32 @@ const FormModal = ({
       actions={(
         <>
           <SecondaryButton type="button" onClick={onCancel}>{cancelText}</SecondaryButton>
-          <PrimaryButton type="button" onClick={handleSubmit} disabled={!isValid()}>{submitText}</PrimaryButton>
+          <PrimaryButton type="button" onClick={handleSubmit} disabled={!isValid() || submitting || (typeof submitText === 'string' && /enregistrement/i.test(submitText))} aria-busy={submitting}>
+            {submitText}
+          </PrimaryButton>
         </>
       )}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {(() => {
+          const hasLockFields = (fields || []).some(f => f.name === 'product_id' || f.name === 'locality_id');
+          const accRaw = values && values['geo_accuracy'];
+          const accVal = accRaw != null && accRaw !== '' ? parseFloat(accRaw) : null;
+          return (
+            <>
+              {hasLockFields && (
+                <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#374151' }}>
+                  Note: Produit et localité sont en lecture seule et ne seront pas modifiés lors de l'enregistrement.
+                </div>
+              )}
+              {(accVal != null && Number.isFinite(accVal) && accVal > 10) && (
+                <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: '#fff7ed', border: '1px solid #fdba74', color: '#9a3412' }}>
+                  Précision GPS élevée ({Math.round(accVal)} m). Vérifiez vos coordonnées; la validation peut être refusée.
+                </div>
+              )}
+            </>
+          );
+        })()}
         {typeof renderExtras === 'function' && (
           <div style={{ marginBottom: '0.5rem' }}>
             {renderExtras(values, setValues)}

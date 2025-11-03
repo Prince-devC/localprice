@@ -13,13 +13,13 @@ require('dotenv').config();
 async function ensureRoles() {
   const ddl = `
     CREATE TABLE IF NOT EXISTS roles (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL UNIQUE CHECK (name IN ('user','contributor','admin','super_admin'))
     );
     CREATE TABLE IF NOT EXISTS user_roles (
-      user_id TEXT NOT NULL,
+      user_id uuid NOT NULL,
       role_id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, role_id),
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -28,10 +28,10 @@ async function ensureRoles() {
     CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id);
   `;
   await db.exec(ddl);
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', ['user']);
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', ['contributor']);
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', ['admin']);
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', ['super_admin']);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['user']);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['contributor']);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['admin']);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['super_admin']);
 }
 
 async function getRoleId(name) {
@@ -49,9 +49,10 @@ async function upsertLocalUser(userId, email) {
   const existing = await db.get('SELECT id FROM users WHERE id = ?', [userId]);
   if (existing) return;
   if (!email) return; // Ne peut pas insérer sans email (NOT NULL)
-  await db.run(
-    `INSERT OR IGNORE INTO users (id, email, email_verified, role)
-     VALUES (?, ?, 1, 'user')`,
+  await db.execute(
+    `INSERT INTO users (id, email, email_verified, role)
+     VALUES (?, ?, true, 'user')
+     ON CONFLICT (id) DO NOTHING`,
     [userId, email]
   );
 }
@@ -59,9 +60,9 @@ async function upsertLocalUser(userId, email) {
 async function assignUserRoleIfNone(userId, userRoleId) {
   const hasRole = await hasAnyRole(userId);
   if (hasRole) return false;
-  await db.execute('INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)', [userId, userRoleId]);
+  await db.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT DO NOTHING', [userId, userRoleId]);
   // Met à jour le rôle principal pour cohérence (si l'entrée existe)
-  await db.execute('UPDATE users SET role = COALESCE(role, "user") WHERE id = ?', [userId]);
+  await db.execute("UPDATE users SET role = COALESCE(role, 'user') WHERE id = ?", [userId]);
   return true;
 }
 

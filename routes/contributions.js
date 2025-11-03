@@ -1,32 +1,32 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/connection');
-const { authenticateSupabaseToken } = require('./auth');
+const { authenticateSupabaseToken, optionalSupabaseToken } = require('./auth');
 
-// Ensure table exists at runtime (defensive)
+// Ensure table exists at runtime (defensive, Postgres-only)
 const ensureContributionSchema = async () => {
   const sql = `
     CREATE TABLE IF NOT EXISTS contribution_requests (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL,
+      id BIGSERIAL PRIMARY KEY,
+      user_id uuid NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
       address TEXT,
       commune TEXT,
       activity TEXT,
-      cooperative_member INTEGER DEFAULT 0 CHECK (cooperative_member IN (0,1)),
+      cooperative_member BOOLEAN DEFAULT FALSE,
       cooperative_name TEXT,
-      has_smartphone INTEGER DEFAULT 1 CHECK (has_smartphone IN (0,1)),
-      has_internet INTEGER DEFAULT 1 CHECK (has_internet IN (0,1)),
+      has_smartphone BOOLEAN DEFAULT TRUE,
+      has_internet BOOLEAN DEFAULT TRUE,
       submission_method TEXT DEFAULT 'web' CHECK (submission_method IN ('web','mobile','sms','whatsapp','offline')),
       contact_phone TEXT,
-      has_whatsapp INTEGER DEFAULT 0 CHECK (has_whatsapp IN (0,1)),
+      has_whatsapp BOOLEAN DEFAULT FALSE,
       experience_level TEXT CHECK (experience_level IN ('debutant','intermediaire','expert')),
       notes TEXT,
-      reviewed_by TEXT,
+      reviewed_by uuid,
       rejection_reason TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      reviewed_at DATETIME,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
+      reviewed_at TIMESTAMPTZ,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL
     );
@@ -36,27 +36,24 @@ const ensureContributionSchema = async () => {
   `;
   await db.exec(sql);
 
-  // Ajoute les colonnes manquantes si la table existe déjà (idempotent)
-  try {
-    await db.exec(`ALTER TABLE contribution_requests ADD COLUMN has_whatsapp INTEGER DEFAULT 0 CHECK (has_whatsapp IN (0,1));`);
-  } catch (e) {
-    // ignore if column exists
-  }
-  try {
-    await db.exec(`ALTER TABLE contribution_requests ADD COLUMN experience_level TEXT CHECK (experience_level IN ('debutant','intermediaire','expert'));`);
-  } catch (e) {
-    // ignore if column exists
-  }
+  // Ajoute les colonnes manquantes si la table existe déjà (idempotent, Postgres)
+  await db.exec(`ALTER TABLE contribution_requests ADD COLUMN IF NOT EXISTS has_whatsapp BOOLEAN DEFAULT FALSE;`);
+  await db.exec(`ALTER TABLE contribution_requests ADD COLUMN IF NOT EXISTS experience_level TEXT CHECK (experience_level IN ('debutant','intermediaire','expert'));`);
+
+  // S'assure que la séquence est correctement liée et positionnée après le MAX(id)
+  // Évite l'erreur: duplicate key value violates unique constraint "contribution_requests_pkey"
+  await db.exec(`ALTER SEQUENCE IF EXISTS contribution_requests_id_seq OWNED BY contribution_requests.id;`);
+  await db.exec(`SELECT setval(pg_get_serial_sequence('contribution_requests','id'), COALESCE((SELECT MAX(id) FROM contribution_requests), 1), true);`);
 };
 
 const ensurePreferencesSchema = async () => {
   const sql = `
     CREATE TABLE IF NOT EXISTS user_preferences (
-      user_id TEXT PRIMARY KEY,
-      has_smartphone_default INTEGER DEFAULT 1 CHECK (has_smartphone_default IN (0,1)),
-      has_internet_default INTEGER DEFAULT 1 CHECK (has_internet_default IN (0,1)),
+      user_id uuid PRIMARY KEY,
+      has_smartphone_default BOOLEAN DEFAULT TRUE,
+      has_internet_default BOOLEAN DEFAULT TRUE,
       preferred_method TEXT DEFAULT 'web' CHECK (preferred_method IN ('web','offline','whatsapp','sms','mobile')),
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ DEFAULT NOW(),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id);
@@ -93,7 +90,7 @@ router.post('/apply', authenticateSupabaseToken, async (req, res) => {
     if (!users || users.length === 0) {
       const email = (req.supabaseUser && req.supabaseUser.email) || null;
       const usernameMeta = (req.supabaseUser && req.supabaseUser.user_metadata && req.supabaseUser.user_metadata.username) || null;
-      await db.execute('INSERT OR IGNORE INTO users (id, username, email, role) VALUES (?, ?, ?, ?)', [userId, usernameMeta, email, 'user']);
+      await db.execute('INSERT INTO users (id, username, email, role) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO NOTHING', [userId, usernameMeta, email, 'user']);
       [users] = await db.execute('SELECT role FROM users WHERE id = ?', [userId]);
       if (!users || users.length === 0) {
         return res.status(404).json({ success: false, message: 'Utilisateur introuvable' });
@@ -113,7 +110,7 @@ router.post('/apply', authenticateSupabaseToken, async (req, res) => {
 
     // Empêche les doublons de demande en attente
     const [pending] = await db.execute(
-      'SELECT id FROM contribution_requests WHERE user_id = ? AND status = "pending" ORDER BY created_at DESC LIMIT 1',
+      "SELECT id FROM contribution_requests WHERE user_id = ? AND status = 'pending' ORDER BY created_at DESC LIMIT 1",
       [userId]
     );
     if (pending && pending.length > 0) {
@@ -137,32 +134,34 @@ router.post('/apply', authenticateSupabaseToken, async (req, res) => {
     }
 
     // Insère la demande
-    const [result] = await db.execute(
+    const [insertRows] = await db.execute(
       `INSERT INTO contribution_requests (
         user_id, address, commune, activity, cooperative_member, cooperative_name,
         has_smartphone, has_internet, submission_method, contact_phone, has_whatsapp, experience_level, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id`,
       [
         userId,
         address || null,
         commune || null,
         activity || null,
-        Number(cooperative_member) ? 1 : 0,
+        Boolean(Number(cooperative_member)),
         cooperative_name || null,
-        Number(has_smartphone) ? 1 : 0,
-        Number(has_internet) ? 1 : 0,
+        Boolean(Number(has_smartphone)),
+        Boolean(Number(has_internet)),
         submission_method || 'web',
         phone,
-        Number(has_whatsapp) ? 1 : 0,
+        Boolean(Number(has_whatsapp)),
         exp,
         notes || null,
       ]
     );
 
+
     return res.status(201).json({
       success: true,
       message: 'Demande soumise, en attente de validation admin',
-      data: { id: result?.lastID || null }
+      data: { id: insertRows && insertRows[0] ? insertRows[0].id : null }
     });
   } catch (error) {
     console.error('Erreur apply contribution:', error);
@@ -171,12 +170,13 @@ router.post('/apply', authenticateSupabaseToken, async (req, res) => {
 });
 
 // GET /api/contributions/me - Récupère la dernière demande de l’utilisateur
-router.get('/me', authenticateSupabaseToken, async (req, res) => {
+router.get('/me', optionalSupabaseToken, async (req, res) => {
   try {
     await ensureContributionSchema();
     const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Utilisateur non authentifié" });
+      // Renvoyer une réponse neutre pour éviter les loaders infinis côté client
+      return res.json({ success: true, data: null });
     }
 
     const [rows] = await db.execute(
@@ -200,18 +200,25 @@ router.get('/me', authenticateSupabaseToken, async (req, res) => {
   }
 });
 
-router.get('/preferences', authenticateSupabaseToken, async (req, res) => {
+router.get('/preferences', optionalSupabaseToken, async (req, res) => {
   try {
     await ensurePreferencesSchema();
     const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Utilisateur non authentifié" });
+      // Fournir des préférences par défaut pour permettre le rendu côté client
+      const data = {
+        user_id: null,
+        has_smartphone_default: true,
+        has_internet_default: true,
+        preferred_method: 'web',
+      };
+      return res.json({ success: true, data });
     }
     const [rows] = await db.execute('SELECT * FROM user_preferences WHERE user_id = ? LIMIT 1', [userId]);
     const data = rows && rows[0] ? rows[0] : {
       user_id: userId,
-      has_smartphone_default: 1,
-      has_internet_default: 1,
+      has_smartphone_default: true,
+      has_internet_default: true,
       preferred_method: 'web',
     };
     return res.json({ success: true, data });
@@ -228,18 +235,18 @@ router.put('/preferences', authenticateSupabaseToken, async (req, res) => {
     if (!userId) {
       return res.status(401).json({ success: false, message: "Utilisateur non authentifié" });
     }
-    const { has_smartphone_default = 1, has_internet_default = 1, preferred_method = 'web' } = req.body || {};
+    const { has_smartphone_default = true, has_internet_default = true, preferred_method = 'web' } = req.body || {};
 
     const sql = `
       INSERT INTO user_preferences (user_id, has_smartphone_default, has_internet_default, preferred_method, updated_at)
-      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES (?, ?, ?, ?, NOW())
       ON CONFLICT(user_id) DO UPDATE SET
         has_smartphone_default = excluded.has_smartphone_default,
         has_internet_default = excluded.has_internet_default,
         preferred_method = excluded.preferred_method,
-        updated_at = CURRENT_TIMESTAMP
+        updated_at = NOW()
     `;
-    await db.execute(sql, [userId, Number(has_smartphone_default) ? 1 : 0, Number(has_internet_default) ? 1 : 0, preferred_method]);
+    await db.execute(sql, [userId, Boolean(has_smartphone_default), Boolean(has_internet_default), preferred_method]);
 
     return res.json({ success: true, message: 'Préférences mises à jour' });
   } catch (error) {

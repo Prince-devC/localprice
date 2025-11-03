@@ -7,9 +7,14 @@ const ConfirmModal = ({
   message = '',
   confirmText = 'Confirmer',
   cancelText = 'Annuler',
+  busy = false,
   onConfirm,
   onCancel
 }) => {
+  // Logs de debug pour suivre l'état de la modale
+  try {
+    console.debug('[ConfirmModal] render', { open, title, message, confirmText, cancelText, busy });
+  } catch {}
   return (
     <Modal
       open={open}
@@ -17,8 +22,8 @@ const ConfirmModal = ({
       onClose={onCancel}
       actions={(
         <>
-          <SecondaryButton type="button" onClick={onCancel}>{cancelText}</SecondaryButton>
-          <PrimaryButton type="button" onClick={onConfirm}>{confirmText}</PrimaryButton>
+          <SecondaryButton type="button" onClick={() => { try { console.debug('[ConfirmModal] cancel clicked', { title }); } catch {}; onCancel && onCancel(); }}>{cancelText}</SecondaryButton>
+          <PrimaryButton type="button" onClick={() => { try { console.debug('[ConfirmModal] confirm clicked', { title, busy }); } catch {}; onConfirm && onConfirm(); }} disabled={busy} aria-busy={busy}>{confirmText}</PrimaryButton>
         </>
       )}
     >

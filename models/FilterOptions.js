@@ -1,5 +1,46 @@
 const db = require('../database/connection');
 
+async function ensurePeriodOptionsTable() {
+  try {
+    // Vérifier si la table existe (PRAGMA émulé côté Postgres)
+    const cols = await db.all('PRAGMA table_info(filter_period_options)');
+    if (!Array.isArray(cols) || cols.length === 0) {
+      // Créer la table (Postgres uniquement)
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS filter_period_options (
+          id SERIAL PRIMARY KEY,
+          period_key TEXT UNIQUE,
+          display_name TEXT,
+          days_count INTEGER NOT NULL,
+          is_active BOOLEAN DEFAULT TRUE,
+          sort_order INTEGER DEFAULT 0,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `);
+      // Insérer des options par défaut
+      await db.run(
+        `INSERT INTO filter_period_options (period_key, display_name, days_count, is_active, sort_order)
+         VALUES ('last_7_days', '7 jours', 7, TRUE, 10)
+         ON CONFLICT (period_key) DO NOTHING`
+      );
+      await db.run(
+        `INSERT INTO filter_period_options (period_key, display_name, days_count, is_active, sort_order)
+         VALUES ('last_30_days', '30 jours', 30, TRUE, 20)
+         ON CONFLICT (period_key) DO NOTHING`
+      );
+      await db.run(
+        `INSERT INTO filter_period_options (period_key, display_name, days_count, is_active, sort_order)
+         VALUES ('last_90_days', '90 jours', 90, TRUE, 30)
+         ON CONFLICT (period_key) DO NOTHING`
+      );
+    }
+  } catch (err) {
+    // Si la création échoue, continuer; la récupération déclenchera l'erreur explicite
+    console.warn('Impossible de vérifier/créer filter_period_options:', err.message);
+  }
+}
+
 class FilterOptions {
   // Récupérer les options de produits pour les filtres
   static async getProductOptions() {
@@ -64,10 +105,12 @@ class FilterOptions {
   // Récupérer les options de périodes pour les filtres
   static async getPeriodOptions() {
     try {
+      await ensurePeriodOptionsTable();
+      const whereActive = 'is_active = TRUE';
       const rows = await db.all(`
         SELECT id, period_key, display_name, days_count, is_active, sort_order
         FROM filter_period_options
-        WHERE is_active = 1
+        WHERE ${whereActive}
         ORDER BY sort_order ASC
       `);
       return rows;
@@ -79,13 +122,18 @@ class FilterOptions {
   // Récupérer toutes les options de filtres en une seule fois
   static async getAllFilterOptions() {
     try {
-      const [products, localities, regions, categories, periods] = await Promise.all([
+      const results = await Promise.allSettled([
         this.getProductOptions(),
         this.getLocalityOptions(),
         this.getRegionOptions(),
         this.getCategoryOptions(),
         this.getPeriodOptions()
       ]);
+
+      const pick = (idx) => (results[idx].status === 'fulfilled' ? results[idx].value : []);
+      const [products, localities, regions, categories, periods] = [
+        pick(0), pick(1), pick(2), pick(3), pick(4)
+      ];
 
       return {
         products,
@@ -109,8 +157,8 @@ class FilterOptions {
       }
 
       const result = await db.run(
-        `UPDATE ${table} SET is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [isActive ? 1 : 0, id]
+        `UPDATE ${table} SET is_active = ?, updated_at = NOW() WHERE id = ?`,
+        [!!isActive, id]
       );
 
       return result.changes > 0;

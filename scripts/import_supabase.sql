@@ -71,6 +71,61 @@
 \copy public.suppliers FROM 'scripts/export/suppliers.csv' WITH (FORMAT csv, HEADER true, NULL '')
 
 -- 3) Facts and relationships
+-- 3) Users must be inserted before any tables that reference them
+DROP TABLE IF EXISTS public.users_staging;
+CREATE TABLE public.users_staging (
+  id text,
+  username text,
+  email text,
+  password_hash text,
+  email_verified boolean,
+  email_verification_token text,
+  email_verification_expires bigint,
+  role text,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+\echo Importing: users (staging)
+\copy public.users_staging FROM 'scripts/export/users.csv' WITH (FORMAT csv, HEADER true, NULL '')
+
+-- Insert into public.users by matching auth.users via email
+-- Note: ensure all Supabase Auth accounts exist beforehand.
+INSERT INTO public.users (
+  id,
+  username,
+  email,
+  password_hash,
+  email_verified,
+  email_verification_token,
+  email_verification_expires,
+  created_at,
+  updated_at
+)
+SELECT au.id,
+       s.username,
+       s.email,
+       s.password_hash,
+       COALESCE(s.email_verified, false),
+       s.email_verification_token,
+       s.email_verification_expires,
+       COALESCE(s.created_at, now()),
+       COALESCE(s.updated_at, now())
+FROM public.users_staging s
+JOIN auth.users au ON lower(au.email) = lower(s.email);
+
+-- Optional: map "role" from users_staging to user_roles if present
+INSERT INTO public.user_roles (user_id, role_id, assigned_at)
+SELECT u.id,
+       r.id,
+       COALESCE(s.created_at, now())
+FROM public.users_staging s
+JOIN public.users u ON lower(u.email) = lower(s.email)
+JOIN public.roles r ON lower(r.name) = lower(s.role)
+WHERE s.role IS NOT NULL AND s.role <> ''
+ON CONFLICT DO NOTHING;
+
+-- 4) Facts and relationships (now that users exist)
 \echo Importing: prices
 \copy public.prices FROM 'scripts/export/prices.csv' WITH (FORMAT csv, HEADER true, NULL '')
 
@@ -88,9 +143,6 @@
 
 \echo Importing: subscriptions
 \copy public.subscriptions FROM 'scripts/export/subscriptions.csv' WITH (FORMAT csv, HEADER true, NULL '')
-
-\echo Importing: user_roles
-\copy public.user_roles FROM 'scripts/export/user_roles.csv' WITH (FORMAT csv, HEADER true, NULL '')
 
 \echo Importing: contribution_requests
 \copy public.contribution_requests FROM 'scripts/export/contribution_requests.csv' WITH (FORMAT csv, HEADER true, NULL '')

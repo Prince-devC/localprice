@@ -17,7 +17,7 @@ const ensurePriceSchema = async () => {
   try { await db.exec(`ALTER TABLE prices ADD COLUMN sub_locality TEXT;`); } catch (e) {}
   try { await db.exec(`ALTER TABLE prices ADD COLUMN submission_method TEXT;`); } catch (e) {}
   try { await db.exec(`CREATE TABLE IF NOT EXISTS price_source_languages (
-    price_id INTEGER NOT NULL,
+    price_id BIGINT NOT NULL,
     language_id INTEGER NOT NULL,
     PRIMARY KEY (price_id, language_id),
     FOREIGN KEY (price_id) REFERENCES prices(id) ON DELETE CASCADE,
@@ -198,7 +198,12 @@ router.post('/webhook', async (req, res) => {
       languageId = toInt(rawLang);
     }
     if (languageId) {
-      try { await db.run('INSERT OR IGNORE INTO price_source_languages (price_id, language_id) VALUES (?, ?)', [priceId, languageId]); } catch (e) {}
+      try {
+        await db.run(
+          'INSERT INTO price_source_languages (price_id, language_id) VALUES (?, ?) ON CONFLICT (price_id, language_id) DO NOTHING',
+          [priceId, languageId]
+        );
+      } catch (e) {}
     }
 
     return res.status(201).json({ success: true, message: 'Soumission Kobo reçue', data: { price_id: priceId } });

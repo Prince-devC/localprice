@@ -2,11 +2,12 @@ const db = require('../database/connection');
 
 class Language {
   static async ensureTable() {
-    await db.exec(`CREATE TABLE IF NOT EXISTS languages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+    const ddl = `CREATE TABLE IF NOT EXISTS languages (
+           id SERIAL PRIMARY KEY,
+           name TEXT NOT NULL UNIQUE,
+           created_at TIMESTAMPTZ DEFAULT NOW()
+         )`;
+    await db.exec(ddl);
   }
 
   static async getAll() {

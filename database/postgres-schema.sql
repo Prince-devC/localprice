@@ -55,6 +55,16 @@ CREATE TABLE IF NOT EXISTS languages (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Liaisons des langues aux prix (pivot)
+CREATE TABLE IF NOT EXISTS price_source_languages (
+    price_id BIGINT NOT NULL REFERENCES prices(id) ON DELETE CASCADE,
+    language_id INTEGER NOT NULL REFERENCES languages(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (price_id, language_id)
+);
+CREATE INDEX IF NOT EXISTS idx_psl_price ON price_source_languages(price_id);
+CREATE INDEX IF NOT EXISTS idx_psl_language ON price_source_languages(language_id);
+
 -- =========
 -- Régions
 -- =========

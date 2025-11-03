@@ -256,7 +256,7 @@ const EmptyState = styled.div`
   font-style: italic;
 `;
 
-const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, onDataLoaded }) => {
+const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, onDataLoaded, onLoadingChange }) => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
   const navigate = useNavigate();
@@ -285,6 +285,13 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
       }
     }
   );
+
+  // Remonter l'état de chargement au parent (homepage / all-prices)
+  useEffect(() => {
+    if (onLoadingChange) {
+      onLoadingChange(isLoading || isFetching);
+    }
+  }, [isLoading, isFetching, onLoadingChange]);
 
   console.log('Current filters:', filters);
   console.log('Agricultural prices response:', agriculturalPricesResponse);

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { adminService, settingsService, productCategoryService, productService, languageService, authService, filterOptionsService, unitService, agriculturalPriceService } from '../services/api';
+import { adminService, settingsService, productCategoryService, productService, languageService, authService, filterOptionsService, unitService, agriculturalPriceService, seoService, localityService } from '../services/api';
+import { useSeo } from '../contexts/SeoContext';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ConfirmModal from '../components/ConfirmModal';
@@ -218,6 +219,26 @@ const InputText = styled.input`
   }
 `;
 
+const SelectControl = styled.select`
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: white;
+  color: var(--gray-800);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  min-width: 160px;
+  &:focus {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
+  }
+  &:disabled {
+    background: #f9fafb;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+`;
+
 const TableWrapper = styled.div`
   width: 100%;
   overflow-x: auto;
@@ -383,6 +404,7 @@ const AccessDenied = styled.div`
 const AdminDashboard = () => {
   const { user, hasRole } = useAuth();
   const queryClient = useQueryClient();
+  const { refresh } = useSeo();
 
   // Fallback: récupérer le rôle local via /auth/profile (si les rôles n'ont pas été chargés)
   const { data: profileResp, isLoading: profileLoading } = useQuery(
@@ -404,16 +426,18 @@ const AdminDashboard = () => {
   // Global confirm/prompt modals (hooks must be declared unconditionally)
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [confirmConfig, setConfirmConfig] = React.useState({ title: 'Confirmer', message: '', onConfirm: null, confirmText: 'Confirmer', cancelText: 'Annuler' });
+  const [confirmContext, setConfirmContext] = React.useState(null);
   const openConfirm = (title, message, onConfirm, confirmText = 'Confirmer', cancelText = 'Annuler') => {
     setConfirmConfig({ title, message, onConfirm, confirmText, cancelText });
     setConfirmOpen(true);
   };
-  const closeConfirm = () => { setConfirmOpen(false); setConfirmConfig({ title: 'Confirmer', message: '', onConfirm: null, confirmText: 'Confirmer', cancelText: 'Annuler' }); };
+  const closeConfirm = () => { setConfirmOpen(false); setConfirmConfig({ title: 'Confirmer', message: '', onConfirm: null, confirmText: 'Confirmer', cancelText: 'Annuler' }); setConfirmContext(null); };
 
   const [promptOpen, setPromptOpen] = React.useState(false);
   const [promptConfig, setPromptConfig] = React.useState({ title: 'Saisie', label: 'Valeur', placeholder: '', defaultValue: '', multiline: false, required: false, submitText: 'Valider', cancelText: 'Annuler', onSubmit: null });
+  const [promptContext, setPromptContext] = React.useState(null);
   const openPrompt = (cfg) => { setPromptConfig(cfg); setPromptOpen(true); };
-  const closePrompt = () => { setPromptOpen(false); setPromptConfig({ title: 'Saisie', label: 'Valeur', placeholder: '', defaultValue: '', multiline: false, required: false, submitText: 'Valider', cancelText: 'Annuler', onSubmit: null }); };
+  const closePrompt = () => { setPromptOpen(false); setPromptConfig({ title: 'Saisie', label: 'Valeur', placeholder: '', defaultValue: '', multiline: false, required: false, submitText: 'Valider', cancelText: 'Annuler', onSubmit: null }); setPromptContext(null); };
   // Menu latéral: élément actif
   const [activeMenu, setActiveMenu] = React.useState('stats');
   React.useEffect(() => {
@@ -421,9 +445,9 @@ const AdminDashboard = () => {
     if (fromHash) setActiveMenu(fromHash);
   }, []);
   const handleMenuClick = (key) => (e) => {
-    e.preventDefault();
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
     setActiveMenu(key);
-    window.location.hash = key;
+    try { window.location.hash = key; } catch {}
   };
 
   // Récupérer les données du tableau de bord
@@ -431,10 +455,50 @@ const AdminDashboard = () => {
     'admin-dashboard',
     adminService.getDashboard,
     {
-      select: (response) => response.data.data,
-      enabled: !!isAdmin
+      // Sélection robuste: accepte plusieurs formes possibles
+      // - { data: { data: {...} } }
+      // - { data: {...} }
+      // - { ... }
+      select: (response) => (
+        (response && response.data && (response.data.data || response.data))
+        || response
+        || null
+      ),
+      enabled: !!isAdmin && (activeMenu === 'stats' || activeMenu === 'recent'),
+      // Rafraîchir pour éviter des valeurs obsolètes et s'assurer que les comptes sont à jour
+      keepPreviousData: false,
+      staleTime: 0,
+      cacheTime: 0,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      refetchOnMount: true,
+      refetchInterval: 30000,
+      refetchIntervalInBackground: true
     }
   );
+  // Utilitaires de lecture robuste des stats et fallbacks
+  const pickNumber = React.useCallback((obj, path) => {
+    try {
+      const parts = Array.isArray(path) ? path : String(path).split('.');
+      let cur = obj;
+      for (const p of parts) {
+        if (!cur || typeof cur !== 'object') return null;
+        cur = cur[p];
+      }
+      const n = Number(cur);
+      return Number.isFinite(n) ? n : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const getStat = React.useCallback((primaryPaths = [], fallbackValue = 0) => {
+    for (const path of primaryPaths) {
+      const v = pickNumber(dashboardData, path);
+      if (v !== null) return v;
+    }
+    return fallbackValue;
+  }, [dashboardData, pickNumber]);
   // Etats pour prix récents (client-side pagination & recherche)
   const [recentLimit, setRecentLimit] = React.useState(20);
   const [recentPage, setRecentPage] = React.useState(1);
@@ -467,7 +531,10 @@ const AdminDashboard = () => {
     () => adminService.getPendingPrices({ limit: pendingLimit, offset: pendingOffset }),
     {
       select: (response) => response?.data?.data || [],
-      enabled: !!isAdmin
+      enabled: !!isAdmin && activeMenu === 'pending',
+      refetchOnMount: true,
+      refetchInterval: 30000,
+      refetchIntervalInBackground: true
     }
   );
   const visiblePending = React.useMemo(() => {
@@ -493,6 +560,21 @@ const AdminDashboard = () => {
   const { data: localityOpts = [] } = useQuery(
     'filter-localities',
     () => filterOptionsService.getLocalities(),
+    { select: (r) => r?.data?.data || [] }
+  );
+  const { data: categoryOpts = [] } = useQuery(
+    'filter-categories',
+    () => filterOptionsService.getCategories(),
+    { select: (r) => r?.data?.data || [] }
+  );
+  const { data: categoriesAll = [] } = useQuery(
+    'admin-categories-all',
+    () => productCategoryService.getAll(),
+    { select: (r) => r?.data?.data || [], enabled: !!isAdmin }
+  );
+  const { data: regionOpts = [] } = useQuery(
+    'filter-regions',
+    () => filterOptionsService.getRegions(),
     { select: (r) => r?.data?.data || [] }
   );
   const { data: units = [] } = useQuery(
@@ -606,7 +688,10 @@ const AdminDashboard = () => {
     () => adminService.getOffers({ limit: offersLimit, offset: offersOffset }),
     {
       select: (response) => response?.data?.data || [],
-      enabled: !!isAdmin
+      enabled: !!isAdmin && activeMenu === 'offers',
+      refetchOnMount: true,
+      refetchInterval: 30000,
+      refetchIntervalInBackground: true
     }
   );
   const visibleOffers = React.useMemo(() => {
@@ -630,6 +715,12 @@ const AdminDashboard = () => {
       onSuccess: () => {
         queryClient.invalidateQueries('pending-prices');
         queryClient.invalidateQueries('admin-dashboard');
+        try { toast.success('Prix validé'); } catch {}
+        try { closePrompt(); } catch {}
+      },
+      onError: (err) => {
+        const msg = err?.response?.data?.message || 'Erreur lors de la validation du prix';
+        try { toast.error(msg); } catch {}
       }
     }
   );
@@ -641,8 +732,31 @@ const AdminDashboard = () => {
       onSuccess: () => {
         queryClient.invalidateQueries('pending-prices');
         queryClient.invalidateQueries('admin-dashboard');
+        try { toast.success('Prix rejeté'); } catch {}
+        try { closePrompt(); } catch {}
+      },
+      onError: (err) => {
+        const msg = err?.response?.data?.message || 'Erreur lors du rejet du prix';
+        try { toast.error(msg); } catch {}
       }
     }
+  );
+
+  // Compteurs additionnels (fallback): prix validés / rejetés et total utilisateurs
+  const { data: validatedPrices = [] } = useQuery(
+    'admin-validated-prices-count',
+    () => agriculturalPriceService.getAll({ limit: 1000, status: 'validated' }),
+    { select: (r) => r?.data?.data || [], enabled: !!isAdmin }
+  );
+  const { data: rejectedPrices = [] } = useQuery(
+    'admin-rejected-prices-count',
+    () => agriculturalPriceService.getAll({ limit: 1000, status: 'rejected' }),
+    { select: (r) => r?.data?.data || [], enabled: !!isAdmin }
+  );
+  const { data: usersAll = [] } = useQuery(
+    'admin-users-all-count',
+    () => adminService.getUsers({ limit: 1000, offset: 0 }),
+    { select: (r) => r?.data?.data || [], enabled: !!isAdmin }
   );
 
   // Sélection multiple pour prix en attente
@@ -785,7 +899,7 @@ const AdminDashboard = () => {
   const [contributorsPage, setContributorsPage] = React.useState(1);
   const contributorsOffset = (contributorsPage - 1) * contributorsLimit;
   const [contributorsSearch, setContributorsSearch] = React.useState('');
-  const { data: contributors, isLoading: loadingContributors, isFetching: fetchingContributors, refetch: refetchContributors } = useQuery(
+  const { data: contributors, isLoading: loadingContributors, isFetching: fetchingContributors, error: contributorsError, refetch: refetchContributors } = useQuery(
     'admin-contributors',
     () => adminService.getContributors({ limit: contributorsLimit, offset: contributorsOffset }),
     {
@@ -794,7 +908,14 @@ const AdminDashboard = () => {
       // Forcer une actualisation plus fréquente pour éviter le besoin de recharger
       staleTime: 0,
       refetchOnWindowFocus: true,
-      refetchOnReconnect: true
+      refetchOnReconnect: true,
+      refetchInterval: 20000,
+      refetchIntervalInBackground: true,
+      retry: 2,
+      onError: (err) => {
+        const msg = err?.response?.data?.message || 'Erreur de récupération des contributeurs';
+        try { toast.error(msg); } catch {}
+      }
     }
   );
 
@@ -817,6 +938,66 @@ const AdminDashboard = () => {
       refetchContribs();
     }
   }, [activeMenu, requestsLimit, requestsOffset, refetchContribs]);
+
+  // États pour la gestion SEO
+  const [seoSettings, setSeoSettings] = React.useState({
+    site_title: '',
+    site_description: '',
+    site_keywords: '',
+    home_title: '',
+    home_description: '',
+    home_keywords: '',
+    prices_title: '',
+    prices_description: '',
+    prices_keywords: '',
+    about_title: '',
+    about_description: '',
+    about_keywords: ''
+  });
+  const [seoLoading, setSeoLoading] = React.useState(false);
+
+  // Charger les paramètres SEO
+  const { data: seoData, isLoading: loadingSeoData, refetch: refetchSeo } = useQuery(
+    'admin-seo-settings',
+    () => seoService.getSettings().then((r) => r?.data?.data || {}),
+    { 
+      enabled: !!isAdmin,
+      onSuccess: (data) => {
+        if (data) {
+          setSeoSettings(prev => ({ ...prev, ...data }));
+        }
+      }
+    }
+  );
+
+  // Mutation pour sauvegarder les paramètres SEO
+  const updateSeoMutation = useMutation(
+    (settings) => seoService.updateSettings(settings),
+    {
+      onSuccess: () => {
+        toast.success('Paramètres SEO mis à jour');
+        queryClient.invalidateQueries('admin-seo-settings');
+      },
+      onError: (err) => {
+        const msg = err?.response?.data?.message || 'Erreur lors de la mise à jour des paramètres SEO';
+        toast.error(msg);
+      }
+    }
+  );
+
+  // Fonction pour sauvegarder les paramètres SEO
+  const handleSeoSave = async () => {
+    setSeoLoading(true);
+    try {
+      await updateSeoMutation.mutateAsync(seoSettings);
+      // Rafraîchir le contexte SEO pour mettre à jour le titre/meta sans rechargement
+      await refresh();
+    } catch (error) {
+      // Erreur SEO gérée silencieusement
+    } finally {
+      setSeoLoading(false);
+    }
+  };
 
   // Listes visibles (recherche côté client)
   const visibleUsers = React.useMemo(() => {
@@ -851,8 +1032,9 @@ const AdminDashboard = () => {
 
   const visibleContributors = React.useMemo(() => {
     const term = contributorsSearch.trim().toLowerCase();
+    // Le serveur renvoie déjà uniquement les utilisateurs ayant le rôle contributeur
+    // On applique simplement l'exclusion super_admin (déjà faite côté serveur) et la recherche locale
     return (contributors || [])
-      .filter(c => !((c.roles || []).includes('super_admin')))
       .filter((c) => {
         if (!term) return true;
         const hay = [c.display_name, c.username, c.email]
@@ -866,8 +1048,8 @@ const AdminDashboard = () => {
   const [roleSelection, setRoleSelection] = React.useState({});
 
   // Rôles disponibles (liste statique côté client pour simplicité)
-  // Limiter les rôles attribuables: pas de 'user', pas de 'contributor', pas de 'super_admin'
-  const availableRoles = isSuperAdmin ? ['admin', 'super_admin'] : [];
+  // Autoriser l’attribution du rôle de base "user" et des rôles admin
+  const availableRoles = isSuperAdmin ? ['user', 'admin', 'super_admin'] : [];
   const loadingRoles = false;
 
   const addRoleMutation = useMutation(
@@ -879,6 +1061,7 @@ const AdminDashboard = () => {
           const r = variables?.role ? `Rôle "${variables.role}" ajouté` : 'Rôle ajouté';
           toast.success(r);
         } catch {}
+        try { closeConfirm(); } catch {}
       },
       onError: (err, variables) => {
         const msg = err?.response?.data?.message || `Échec de l'ajout du rôle ${variables?.role || ''}`.trim();
@@ -895,6 +1078,7 @@ const AdminDashboard = () => {
         queryClient.invalidateQueries('admin-contributors');
         queryClient.invalidateQueries('admin-dashboard');
         try { toast.success('Rôle retiré'); } catch {}
+        try { closeConfirm(); } catch {}
       },
       onError: (err, variables) => {
         const msg = err?.response?.data?.message || `Échec du retrait du rôle ${variables?.role || ''}`.trim();
@@ -926,6 +1110,7 @@ const AdminDashboard = () => {
           const action = variables?.ban ? 'banni' : 'débanni';
           toast.success(`${count} utilisateur(s) ${action}`);
         } catch {}
+        try { closeConfirm(); } catch {}
       },
       onError: (err, variables) => {
         const action = variables?.ban ? 'bannir' : 'débannir';
@@ -941,9 +1126,16 @@ const AdminDashboard = () => {
         queryClient.invalidateQueries('admin-users'); 
         clearSelection(); 
         try {
-          const count = Array.isArray(variables) ? variables.length : 1;
-          toast.success(`${count} utilisateur(s) supprimé(s)`);
+          const affected = _data?.data?.affected;
+          const count = typeof affected === 'number' ? affected : (Array.isArray(variables) ? variables.length : 1);
+          const skipped = Array.isArray(_data?.data?.skipped) ? _data.data.skipped.length : 0;
+          if (count > 0) {
+            toast.success(`${count} utilisateur(s) supprimé(s)` + (skipped > 0 ? `, ${skipped} ignoré(s)` : ''));
+          } else {
+            toast((skipped > 0 ? `${skipped} ignoré(s)` : 'Aucune suppression effectuée'), { icon: '⚠️' });
+          }
         } catch {}
+        try { closeConfirm(); } catch {}
       },
       onError: (err) => {
         const msg = err?.response?.data?.message || 'Échec de la suppression des utilisateurs';
@@ -956,9 +1148,10 @@ const AdminDashboard = () => {
   };
   const handleBulkDelete = () => {
     if (selectedIds.length > 0) {
+      setConfirmContext('delete_users');
       openConfirm(
         'Supprimer les utilisateurs',
-        'Supprimer (soft) les utilisateurs sélectionnés ?',
+        'Supprimer les utilisateurs sélectionnés ?',
         () => { deleteUsersMutation.mutate(selectedIds); }
       );
     }
@@ -974,10 +1167,13 @@ const AdminDashboard = () => {
     {
       onSuccess: (_data, id, context) => {
         queryClient.invalidateQueries('admin-contributions');
+        queryClient.invalidateQueries('admin-contributors');
+        queryClient.invalidateQueries('admin-dashboard');
         try {
           // Ne pas afficher la recommandation de méthode (ex: "Formulaire web") dans le toast
           toast.success('Demande approuvée');
         } catch {}
+        closeConfirm();
       }
     }
   );
@@ -987,14 +1183,18 @@ const AdminDashboard = () => {
     {
       onSuccess: (_data, variables) => {
         queryClient.invalidateQueries('admin-contributions');
+        queryClient.invalidateQueries('admin-contributors');
+        queryClient.invalidateQueries('admin-dashboard');
         try {
           toast.success('Demande rejetée avec succès');
         } catch {}
+        closePrompt();
       }
     }
   );
 
   const handleApproveRequest = (id) => {
+    setConfirmContext('approve_contrib');
     openConfirm(
       'Approuver la demande',
       "Confirmer l'approbation de cette demande ?",
@@ -1008,6 +1208,7 @@ const AdminDashboard = () => {
       'Confirmer le rejet de cette demande ?',
       () => {
         closeConfirm();
+        setPromptContext('reject_contrib');
         openPrompt({
           title: 'Motif du rejet',
           label: 'Raison du rejet',
@@ -1015,10 +1216,9 @@ const AdminDashboard = () => {
           defaultValue: '',
           multiline: true,
           required: true,
-          submitText: 'Rejeter',
+          submitText: rejectContributionMutation.isLoading ? 'Rejet…' : 'Rejeter',
           cancelText: 'Annuler',
           onSubmit: (reason) => {
-            closePrompt();
             rejectContributionMutation.mutate({ id, rejection_reason: reason });
           }
         });
@@ -1077,6 +1277,7 @@ const AdminDashboard = () => {
   // Global confirm/prompt modals moved to top to satisfy hooks rules
 
   const handleValidate = (priceId) => {
+    setPromptContext('validate_price');
     openPrompt({
       title: 'Valider le prix',
       label: 'Commentaire de validation (optionnel)',
@@ -1084,16 +1285,16 @@ const AdminDashboard = () => {
       defaultValue: '',
       multiline: true,
       required: false,
-      submitText: 'Valider',
+      submitText: validatePriceMutation.isLoading ? 'Validation…' : 'Valider',
       cancelText: 'Annuler',
       onSubmit: (comment) => {
-        closePrompt();
         validatePriceMutation.mutate({ priceId, comment: comment || '' });
       }
     });
   };
 
   const handleReject = (priceId) => {
+    setPromptContext('reject_price');
     openPrompt({
       title: 'Rejeter le prix',
       label: 'Raison du rejet',
@@ -1101,10 +1302,9 @@ const AdminDashboard = () => {
       defaultValue: '',
       multiline: true,
       required: true,
-      submitText: 'Rejeter',
+      submitText: rejectPriceMutation.isLoading ? 'Rejet…' : 'Rejeter',
       cancelText: 'Annuler',
       onSubmit: (reason) => {
-        closePrompt();
         rejectPriceMutation.mutate({ priceId, rejection_reason: reason });
       }
     });
@@ -1125,8 +1325,8 @@ const AdminDashboard = () => {
 
   const initialLoading = (
     profileLoading ||
-    (activeMenu === 'stats' && loadingDashboard) ||
     (activeMenu === 'pending' && loadingPending) ||
+    (activeMenu === 'stats' && loadingDashboard) ||
     (activeMenu === 'recent' && loadingDashboard) ||
     (activeMenu === 'contributors' && loadingContributors) ||
     (activeMenu === 'requests' && loadingContribs) ||
@@ -1136,6 +1336,8 @@ const AdminDashboard = () => {
   if (initialLoading) {
     return <LoadingSpinner text="Chargement de l'espace admin..." />;
   }
+
+  // Section Aperçu (stats) supprimée: les calculs des compteurs ne sont plus nécessaires
 
   return (
     <DashboardContainer>
@@ -1148,6 +1350,7 @@ const AdminDashboard = () => {
           </UserInfo>
         </SidebarHeader>
         <NavList>
+          {/* Aperçu supprimé */}
           {/* Aperçu */}
           <NavAnchor href="#stats" onClick={handleMenuClick('stats')} $active={activeMenu === 'stats'}><FiHome /> Aperçu</NavAnchor>
 
@@ -1162,8 +1365,12 @@ const AdminDashboard = () => {
           {/* Gestion des données produits */}
           <NavAnchor href="#categories" onClick={handleMenuClick('categories')} $active={activeMenu === 'categories'}><FiPackage /> Catégories</NavAnchor>
           <NavAnchor href="#products" onClick={handleMenuClick('products')} $active={activeMenu === 'products'}><FiPackage /> Produits</NavAnchor>
+          <NavAnchor href="#localities" onClick={handleMenuClick('localities')} $active={activeMenu === 'localities'}><FiMapPin /> Localités</NavAnchor>
           <NavAnchor href="#units" onClick={handleMenuClick('units')} $active={activeMenu === 'units'}><FiPackage /> Unités</NavAnchor>
           <NavAnchor href="#languages" onClick={handleMenuClick('languages')} $active={activeMenu === 'languages'}><FiPackage /> Langues</NavAnchor>
+
+          {/* Gestion SEO */}
+          <NavAnchor href="#seo" onClick={handleMenuClick('seo')} $active={activeMenu === 'seo'}><FiSettings /> SEO</NavAnchor>
 
           {/* Gestion des utilisateurs et paramètres (super admin uniquement) */}
           {isSuperAdmin && (
@@ -1186,9 +1393,38 @@ const AdminDashboard = () => {
           open={confirmOpen}
           title={confirmConfig.title}
           message={confirmConfig.message}
-          confirmText={confirmConfig.confirmText}
+          confirmText={
+            confirmContext === 'approve_contrib' && approveContributionMutation.isLoading
+              ? 'Approbation…'
+              : confirmContext === 'remove_contrib' && removeRoleMutation.isLoading
+                ? 'Retrait…'
+                : confirmContext === 'delete_users' && deleteUsersMutation.isLoading
+                  ? 'Suppression…'
+                : confirmContext === 'bulk_delete' && deleteUsersMutation.isLoading
+                  ? 'Suppression…'
+                : confirmContext === 'add_role' && addRoleMutation.isLoading
+                  ? 'Ajout…'
+                : (['bulk_ban', 'bulk_unban', 'ban_unban_user'].includes(confirmContext) && banUsersMutation.isLoading)
+                  ? 'Mise à jour…'
+                : confirmConfig.confirmText
+          }
           cancelText={confirmConfig.cancelText}
-          onConfirm={() => { try { confirmConfig.onConfirm && confirmConfig.onConfirm(); } finally { closeConfirm(); } }}
+          busy={
+            confirmContext === 'approve_contrib'
+              ? !!approveContributionMutation.isLoading
+              : confirmContext === 'remove_contrib'
+                ? !!removeRoleMutation.isLoading
+                : confirmContext === 'delete_users'
+                  ? !!deleteUsersMutation.isLoading
+                : confirmContext === 'bulk_delete'
+                  ? !!deleteUsersMutation.isLoading
+                : confirmContext === 'add_role'
+                  ? !!addRoleMutation.isLoading
+                : (['bulk_ban', 'bulk_unban', 'ban_unban_user'].includes(confirmContext))
+                  ? !!banUsersMutation.isLoading
+                : false
+          }
+          onConfirm={() => { try { confirmConfig.onConfirm && confirmConfig.onConfirm(); } finally { /* fermeture dans onSuccess */ } }}
           onCancel={closeConfirm}
         />
         <PromptModal
@@ -1199,8 +1435,14 @@ const AdminDashboard = () => {
           defaultValue={promptConfig.defaultValue}
           multiline={promptConfig.multiline}
           required={promptConfig.required}
-          submitText={promptConfig.submitText}
+          submitText={(() => {
+            if (promptContext === 'reject_contrib') return rejectContributionMutation.isLoading ? 'Rejet…' : promptConfig.submitText;
+            if (promptContext === 'validate_price') return validatePriceMutation.isLoading ? 'Validation…' : promptConfig.submitText;
+            if (promptContext === 'reject_price') return rejectPriceMutation.isLoading ? 'Rejet…' : promptConfig.submitText;
+            return promptConfig.submitText;
+          })()}
           cancelText={promptConfig.cancelText}
+          busy={promptContext === 'reject_contrib' ? !!rejectContributionMutation.isLoading : promptContext === 'validate_price' ? !!validatePriceMutation.isLoading : promptContext === 'reject_price' ? !!rejectPriceMutation.isLoading : false}
           onSubmit={(v) => { try { promptConfig.onSubmit && promptConfig.onSubmit(v); } finally { /* prompt closed in handler */ } }}
           onCancel={closePrompt}
         />
@@ -1210,132 +1452,170 @@ const AdminDashboard = () => {
           </div>
         )}
 
-      {/* Statistiques générales */}
+      {/* Section Aperçu (statistiques Supabase/BDD) */}
       {activeMenu === 'stats' && (
       <div id="stats">
-        <StatsGrid>
-        <StatCard>
-          <StatIcon>
-            <FiDollarSign />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.priceStats?.total_prices || 0)}</StatValue>
-          <StatLabel>Total des prix</StatLabel>
-        </StatCard>
+        {loadingDashboard ? (
+          <LoadingSpinner text="Chargement des statistiques…" />
+        ) : (
+          <StatsGrid>
+            {/* Prix */}
+            {(() => {
+              const total = getStat(['priceStats.total_prices', 'priceStats.total'], 0);
+              const validated = getStat(['priceStats.validated_prices', 'priceStats.validated'], 0);
+              const pending = getStat(['priceStats.pending_prices', 'priceStats.pending'], 0);
+              const rejected = getStat(['priceStats.rejected_prices', 'priceStats.rejected'], 0);
+              return (<>
+                <StatCard>
+                  <StatIcon><FiDollarSign /></StatIcon>
+                  <StatValue>{formatCompactCount(total)}</StatValue>
+                  <StatLabel>Total des prix</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiCheck /></StatIcon>
+                  <StatValue>{formatCompactCount(validated)}</StatValue>
+                  <StatLabel>Prix validés</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiClipboard /></StatIcon>
+                  <StatValue>{formatCompactCount(pending)}</StatValue>
+                  <StatLabel>Prix en attente</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiX /></StatIcon>
+                  <StatValue>{formatCompactCount(rejected)}</StatValue>
+                  <StatLabel>Prix rejetés</StatLabel>
+                </StatCard>
+              </>);
+            })()}
 
-        <StatCard>
-          <StatIcon>
-            <FiPackage />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.priceStats?.pending_prices || 0)}</StatValue>
-          <StatLabel>En attente de validation</StatLabel>
-        </StatCard>
+            {/* Utilisateurs */}
+            {(() => {
+              const usersTotal = getStat(['userStats.total_users', 'userStats.total'], 0);
+              const usersAdmins = getStat(['userStats.admins'], 0);
+              const usersContribs = getStat(['userStats.contributors'], 0);
+              return (<>
+                {isSuperAdmin && (
+                  <StatCard>
+                    <StatIcon><FiUsers /></StatIcon>
+                    <StatValue>{formatCompactCount(usersTotal)}</StatValue>
+                    <StatLabel>Total utilisateurs</StatLabel>
+                  </StatCard>
+                )}
+                <StatCard>
+                  <StatIcon><FiUser /></StatIcon>
+                  <StatValue>{formatCompactCount(usersContribs)}</StatValue>
+                  <StatLabel>Contributeurs</StatLabel>
+                </StatCard>
+                {isSuperAdmin && (
+                  <StatCard>
+                    <StatIcon><FiSettings /></StatIcon>
+                    <StatValue>{formatCompactCount(usersAdmins)}</StatValue>
+                    <StatLabel>Admins</StatLabel>
+                  </StatCard>
+                )}
+              </>);
+            })()}
 
-        <StatCard>
-          <StatIcon>
-            <FiUsers />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.userStats?.total_users || 0)}</StatValue>
-          <StatLabel>Utilisateurs</StatLabel>
-        </StatCard>
+            {/* Produits */}
+            {(() => {
+              const totalProducts = getStat(['productStats.total_products'], 0);
+              const totalCategories = getStat(['productStats.total_categories'], 0);
+              return (<>
+                <StatCard>
+                  <StatIcon><FiPackage /></StatIcon>
+                  <StatValue>{formatCompactCount(totalProducts)}</StatValue>
+                  <StatLabel>Produits</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiPackage /></StatIcon>
+                  <StatValue>{formatCompactCount(totalCategories)}</StatValue>
+                  <StatLabel>Catégories</StatLabel>
+                </StatCard>
+              </>);
+            })()}
 
-        <StatCard>
-          <StatIcon>
-            <FiMapPin />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.localityStats?.total_localities || 0)}</StatValue>
-          <StatLabel>Localités</StatLabel>
-        </StatCard>
+            {/* Localités */}
+            {(() => {
+              const totalLocalities = getStat(['localityStats.total_localities'], 0);
+              const totalRegions = getStat(['localityStats.total_regions'], 0);
+              return (<>
+                <StatCard>
+                  <StatIcon><FiMapPin /></StatIcon>
+                  <StatValue>{formatCompactCount(totalLocalities)}</StatValue>
+                  <StatLabel>Localités</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiMapPin /></StatIcon>
+                  <StatValue>{formatCompactCount(totalRegions)}</StatValue>
+                  <StatLabel>Régions</StatLabel>
+                </StatCard>
+              </>);
+            })()}
 
-        <StatCard>
-          <StatIcon>
-            <FiCheck />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.priceStats?.validated_prices || 0)}</StatValue>
-          <StatLabel>Prix validés</StatLabel>
-        </StatCard>
+            {/* Demandes de contribution */}
+            {(() => {
+              const contribPending = getStat(['contributionStats.pending'], 0);
+              const contribApproved = getStat(['contributionStats.approved'], 0);
+              const contribRejected = getStat(['contributionStats.rejected'], 0);
+              return (<>
+                <StatCard>
+                  <StatIcon><FiClipboard /></StatIcon>
+                  <StatValue>{formatCompactCount(contribPending)}</StatValue>
+                  <StatLabel>Demandes en attente</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiCheckSquare /></StatIcon>
+                  <StatValue>{formatCompactCount(contribApproved)}</StatValue>
+                  <StatLabel>Demandes approuvées</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiSquare /></StatIcon>
+                  <StatValue>{formatCompactCount(contribRejected)}</StatValue>
+                  <StatLabel>Demandes rejetées</StatLabel>
+                </StatCard>
+              </>);
+            })()}
 
-        <StatCard>
-          <StatIcon>
-            <FiX />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.priceStats?.rejected_prices || 0)}</StatValue>
-          <StatLabel>Prix rejetés</StatLabel>
-        </StatCard>
+            {/* Modération (super admin uniquement) */}
+            {isSuperAdmin && (() => {
+              const bannedUsers = getStat(['moderationStats.banned_users'], 0);
+              const deletedUsers = getStat(['moderationStats.deleted_users'], 0);
+              return (<>
+                <StatCard>
+                  <StatIcon><FiUserX /></StatIcon>
+                  <StatValue>{formatCompactCount(bannedUsers)}</StatValue>
+                  <StatLabel>Utilisateurs bannis</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiTrash /></StatIcon>
+                  <StatValue>{formatCompactCount(deletedUsers)}</StatValue>
+                  <StatLabel>Utilisateurs supprimés</StatLabel>
+                </StatCard>
+              </>);
+            })()}
 
-        <StatCard>
-          <StatIcon>
-            <FiUser />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.userStats?.contributors || 0)}</StatValue>
-          <StatLabel>Contributeurs</StatLabel>
-        </StatCard>
-
-        <StatCard>
-          <StatIcon>
-            <FiUsers />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.userStats?.admins || 0)}</StatValue>
-          <StatLabel>Admins</StatLabel>
-        </StatCard>
-
-        <StatCard>
-          <StatIcon>
-            <FiClipboard />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.contributionStats?.pending || 0)}</StatValue>
-          <StatLabel>Demandes en attente</StatLabel>
-        </StatCard>
-
-        <StatCard>
-          <StatIcon>
-            <FiPackage />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.offerStats?.active_offers || 0)}</StatValue>
-          <StatLabel>Offres actives</StatLabel>
-        </StatCard>
-
-        <StatCard>
-          <StatIcon>
-            <FiUserX />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.moderationStats?.banned_users || 0)}</StatValue>
-          <StatLabel>Utilisateurs bannis</StatLabel>
-        </StatCard>
-
-        <StatCard>
-          <StatIcon>
-            <FiTrash />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.moderationStats?.deleted_users || 0)}</StatValue>
-          <StatLabel>Comptes supprimés</StatLabel>
-        </StatCard>
-
-        <StatCard>
-          <StatIcon>
-            <FiPackage />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.productStats?.total_products || 0)}</StatValue>
-          <StatLabel>Produits</StatLabel>
-        </StatCard>
-
-        <StatCard>
-          <StatIcon>
-            <FiPackage />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.productStats?.total_categories || 0)}</StatValue>
-          <StatLabel>Catégories</StatLabel>
-        </StatCard>
-
-        <StatCard>
-          <StatIcon>
-            <FiMapPin />
-          </StatIcon>
-            <StatValue>{formatCompactCount(dashboardData?.localityStats?.total_regions || 0)}</StatValue>
-          <StatLabel>Régions</StatLabel>
-        </StatCard>
-        </StatsGrid>
-        </div>
+            {/* Offres (super admin uniquement) */}
+            {isSuperAdmin && (() => {
+              const totalOffers = getStat(['offerStats.total_offers'], 0);
+              const activeOffers = getStat(['offerStats.active_offers'], 0);
+              return (<>
+                <StatCard>
+                  <StatIcon><FiPackage /></StatIcon>
+                  <StatValue>{formatCompactCount(totalOffers)}</StatValue>
+                  <StatLabel>Offres</StatLabel>
+                </StatCard>
+                <StatCard>
+                  <StatIcon><FiPackage /></StatIcon>
+                  <StatValue>{formatCompactCount(activeOffers)}</StatValue>
+                  <StatLabel>Offres actives</StatLabel>
+                </StatCard>
+              </>);
+            })()}
+          </StatsGrid>
         )}
+      </div>
+      )}
 
       {/* Prix en attente de validation */}
       {activeMenu === 'pending' && (
@@ -1518,7 +1798,11 @@ const AdminDashboard = () => {
                         </span>
                       )}
                       <ValidateButton
-                        onClick={() => handleValidate(price.id)}
+                        onClick={() => { setConfirmContext('validate_price'); openConfirm(
+                          'Valider le prix',
+                          `Valider ce prix de ${price.price} pour ${price.product_name} ?`,
+                          () => { closeConfirm(); handleValidate(price.id); }
+                        ); }}
                         disabled={validatePriceMutation.isLoading}
                         aria-label="Valider"
                         title="Valider"
@@ -1526,7 +1810,11 @@ const AdminDashboard = () => {
                         {validatePriceMutation.isLoading ? <SpinnerIcon /> : <FiCheck />}
                       </ValidateButton>
                       <RejectButton
-                        onClick={() => handleReject(price.id)}
+                        onClick={() => { setConfirmContext('reject_price'); openConfirm(
+                          'Rejeter le prix',
+                          `Rejeter ce prix de ${price.price} pour ${price.product_name} ?`,
+                          () => { closeConfirm(); handleReject(price.id); }
+                        ); }}
                         disabled={rejectPriceMutation.isLoading}
                         aria-label="Rejeter"
                         title="Rejeter"
@@ -1711,6 +1999,16 @@ const AdminDashboard = () => {
       </Section>
       )}
 
+      {/* Gestion des localités */}
+      {activeMenu === 'localities' && (
+      <Section id="localities">
+        <SectionTitle>
+          <FiMapPin /> Gérer les localités
+        </SectionTitle>
+        <LocalitiesSection queryClient={queryClient} isAdmin={isAdmin} regionOpts={regionOpts} />
+      </Section>
+      )}
+
       {/* Demandes de contribution */}
       {activeMenu === 'requests' && (
       <Section id="requests">
@@ -1847,7 +2145,7 @@ const AdminDashboard = () => {
                         aria-label="Approuver"
                         title="Approuver"
                       >
-                        <FiCheck />
+                        {approveContributionMutation.isLoading ? <SpinnerIcon /> : <FiCheck />}
                       </ValidateButton>
                       <RejectButton
                         onClick={() => handleRejectRequest(req.id)}
@@ -1855,7 +2153,7 @@ const AdminDashboard = () => {
                         aria-label="Rejeter"
                         title="Rejeter"
                       >
-                        <FiX />
+                        {rejectContributionMutation.isLoading ? <SpinnerIcon /> : <FiX />}
                       </RejectButton>
                     </TableCell>
                   </TableRow>
@@ -1946,6 +2244,10 @@ const AdminDashboard = () => {
 
         {loadingContributors ? (
           <LoadingSpinner />
+        ) : contributorsError ? (
+          <p style={{ textAlign: 'center', color: '#dc2626', padding: '1rem', background:'#fef2f2', border:'1px solid #fee2e2', borderRadius:'8px' }}>
+            Erreur lors du chargement des contributeurs. Veuillez réessayer.
+          </p>
         ) : !visibleContributors || visibleContributors.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#7f8c8d', padding: '2rem' }}>
             Aucun contributeur trouvé
@@ -2002,11 +2304,11 @@ const AdminDashboard = () => {
                       <TableCell>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                           <button
-                            onClick={() => openConfirm(
+                            onClick={() => { setConfirmContext('remove_contrib'); openConfirm(
                               'Retirer le rôle contributeur',
                               'Retirer le rôle contributeur pour cet utilisateur ?',
                               () => { removeRoleMutation.mutate({ userId: c.id, role: 'contributor' }); }
-                            )}
+                            )}}
                             disabled={removeRoleMutation.isLoading}
                             style={{ padding: '0.25rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
                             title="Retirer le rôle contributeur"
@@ -2309,7 +2611,11 @@ const AdminDashboard = () => {
               {selectedIds.length === (visibleUsers?.length || 0) ? <FiCheckSquare /> : <FiSquare />} Tout
             </button>
             <button
-              onClick={() => handleBulkBan(true)}
+              onClick={() => { setConfirmContext('bulk_ban'); openConfirm(
+                'Bannir la sélection',
+                `Bannir ${selectedIds.length} utilisateur(s) sélectionné(s) ?`,
+                () => { handleBulkBan(true); }
+              ); }}
               disabled={selectedIds.length === 0 || banUsersMutation.isLoading}
               style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#f59e0b', color:'#fff' }}
               title="Bannir la sélection"
@@ -2318,7 +2624,11 @@ const AdminDashboard = () => {
               {banUsersMutation.isLoading ? <SpinnerIcon style={{ marginRight:'0.35rem' }} /> : <FiUserX style={{ marginRight:'0.35rem' }} />} Bannir sélection
             </button>
             <button
-              onClick={() => handleBulkBan(false)}
+              onClick={() => { setConfirmContext('bulk_unban'); openConfirm(
+                'Débannir la sélection',
+                `Débannir ${selectedIds.length} utilisateur(s) sélectionné(s) ?`,
+                () => { handleBulkBan(false); }
+              ); }}
               disabled={selectedIds.length === 0 || banUsersMutation.isLoading}
               style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#10b981', color:'#fff' }}
               title="Débannir la sélection"
@@ -2327,7 +2637,11 @@ const AdminDashboard = () => {
               {banUsersMutation.isLoading ? <SpinnerIcon style={{ marginRight:'0.35rem' }} /> : <FiCheck style={{ marginRight:'0.35rem' }} />} Débannir sélection
             </button>
             <button
-              onClick={handleBulkDelete}
+              onClick={() => { setConfirmContext('bulk_delete'); openConfirm(
+                'Supprimer la sélection',
+                `Supprimer (soft) ${selectedIds.length} utilisateur(s) sélectionné(s) ?`,
+                () => { handleBulkDelete(); }
+              ); }}
               disabled={selectedIds.length === 0 || deleteUsersMutation.isLoading}
               style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#ef4444', color:'#fff' }}
               title="Supprimer (soft) la sélection"
@@ -2389,19 +2703,40 @@ const AdminDashboard = () => {
                       <>
                         <TableCell className="cell-wide">
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <select
+                            <SelectControl
                               value={roleSelection[u.id] || ''}
                               onChange={(e) => setRoleSelection((prev) => ({ ...prev, [u.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const val = roleSelection[u.id];
+                                  if (val) handleAddRole(u.id);
+                                }
+                              }}
                               disabled={availableRoles.length === 0}
-                              style={{ padding: '0.25rem 0.5rem' }}
+                              aria-label="Sélection de rôle"
+                              title="Attribuer un rôle"
                             >
-                              <option value="">Choisir rôle</option>
-                              {availableRoles.filter((r) => !(u.roles || []).includes(r)).map((r) => (
-                                <option key={r} value={r}>{r}</option>
-                              ))}
-                            </select>
+                              <option value="">Choisir un rôle…</option>
+                              {availableRoles
+                                .filter((r) => !(u.roles || []).includes(r))
+                                .map((r) => (
+                                  <option key={r} value={r}>
+                                    {r === 'super_admin' ? 'Super Admin' : r === 'admin' ? 'Admin' : r === 'user' ? 'Utilisateur' : r}
+                                  </option>
+                                ))}
+                            </SelectControl>
                             <button
-                              onClick={() => handleAddRole(u.id)}
+                              onClick={() => { 
+                                const selectedRole = roleSelection[u.id];
+                                if (selectedRole) {
+                                  setConfirmContext('add_role'); 
+                                  openConfirm(
+                                    'Ajouter un rôle',
+                                    `Ajouter le rôle "${selectedRole}" à l'utilisateur ${u.email} ?`,
+                                    () => { handleAddRole(u.id); }
+                                  );
+                                }
+                              }}
                               disabled={!roleSelection[u.id] || addRoleMutation.isLoading}
                               style={{ padding: '0.25rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
                               title="Ajouter le rôle sélectionné"
@@ -2429,11 +2764,11 @@ const AdminDashboard = () => {
                             ))}
                             {(u.roles || []).includes('contributor') && (
                               <button
-                                onClick={() => openConfirm(
+                                onClick={() => { setConfirmContext('remove_contrib'); openConfirm(
                                   'Retirer le rôle contributeur',
                                   'Retirer le rôle contributeur pour cet utilisateur ?',
                                   () => { removeRoleMutation.mutate({ userId: u.id, role: 'contributor' }); }
-                                )}
+                                )}}
                                 disabled={removeRoleMutation.isLoading}
                                 style={{ padding: '0.25rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
                                 title="Retirer le rôle contributeur"
@@ -2455,7 +2790,11 @@ const AdminDashboard = () => {
                               <FiInfo />
                             </button>
                             <button
-                              onClick={() => banUsersMutation.mutate({ ids: [u.id], ban: !u.is_banned })}
+                              onClick={() => { setConfirmContext('ban_unban_user'); openConfirm(
+                                u.is_banned ? 'Débannir l\'utilisateur' : 'Bannir l\'utilisateur',
+                                u.is_banned ? `Débannir l'utilisateur ${u.email} ?` : `Bannir l'utilisateur ${u.email} ?`,
+                                () => { banUsersMutation.mutate({ ids: [u.id], ban: !u.is_banned }); }
+                              ); }}
                               disabled={banUsersMutation.isLoading}
                               style={{ padding: '0.25rem', background: u.is_banned ? '#10b981' : '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
                               title={u.is_banned ? 'Débannir cet utilisateur' : 'Bannir cet utilisateur'}
@@ -2465,11 +2804,11 @@ const AdminDashboard = () => {
                               {banUsersMutation.isLoading ? <SpinnerIcon /> : (u.is_banned ? <FiCheck /> : <FiUserX />)}
                             </button>
                             <button
-                              onClick={() => openConfirm(
+                              onClick={() => { setConfirmContext('delete_users'); openConfirm(
                                 "Supprimer l'utilisateur",
-                                'Supprimer (soft) cet utilisateur ?',
+                                'Supprimer cet utilisateur ?',
                                 () => { deleteUsersMutation.mutate([u.id]); }
-                              )}
+                              ); }}
                               disabled={deleteUsersMutation.isLoading}
                               style={{ padding: '0.25rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center' }}
                               title="Supprimer (soft) cet utilisateur"
@@ -2535,6 +2874,134 @@ const AdminDashboard = () => {
         )}
       </Section>
       )}
+
+      {/* Section SEO */}
+      {activeMenu === 'seo' && (
+      <Section id="seo">
+        <SectionTitle>
+          <FiSettings />
+          Paramètres SEO
+        </SectionTitle>
+        <div style={{ color:'#6b7280', marginBottom:'0.75rem' }}>
+          Configurez les paramètres SEO du site (titres, méta-descriptions, mots-clés).
+        </div>
+        <>
+            <FormRow>
+              <label htmlFor="site-title"><strong>Titre du site</strong></label>
+              <InputText 
+                id="site-title" 
+                value={seoSettings.site_title || ''} 
+                onChange={(e) => setSeoSettings(prev => ({ ...prev, site_title: e.target.value }))} 
+                placeholder="Titre principal du site" 
+              />
+              <small style={{ color:'#6b7280' }}>Titre affiché dans l'onglet du navigateur et les résultats de recherche.</small>
+            </FormRow>
+            
+            <FormRow>
+              <label htmlFor="site-description"><strong>Description du site</strong></label>
+              <textarea
+                id="site-description"
+                value={seoSettings.site_description || ''}
+                onChange={(e) => setSeoSettings(prev => ({ ...prev, site_description: e.target.value }))}
+                placeholder="Description du site pour les moteurs de recherche"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.85rem',
+                  border: '1px solid var(--gray-200)',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: 'var(--gray-800)',
+                  outline: 'none',
+                  transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#93c5fd';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.15)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--gray-200)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+              <small style={{ color:'#6b7280' }}>Description affichée dans les résultats de recherche (recommandé : 150-160 caractères).</small>
+            </FormRow>
+
+            <FormRow>
+              <label htmlFor="site-keywords"><strong>Mots-clés</strong></label>
+              <InputText 
+                id="site-keywords" 
+                value={seoSettings.site_keywords || ''} 
+                onChange={(e) => setSeoSettings(prev => ({ ...prev, site_keywords: e.target.value }))} 
+                placeholder="mot-clé1, mot-clé2, mot-clé3" 
+              />
+              <small style={{ color:'#6b7280' }}>Mots-clés séparés par des virgules pour le référencement.</small>
+            </FormRow>
+
+            <FormRow>
+              <label htmlFor="home-title"><strong>Titre de la page d'accueil</strong></label>
+              <InputText 
+                id="home-title" 
+                value={seoSettings.home_title || ''} 
+                onChange={(e) => setSeoSettings(prev => ({ ...prev, home_title: e.target.value }))} 
+                placeholder="Titre spécifique à la page d'accueil" 
+              />
+              <small style={{ color:'#6b7280' }}>Titre spécifique pour la page d'accueil (si différent du titre général).</small>
+            </FormRow>
+
+            <FormRow>
+              <label htmlFor="home-description"><strong>Description de la page d'accueil</strong></label>
+              <textarea
+                id="home-description"
+                value={seoSettings.home_description || ''}
+                onChange={(e) => setSeoSettings(prev => ({ ...prev, home_description: e.target.value }))}
+                placeholder="Description spécifique à la page d'accueil"
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.85rem',
+                  border: '1px solid var(--gray-200)',
+                  borderRadius: '8px',
+                  background: 'white',
+                  color: 'var(--gray-800)',
+                  outline: 'none',
+                  transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                  minHeight: '80px',
+                  resize: 'vertical'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#93c5fd';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.15)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'var(--gray-200)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+              <small style={{ color:'#6b7280' }}>Description spécifique pour la page d'accueil.</small>
+            </FormRow>
+
+            <FormRow>
+              <label htmlFor="og-image"><strong>Image Open Graph (URL)</strong></label>
+              <InputText 
+                id="og-image" 
+                value={seoSettings.og_image || ''} 
+                onChange={(e) => setSeoSettings(prev => ({ ...prev, og_image: e.target.value }))} 
+                placeholder="https://example.com/image.jpg" 
+              />
+              <small style={{ color:'#6b7280' }}>URL de l'image affichée lors du partage sur les réseaux sociaux.</small>
+            </FormRow>
+
+            <Button
+              onClick={handleSeoSave}
+              disabled={seoLoading || updateSeoMutation.isLoading}
+              style={{ background: '#10b981', color: 'white' }}
+            >
+              {(seoLoading || updateSeoMutation.isLoading) ? 'Enregistrement…' : 'Enregistrer les paramètres SEO'}
+            </Button>
+          </>
+      </Section>
+      )}
     </Content>
   </DashboardContainer>
   );
@@ -2566,6 +3033,8 @@ function CategoriesSection({ queryClient, isAdmin }) {
     return (visibleCategories || []).slice(catOffset, catOffset + catLimit);
   }, [visibleCategories, catOffset, catLimit]);
   React.useEffect(() => { setCatPage(1); }, [search]);
+  // Confirmation de suppression (catégories)
+  const [catDeleteConfirm, setCatDeleteConfirm] = React.useState({ open: false, category: null });
   const createCategory = useMutation((payload) => productCategoryService.create(payload), {
     onSuccess: () => {
       toast.success('Catégorie créée');
@@ -2585,6 +3054,7 @@ function CategoriesSection({ queryClient, isAdmin }) {
     onSuccess: () => {
       toast.success('Catégorie supprimée');
       queryClient.invalidateQueries('admin-product-categories');
+      setCatDeleteConfirm({ open: false, category: null });
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Erreur de suppression')
   });
@@ -2723,7 +3193,7 @@ function CategoriesSection({ queryClient, isAdmin }) {
                           {updateCategory.isLoading ? <SpinnerIcon /> : <FiEdit />}
                         </button>
                         <button
-                          onClick={() => deleteCategory.mutate(cat.id)}
+                          onClick={() => setCatDeleteConfirm({ open: true, category: cat })}
                           disabled={deleteCategory.isLoading}
                           style={{ padding:'0.25rem', border:'none', borderRadius:'6px', background:'#ef4444', color:'#fff', display:'inline-flex', alignItems:'center' }}
                           title="Supprimer"
@@ -2743,6 +3213,20 @@ function CategoriesSection({ queryClient, isAdmin }) {
           </Table>
         </TableWrapper>
       )}
+      <ConfirmModal
+        open={catDeleteConfirm.open}
+        title="Supprimer cette catégorie ?"
+        message={catDeleteConfirm.category ? `Cette action supprimera définitivement la catégorie "${catDeleteConfirm.category.name}".` : ''}
+        confirmText={deleteCategory.isLoading ? 'Suppression…' : 'Oui, supprimer'}
+        cancelText="Annuler"
+        busy={deleteCategory.isLoading}
+        onConfirm={() => {
+          const id = catDeleteConfirm.category?.id;
+          if (!id) { setCatDeleteConfirm({ open: false, category: null }); return; }
+          deleteCategory.mutate(id);
+        }}
+        onCancel={() => setCatDeleteConfirm({ open: false, category: null })}
+      />
       <FormModal
         open={catEditOpen}
         title={catEditTitle}
@@ -2777,6 +3261,8 @@ function UnitsSection({ queryClient, isAdmin }) {
     return (visibleUnits || []).slice(unitOffset, unitOffset + unitLimit);
   }, [visibleUnits, unitOffset, unitLimit]);
   React.useEffect(() => { setUnitPage(1); }, [search]);
+  // Confirmation de suppression (unités)
+  const [unitDeleteConfirm, setUnitDeleteConfirm] = React.useState({ open: false, unit: null });
 
   const createUnit = useMutation((data) => unitService.create(data), {
     onSuccess: () => {
@@ -2801,6 +3287,7 @@ function UnitsSection({ queryClient, isAdmin }) {
       toast.success('Unité supprimée');
       queryClient.invalidateQueries('admin-units');
       queryClient.invalidateQueries('units');
+      setUnitDeleteConfirm({ open: false, unit: null });
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Erreur de suppression')
   });
@@ -2928,7 +3415,7 @@ function UnitsSection({ queryClient, isAdmin }) {
                           {updateUnit.isLoading ? <SpinnerIcon /> : <FiEdit />}
                         </button>
                         <button
-                          onClick={() => deleteUnit.mutate(u.id)}
+                          onClick={() => setUnitDeleteConfirm({ open: true, unit: u })}
                           disabled={deleteUnit.isLoading}
                           style={{ padding:'0.25rem', border:'none', borderRadius:'6px', background:'#ef4444', color:'#fff', display:'inline-flex', alignItems:'center' }}
                           title="Supprimer"
@@ -2948,6 +3435,20 @@ function UnitsSection({ queryClient, isAdmin }) {
           </Table>
         </TableWrapper>
       )}
+      <ConfirmModal
+        open={unitDeleteConfirm.open}
+        title="Supprimer cette unité ?"
+        message={unitDeleteConfirm.unit ? `Cette action supprimera définitivement l'unité "${unitDeleteConfirm.unit.name}".` : ''}
+        confirmText={deleteUnit.isLoading ? 'Suppression…' : 'Oui, supprimer'}
+        cancelText="Annuler"
+        busy={deleteUnit.isLoading}
+        onConfirm={() => {
+          const id = unitDeleteConfirm.unit?.id;
+          if (!id) { setUnitDeleteConfirm({ open: false, unit: null }); return; }
+          deleteUnit.mutate(id);
+        }}
+        onCancel={() => setUnitDeleteConfirm({ open: false, unit: null })}
+      />
       <FormModal
         open={unitEditOpen}
         title={unitEditTitle}
@@ -2956,6 +3457,145 @@ function UnitsSection({ queryClient, isAdmin }) {
         onSubmit={(values) => { if (updateUnit.isLoading) return; unitEditSubmit && unitEditSubmit(values); }}
         onCancel={() => setUnitEditOpen(false)}
       />
+    </div>
+  );
+}
+
+// Section localités avec filtre par région, recherche, pagination et rafraîchissement
+function LocalitiesSection({ queryClient, isAdmin, regionOpts = [] }) {
+  const [search, setSearch] = React.useState('');
+  const [selectedRegion, setSelectedRegion] = React.useState('');
+  const [locLimit, setLocLimit] = React.useState(20);
+  const [locPage, setLocPage] = React.useState(1);
+  const locOffset = (locPage - 1) * locLimit;
+
+  const { data: localities = [], isLoading, refetch } = useQuery(
+    ['admin-localities', selectedRegion || 'all'],
+    () => {
+      if (selectedRegion) {
+        return localityService.getByRegion(selectedRegion).then((r) => r?.data?.data || r?.data || []);
+      }
+      return localityService.getAll().then((r) => r?.data?.data || r?.data || []);
+    }
+  );
+
+  const regionOptions = React.useMemo(() => {
+    const base = [{ value: '', label: '— Région —' }];
+    const opts = (regionOpts || []).map((r) => ({ value: String(r.region_id), label: r.display_name }));
+    return base.concat(opts);
+  }, [regionOpts]);
+
+  const visibleLocalities = React.useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const rows = localities || [];
+    if (!term) return rows;
+    return rows.filter((l) => (
+      (String(l.name || '').toLowerCase().includes(term)) ||
+      (String(l.region_name || '').toLowerCase().includes(term)) ||
+      String(l.id || '').includes(term)
+    ));
+  }, [localities, search]);
+
+  const pageLocalities = React.useMemo(() => {
+    return (visibleLocalities || []).slice(locOffset, locOffset + locLimit);
+  }, [visibleLocalities, locOffset, locLimit]);
+
+  React.useEffect(() => { setLocPage(1); }, [search, selectedRegion]);
+
+  if (isLoading) return <LoadingSpinner />;
+
+  return (
+    <div>
+      {/* Toolbar */}
+      <div style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'0.75rem', flexWrap:'wrap' }}>
+        <div style={{ position:'relative', flex:'1 1 220px', minWidth:'220px' }}>
+          <FiSearch style={{ position:'absolute', left:8, top:8, color:'#6b7280' }} />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher (nom, région, identifiant)"
+            style={{ width:'100%', padding:'0.4rem 0.8rem 0.4rem 2rem', border:'1px solid #e5e7eb', borderRadius:'8px' }}
+            aria-label="Recherche"
+          />
+        </div>
+        <select
+          value={selectedRegion}
+          onChange={(e) => setSelectedRegion(e.target.value)}
+          style={{ padding:'0.6rem 0.85rem', border:'1px solid #e5e7eb', borderRadius:'8px' }}
+          aria-label="Filtrer par région"
+        >
+          {regionOptions.map((r) => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => { refetch(); queryClient.invalidateQueries('filter-regions'); }}
+          style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#2563eb', color:'#fff', display:'inline-flex', alignItems:'center', gap:'0.5rem' }}
+          title="Rafraîchir"
+        >
+          <FiRefreshCcw /> Rafraîchir
+        </button>
+        <button
+          type="button"
+          onClick={() => exportToCSV('localites.csv', [
+            { header: 'Nom', accessor: 'name' },
+            { header: 'Région', accessor: (l) => l.region_name || '—' },
+            { header: 'Identifiant', accessor: 'id' },
+          ], visibleLocalities || [])}
+          style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#10b981', color:'#fff', display:'inline-flex', alignItems:'center', gap:'0.5rem' }}
+          title="Exporter CSV"
+        >
+          <FiDownload /> Export CSV
+        </button>
+        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:'0.375rem' }}>
+          <button
+            onClick={() => setLocPage((p) => Math.max(1, p - 1))}
+            disabled={locPage === 1 || isLoading}
+            style={{ padding:'0.35rem 0.6rem', border:'1px solid #e5e7eb', borderRadius:'6px', background:'#fff', color:'#111827' }}
+            aria-label="Précédent"
+          >
+            <FiChevronLeft />
+          </button>
+          <span style={{ color:'#6b7280' }}>Page {locPage}</span>
+          <button
+            onClick={() => setLocPage((p) => p + 1)}
+            disabled={((pageLocalities?.length || 0) < locLimit) || (locOffset + locLimit >= (visibleLocalities?.length || 0)) || isLoading}
+            style={{ padding:'0.35rem 0.6rem', border:'1px solid #e5e7eb', borderRadius:'6px', background:'#fff', color:'#111827' }}
+            aria-label="Suivant"
+          >
+            <FiChevronRight />
+          </button>
+        </div>
+      </div>
+
+      {(!visibleLocalities || visibleLocalities.length === 0) ? (
+        <p style={{ textAlign: 'center', color: '#7f8c8d', padding: '2rem' }}>
+          Aucune localité
+        </p>
+      ) : (
+        <TableWrapper>
+          <Table>
+            <thead>
+              <tr>
+                <TableHeader>Nom</TableHeader>
+                <TableHeader>Région</TableHeader>
+                <TableHeader>Identifiant</TableHeader>
+              </tr>
+            </thead>
+            <tbody>
+              {pageLocalities.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell className="cell-wide"><strong>{l.name}</strong></TableCell>
+                  <TableCell>{l.region_name || '—'}</TableCell>
+                  <TableCell>{l.id}</TableCell>
+                </TableRow>
+              ))}
+            </tbody>
+          </Table>
+        </TableWrapper>
+      )}
     </div>
   );
 }
@@ -2993,6 +3633,8 @@ function ProductsSection({ queryClient, isAdmin }) {
     return (visibleProducts || []).slice(prodOffset, prodOffset + prodLimit);
   }, [visibleProducts, prodOffset, prodLimit]);
   React.useEffect(() => { setProdPage(1); }, [search]);
+  // Confirmation de suppression (produits)
+  const [prodDeleteConfirm, setProdDeleteConfirm] = React.useState({ open: false, product: null });
   const createProduct = useMutation((payload) => productService.create(payload), {
     onSuccess: () => {
       toast.success('Produit créé');
@@ -3012,6 +3654,7 @@ function ProductsSection({ queryClient, isAdmin }) {
     onSuccess: () => {
       toast.success('Produit supprimé');
       queryClient.invalidateQueries('admin-products');
+      setProdDeleteConfirm({ open: false, product: null });
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Erreur de suppression')
   });
@@ -3149,7 +3792,7 @@ function ProductsSection({ queryClient, isAdmin }) {
                           {updateProduct.isLoading ? <SpinnerIcon /> : <FiEdit />}
                         </button>
                         <button
-                          onClick={() => deleteProduct.mutate(p.id)}
+                          onClick={() => setProdDeleteConfirm({ open: true, product: p })}
                           disabled={deleteProduct.isLoading}
                           style={{ padding:'0.25rem', border:'none', borderRadius:'6px', background:'#ef4444', color:'#fff', display:'inline-flex', alignItems:'center' }}
                           title="Supprimer"
@@ -3169,6 +3812,20 @@ function ProductsSection({ queryClient, isAdmin }) {
           </Table>
         </TableWrapper>
       )}
+      <ConfirmModal
+        open={prodDeleteConfirm.open}
+        title="Supprimer ce produit ?"
+        message={prodDeleteConfirm.product ? `Cette action supprimera définitivement le produit "${prodDeleteConfirm.product.name}".` : ''}
+        confirmText={deleteProduct.isLoading ? 'Suppression…' : 'Oui, supprimer'}
+        cancelText="Annuler"
+        busy={deleteProduct.isLoading}
+        onConfirm={() => {
+          const id = prodDeleteConfirm.product?.id;
+          if (!id) { setProdDeleteConfirm({ open: false, product: null }); return; }
+          deleteProduct.mutate(id);
+        }}
+        onCancel={() => setProdDeleteConfirm({ open: false, product: null })}
+      />
       <FormModal
         open={prodEditOpen}
         title={prodEditTitle}
@@ -3201,6 +3858,8 @@ function LanguagesSection({ queryClient, isAdmin }) {
     return (visibleLanguages || []).slice(langOffset, langOffset + langLimit);
   }, [visibleLanguages, langOffset, langLimit]);
   React.useEffect(() => { setLangPage(1); }, [search]);
+  // Confirmation de suppression (langues)
+  const [langDeleteConfirm, setLangDeleteConfirm] = React.useState({ open: false, language: null });
   const createLanguage = useMutation((n) => languageService.create(n), {
     onSuccess: () => {
       toast.success('Langue créée');
@@ -3220,6 +3879,7 @@ function LanguagesSection({ queryClient, isAdmin }) {
     onSuccess: () => {
       toast.success('Langue supprimée');
       queryClient.invalidateQueries('admin-languages');
+      setLangDeleteConfirm({ open: false, language: null });
     },
     onError: (e) => toast.error(e?.response?.data?.message || 'Erreur de suppression')
   });
@@ -3332,7 +3992,7 @@ function LanguagesSection({ queryClient, isAdmin }) {
                           {updateLanguage.isLoading ? <SpinnerIcon /> : <FiEdit />}
                         </button>
                         <button
-                          onClick={() => deleteLanguage.mutate(lang.id)}
+                          onClick={() => setLangDeleteConfirm({ open: true, language: lang })}
                           disabled={deleteLanguage.isLoading}
                           style={{ padding:'0.25rem', border:'none', borderRadius:'6px', background:'#ef4444', color:'#fff', display:'inline-flex', alignItems:'center' }}
                           title="Supprimer"
@@ -3352,6 +4012,20 @@ function LanguagesSection({ queryClient, isAdmin }) {
           </Table>
         </TableWrapper>
       )}
+      <ConfirmModal
+        open={langDeleteConfirm.open}
+        title="Supprimer cette langue ?"
+        message={langDeleteConfirm.language ? `Cette action supprimera définitivement la langue "${langDeleteConfirm.language.name}".` : ''}
+        confirmText={deleteLanguage.isLoading ? 'Suppression…' : 'Oui, supprimer'}
+        cancelText="Annuler"
+        busy={deleteLanguage.isLoading}
+        onConfirm={() => {
+          const id = langDeleteConfirm.language?.id;
+          if (!id) { setLangDeleteConfirm({ open: false, language: null }); return; }
+          deleteLanguage.mutate(id);
+        }}
+        onCancel={() => setLangDeleteConfirm({ open: false, language: null })}
+      />
       <PromptModal
         open={langPromptOpen}
         title={'Modifier la langue'}

@@ -14,7 +14,7 @@ Lokali est une application web permettant de visualiser et comparer les prix agr
 - Page Contact Fournisseur (`/supplier/:id/contact`) — **authentification requise**
 
 ## 🛠️ Stack Technologique
-- Backend: Node.js (Express), SQLite (`sqlite3`)
+- Backend: Node.js (Express), PostgreSQL (Supabase)
 - Frontend: React 18, React Router 6, Styled Components, React-Leaflet, Axios
 - Autres: Helmet, CORS, express-rate-limit
 
@@ -28,13 +28,14 @@ npm install
 cd client && npm install && cd ..
 ```
 
-2) Initialiser la base SQLite
+2) Configurer la base Postgres (Supabase)
 ```bash
-# Crée/rafraîchit la base et charge le schéma et les données
-node init-db.js
+# Renseigner l’URL de connexion Supabase dans .env
+# Exemple:
+# SUPABASE_DB_URL=postgres://postgres:password@host:5432/postgres?sslmode=require
 
-# Option: recréation forcée (supprime le fichier DB, puis réapplique)
-node force-recreate-db.js
+# Appliquer le schéma Postgres (optionnel en local si non géré par migrations)
+# Voir: database/postgres-schema.sql et database/postgres-indexes.sql
 ```
 
 3) Démarrer les serveurs
@@ -67,8 +68,9 @@ localprice/
 │   │   └── App.js
 ├── database/
 │   ├── connection.js
-│   ├── sqlite-schema.sql
-│   └── sqlite-data.sql
+│   ├── postgres.js
+│   ├── postgres-schema.sql
+│   └── postgres-indexes.sql
 ├── routes/
 │   ├── suppliers.js
 │   ├── agricultural-prices.js
@@ -79,10 +81,8 @@ localprice/
 │   ├── stores.js
 │   └── units.js
 ├── scripts/
-│   ├── debug-data-exec.js
-│   └── verify-db.js
-├── init-db.js
-├── force-recreate-db.js
+│   ├── check-table-counts.js
+│   └── inspect-refs.js
 └── server.js
 ```
 
@@ -100,22 +100,16 @@ localprice/
 - `GET /api/units` — Unités
 
 ## 🗃️ Base de Données
-- Fichier SQLite: `database/lokali.db` (créé automatiquement).
-- Schéma: `database/sqlite-schema.sql`.
-- Données de seed: `database/sqlite-data.sql`.
-- Outils:
-  - `node init-db.js` — exécute schéma + seed
-  - `node force-recreate-db.js` — supprime le fichier DB puis réapplique
-  - `node scripts/verify-db.js` — vérifie le contenu (fournisseurs/prix/disponibilités)
-  - `node scripts/debug-data-exec.js` — identifie une requête SQL fautive dans le seed
+- Postgres (Supabase) — configurez `SUPABASE_DB_URL` dans `.env`.
+- Schéma: `database/postgres-schema.sql` et index `database/postgres-indexes.sql`.
+- Connexion: `database/connection.js` bascule sur l’adaptateur Postgres.
 
-## 🧾 Générer un XLSForm Kobo (soumission de prix)
+- ## 🧾 Générer un XLSForm Kobo (soumission de prix)
 - Script Python: `scripts/generate_kobo_xlsform.py`
 - Prérequis: `pip install openpyxl requests`
-- Générer depuis la base SQLite (par défaut):
-  - `python scripts/generate_kobo_xlsform.py`
-- Générer via l’API (backend sur `http://localhost:5001`):
+- Générer via l’API (recommandé):
   - `python scripts/generate_kobo_xlsform.py --use-api --api-url http://localhost:5001/api`
+  - Sortie par défaut: `scripts/output/kobo_price_submission.xlsx`
 - Sortie par défaut: `scripts/output/kobo_price_submission.xlsx`
 - Le formulaire inclut:
   - Catégorie → Produit (filtré par catégorie)

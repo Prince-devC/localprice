@@ -7,6 +7,7 @@ import SimpleFilters from '../components/SimpleFilters';
 import PriceTable from '../components/PriceTable';
 import WhyChoose from '../components/WhyChoose';
 import Contributor from '../components/Contributor';
+import Seo from '../components/Seo';
 
 const HomeContainer = styled.div`
   padding: 0;
@@ -66,6 +67,7 @@ const Home = () => {
   });
 
   const [useAdvancedFilters, setUseAdvancedFilters] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
 
   const handleFiltersChange = (newFilters) => {
     setFilters(newFilters);
@@ -142,6 +144,7 @@ const Home = () => {
 
   return (
     <HomeContainer>
+      <Seo />
       <Hero />
       
       <Section id="filters-section">
@@ -149,6 +152,7 @@ const Home = () => {
           <FilterToggleButton 
             active={!useAdvancedFilters}
             onClick={() => handleToggleFilters(false)}
+            disabled={listLoading}
           >
             <FiFilter />
             Filtres simples
@@ -156,6 +160,7 @@ const Home = () => {
           <FilterToggleButton 
             active={useAdvancedFilters}
             onClick={() => handleToggleFilters(true)}
+            disabled={listLoading}
           >
             <FiSettings />
             Filtres avancés
@@ -179,6 +184,7 @@ const Home = () => {
         <PriceTable
           filters={mapFiltersForAPI(filters)}
           limit={12}
+          onLoadingChange={setListLoading}
           onRefresh={() => {
             // Optionnel: actions supplémentaires lors du rafraîchissement
           }}

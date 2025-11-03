@@ -14,18 +14,11 @@ cd localprice
 cp env.example .env
 ```
 
-## 🗃️ Base de données SQLite
-- Pas de MySQL/MAMP requis. La base SQLite est gérée localement.
-- Fichiers: schéma `database/sqlite-schema.sql`, données `database/sqlite-data.sql`.
-
-Initialisation:
-```bash
-# Crée/rafraîchit la base et charge le schéma + les données
-node init-db.js
-
-# Option: recréation forcée (supprime le fichier DB puis réapplique)
-node force-recreate-db.js
-```
+## 🗃️ Base de données Postgres (Supabase)
+- Configurez une instance Supabase ou Postgres accessible.
+- Renseignez la chaîne de connexion dans `.env` via `SUPABASE_DB_URL`.
+- Schéma disponible dans `database/postgres-schema.sql` et `database/postgres-indexes.sql`.
+- Optionnel: appliquez ces fichiers via `psql` en local si nécessaire.
 
 ## 🔧 Dépendances
 ```bash
@@ -78,7 +71,8 @@ npm run client # React sur http://localhost:3000
       cd client
       $env:PORT=3001; npm start
       ```
-- Erreur DB (fichier verrouillé): arrêter backend/client avant `node force-recreate-db.js`.
+- Erreur DB: vérifiez `SUPABASE_DB_URL` et la disponibilité du service Postgres.
+- Certificats SSL: en dev, la variable `NODE_TLS_REJECT_UNAUTHORIZED=0` est activée pour faciliter les tests.
 - CORS: le frontend doit pointer vers `http://localhost:5001`.
 
 ## 📁 Structure (simplifiée)
@@ -87,8 +81,8 @@ localprice/
 ├── client/          # React (UI)
 ├── routes/          # API Express
 ├── models/          # Modèles de données
-├── database/        # Schéma + seed SQLite
-├── scripts/         # Outils DB/debug
+├── database/        # Connexion + schéma Postgres
+├── scripts/         # Outils Postgres/Supabase
 ├── server.js        # Serveur Express
 └── package.json
 ```

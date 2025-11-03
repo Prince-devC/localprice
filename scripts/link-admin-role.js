@@ -24,13 +24,13 @@ function parseArgs() {
 async function ensureRoles() {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS roles (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL UNIQUE CHECK (name IN ('user','contributor','admin','super_admin'))
     );
     CREATE TABLE IF NOT EXISTS user_roles (
-      user_id TEXT NOT NULL,
+      user_id uuid NOT NULL,
       role_id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, role_id),
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -38,10 +38,10 @@ async function ensureRoles() {
     CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id);
   `);
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', ['user']);
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', ['contributor']);
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', ['admin']);
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', ['super_admin']);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['user']);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['contributor']);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['admin']);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['super_admin']);
 }
 
 async function fetchEmailFromSupabase(userId) {
@@ -70,9 +70,10 @@ async function upsertLocalUser(userId, email) {
     // Pas d'email disponible: ignorer la création du miroir, on liera juste le rôle
     return;
   }
-  await db.run(
-    `INSERT OR IGNORE INTO users (id, email, email_verified, role)
-     VALUES (?, ?, 1, 'user')`,
+  await db.execute(
+    `INSERT INTO users (id, email, email_verified, role)
+     VALUES (?, ?, true, 'user')
+     ON CONFLICT (id) DO NOTHING`,
     [userId, email]
   );
 }
@@ -85,8 +86,8 @@ async function getRoleId(name) {
 
 async function linkRole(userId, roleName) {
   const roleId = await getRoleId(roleName);
-  await db.run(
-    'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
+  await db.execute(
+    'INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT DO NOTHING',
     [userId, roleId]
   );
 }

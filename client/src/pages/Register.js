@@ -178,6 +178,7 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+  const [acceptPolicies, setAcceptPolicies] = useState(false);
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -203,6 +204,11 @@ const Register = () => {
   const validateForm = () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Veuillez remplir tous les champs');
+      return false;
+    }
+
+    if (!acceptPolicies) {
+      setError("Veuillez accepter les conditions d’utilisation et la politique de confidentialité");
       return false;
     }
 
@@ -357,6 +363,19 @@ const Register = () => {
                 {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
               </InputIcon>
             </InputContainer>
+          </FormGroup>
+
+          <FormGroup>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                type="checkbox"
+                checked={acceptPolicies}
+                onChange={(e) => setAcceptPolicies(e.target.checked)}
+              />
+              <span>
+                J’accepte les <Link to="/terms">conditions d’utilisation</Link> et la <Link to="/privacy">politique de confidentialité</Link>
+              </span>
+            </label>
           </FormGroup>
 
           <RegisterButton type="submit" disabled={loading}>

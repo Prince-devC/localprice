@@ -40,6 +40,7 @@ const PromptModal = ({
   required = false,
   submitText = 'Valider',
   cancelText = 'Annuler',
+  busy = false,
   onSubmit,
   onCancel
 }) => {
@@ -49,6 +50,7 @@ const PromptModal = ({
   }, [defaultValue, open]);
   const handleSubmit = () => {
     if (required && !String(value || '').trim()) return;
+    if (busy) return;
     onSubmit && onSubmit(value);
   };
   return (
@@ -59,7 +61,9 @@ const PromptModal = ({
       actions={(
         <>
           <SecondaryButton type="button" onClick={onCancel}>{cancelText}</SecondaryButton>
-          <PrimaryButton type="button" onClick={handleSubmit}>{submitText}</PrimaryButton>
+          <PrimaryButton type="button" onClick={handleSubmit} disabled={busy || (required && !String(value || '').trim())} aria-busy={busy}>
+            {submitText}
+          </PrimaryButton>
         </>
       )}
     >

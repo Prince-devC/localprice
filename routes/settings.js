@@ -9,8 +9,8 @@ async function ensureSettingsTable() {
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
       value TEXT,
-      updated_by TEXT,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_by uuid,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `;
   await db.execute(createSql);
@@ -49,7 +49,7 @@ router.put('/kobo', requireRole('super_admin'), async (req, res) => {
     const userId = (req.user && req.user.id) || (req.supabaseUser && req.supabaseUser.id) || null;
     const upsertSql = `
       INSERT INTO app_settings (key, value, updated_by, updated_at)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES (?, ?, ?, NOW())
       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_by = excluded.updated_by, updated_at = excluded.updated_at
     `;
     const pairs = [

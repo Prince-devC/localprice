@@ -116,9 +116,5 @@ dist/
 tmp/
 temp/
 
-# Database files
-*.sqlite
-*.db
-
 # Admin creation flag
 admin-created.flag

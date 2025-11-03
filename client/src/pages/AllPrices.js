@@ -5,6 +5,7 @@ import { FiSettings, FiFilter, FiChevronLeft, FiChevronRight } from 'react-icons
 import AdvancedFilters from '../components/AdvancedFilters';
 import SimpleFilters from '../components/SimpleFilters';
 import PriceTable from '../components/PriceTable';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const AllPricesContainer = styled.div`
   padding: 0;
@@ -131,6 +132,7 @@ const AllPrices = () => {
   const [useAdvancedFilters, setUseAdvancedFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [listLoading, setListLoading] = useState(false);
   const [filters, setFilters] = useState({
     categories: [],
     products: [],
@@ -293,6 +295,7 @@ const AllPrices = () => {
           <FilterToggleButton 
             active={!useAdvancedFilters}
             onClick={() => handleToggleFilters(false)}
+            disabled={listLoading}
           >
             <FiFilter />
             Filtres simples
@@ -300,6 +303,7 @@ const AllPrices = () => {
           <FilterToggleButton 
             active={useAdvancedFilters}
             onClick={() => handleToggleFilters(true)}
+            disabled={listLoading}
           >
             <FiSettings />
             Filtres avancés
@@ -326,6 +330,7 @@ const AllPrices = () => {
             filters={mapFiltersForAPI(filters)}
             showViewAllLink={false}
             onDataLoaded={handleDataLoaded}
+            onLoadingChange={setListLoading}
             onRefresh={() => {
               // Optionnel: actions supplémentaires lors du rafraîchissement
             }}
@@ -336,9 +341,9 @@ const AllPrices = () => {
           <PaginationContainer>
             <PaginationButton 
               onClick={handlePreviousPage}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || listLoading}
             >
-              <FiChevronLeft />
+              {listLoading ? <LoadingSpinner size="small" text="" /> : <FiChevronLeft />}
               Précédent
             </PaginationButton>
             
@@ -348,10 +353,10 @@ const AllPrices = () => {
             
             <PaginationButton 
               onClick={handleNextPage}
-              disabled={currentPage >= Math.ceil(totalItems / itemsPerPage)}
+              disabled={currentPage >= Math.ceil(totalItems / itemsPerPage) || listLoading}
             >
               Suivant
-              <FiChevronRight />
+              {listLoading ? <LoadingSpinner size="small" text="" /> : <FiChevronRight />}
             </PaginationButton>
           </PaginationContainer>
         )}

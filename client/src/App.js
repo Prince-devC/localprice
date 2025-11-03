@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import Seo from './components/Seo';
 import Home from './pages/Home';
 import Search from './pages/Search';
 import ProductDetail from './pages/ProductDetail';
@@ -21,9 +22,13 @@ import PriceMapPage from './pages/PriceMapPage';
 import SuppliersPage from './pages/SuppliersPage';
 import SupplierContact from './pages/SupplierContact';
 import PriceDetail from './pages/PriceDetail';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SeoProvider } from './contexts/SeoContext';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Terms from './pages/Terms';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import ContributionTerms from './pages/ContributionTerms';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -36,13 +41,14 @@ const MainContent = styled.main`
   padding-top: 80px; /* Pour compenser le header fixe */
 `;
 
-function App() {
+function AppInner() {
+  const { user } = useAuth();
   return (
-    <AuthProvider>
-      <AppContainer>
-        <Header />
-        <MainContent>
-          <Routes>
+    <AppContainer>
+      <Seo />
+      <Header />
+      <MainContent key={user?.id || 'anon'}>
+        <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<Search />} />
             <Route path="/product/:id" element={<ProductDetail />} />
@@ -57,6 +63,9 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/contribution-terms" element={<ContributionTerms />} />
             
             {/* Nouvelles routes agricoles */}
              <Route path="/all-prices" element={<AllPrices />} />
@@ -65,10 +74,19 @@ function App() {
             <Route path="/submit-price" element={<PriceSubmissionForm />} />
             <Route path="/price-map" element={<PriceMapPage />} />
 
-          </Routes>
-        </MainContent>
-        <Footer />
-      </AppContainer>
+        </Routes>
+      </MainContent>
+      <Footer />
+    </AppContainer>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <SeoProvider>
+        <AppInner />
+      </SeoProvider>
     </AuthProvider>
   );
 }

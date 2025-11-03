@@ -1,7 +1,0 @@
-id,supplier_id,product_id,is_available,available_quantity,quantity_unit,expected_restock_date,available_from,available_until,notes,created_at,updated_at
-1,1,1,1,1500.0,kg,2025-10-25,2025-10-12,2025-10-20,"Récolte en cours","2025-10-30 21:36:20","2025-10-30 21:36:20"
-2,2,11,1,2000.0,kg,2025-10-22,2025-10-08,2025-10-18,"Lots de soja transformable disponibles","2025-10-30 21:36:20","2025-10-30 21:36:20"
-3,3,13,1,1200.0,kg,2025-10-21,2025-10-10,2025-10-17,"Production maraîchère en cours","2025-10-30 21:36:20","2025-10-30 21:36:20"
-4,4,6,1,2500.0,kg,2025-10-28,2025-10-11,2025-10-23,"Récolte en cours","2025-10-30 21:36:20","2025-10-30 21:36:20"
-5,5,26,1,300.0,l,2025-10-24,2025-10-09,2025-10-19,"Production locale en cours","2025-10-30 21:36:20","2025-10-30 21:36:20"
-6,6,2,1,4000.0,kg,2025-10-26,2025-10-07,2025-10-20,"Récolte en cours","2025-10-30 21:36:20","2025-10-30 21:36:20"

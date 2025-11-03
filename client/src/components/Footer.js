@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink as RouterNavLink } from 'react-router-dom';
 import styled from 'styled-components';
 import { FiMapPin, FiPhone, FiMail, FiGithub, FiTwitter, FiFacebook } from 'react-icons/fi';
 import { categoryService } from '../services/api';
@@ -62,6 +62,11 @@ const FooterSection = styled.div`
     
     &:hover {
       color: white;
+    }
+
+    &[aria-current="page"] {
+      color: var(--primary-color);
+      font-weight: 600;
     }
   }
 `;
@@ -146,6 +151,18 @@ const Footer = () => {
             <p style={{ color: 'var(--gray-300)', marginBottom: '1rem' }}>
               Consultez les prix par localité et connectez-vous directement aux fournisseurs.
             </p>
+            <ContactInfo>
+              <FiMapPin />
+              <span>Cotonou, Bénin</span>
+            </ContactInfo>
+            <ContactInfo>
+              <FiPhone />
+              <span>+229 01 67 65 97 17</span>
+            </ContactInfo>
+            <ContactInfo>
+              <FiMail />
+              <span>contact@lokali.bj</span>
+            </ContactInfo>
             <SocialLinks>
               <SocialLink href="#" aria-label="Facebook">
                 <FiFacebook />
@@ -163,12 +180,12 @@ const Footer = () => {
             <h3>Navigation</h3>
             <ul>
               {/* Liens alignés sur la barre de navigation */}
-              <li><Link to="/all-prices">Tous les prix</Link></li>
-              <li><Link to="/price-map">Cartes</Link></li>
-              <li><Link to="/suppliers">Fournisseurs</Link></li>
-              <li><Link to="/stores">Magasins de stockages</Link></li>
-              <li><Link to="/compare">Comparer prix</Link></li>
-              <li><Link to={contributeLink}>Contribuer</Link></li>
+              <li><RouterNavLink to="/all-prices">Tous les prix</RouterNavLink></li>
+              <li><RouterNavLink to="/price-map">Cartes</RouterNavLink></li>
+              <li><RouterNavLink to="/suppliers">Fournisseurs</RouterNavLink></li>
+              <li><RouterNavLink to="/stores">Magasins de stockages</RouterNavLink></li>
+              <li><RouterNavLink to="/compare">Comparer prix</RouterNavLink></li>
+              <li><RouterNavLink to={contributeLink}>Contribuer</RouterNavLink></li>
             </ul>
           </FooterSection>
           
@@ -180,7 +197,7 @@ const Footer = () => {
               ) : categories && categories.length > 0 ? (
                 categories.slice(0, 6).map(cat => (
                   <li key={cat.id}>
-                    <Link to={`/all-prices?category_id=${cat.id}`}>{cat.name}</Link>
+                    <RouterNavLink to={`/all-prices?category_id=${cat.id}`}>{cat.name}</RouterNavLink>
                   </li>
                 ))
               ) : (
@@ -188,22 +205,16 @@ const Footer = () => {
               )}
             </ul>
           </FooterSection>
-          
+
           <FooterSection>
-            <h3>Contact</h3>
-            <ContactInfo>
-              <FiMapPin />
-              <span>Cotonou, Bénin</span>
-            </ContactInfo>
-            <ContactInfo>
-              <FiPhone />
-              <span>+229 01 67 65 97 17</span>
-            </ContactInfo>
-            <ContactInfo>
-              <FiMail />
-              <span>contact@lokali.bj</span>
-            </ContactInfo>
+            <h3>Mentions</h3>
+            <ul>
+              <li><RouterNavLink to="/terms">Conditions d’utilisation</RouterNavLink></li>
+              <li><RouterNavLink to="/privacy">Politique de confidentialité</RouterNavLink></li>
+              <li><RouterNavLink to="/contribution-terms">Conditions de contribution</RouterNavLink></li>
+            </ul>
           </FooterSection>
+          
         </FooterGrid>
         
         <FooterBottom>

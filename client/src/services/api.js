@@ -239,14 +239,34 @@ export const adminService = {
   cancelSubscription: (id) => api.post(`/admin/subscriptions/${id}/cancel`),
 
   // Modération multi-sélection
-  banUsers: (userIds, isBanned = true) => api.put('/admin/users/ban', { user_ids: userIds, is_banned: isBanned }),
-  deleteUsers: (userIds) => api.post('/admin/users/bulk-delete', { user_ids: userIds }),
+  banUsers: (userIds, isBanned = true) => {
+    try { console.debug('[adminService] banUsers request', { userIds, isBanned }); } catch {}
+    return api.put('/admin/users/ban', { user_ids: userIds, is_banned: isBanned })
+      .then((resp) => { try { console.debug('[adminService] banUsers response', resp?.data); } catch {}; return resp; })
+      .catch((err) => { try { console.error('[adminService] banUsers error', err?.response?.data || err); } catch {}; throw err; });
+  },
+  deleteUsers: (userIds) => {
+    try { console.debug('[adminService] deleteUsers request', { userIds }); } catch {}
+    return api.post('/admin/users/bulk-delete', { user_ids: userIds })
+      .then((resp) => { try { console.debug('[adminService] deleteUsers response', resp?.data); } catch {}; return resp; })
+      .catch((err) => { try { console.error('[adminService] deleteUsers error', err?.response?.data || err); } catch {}; throw err; });
+  },
 };
 
 // API pour les paramètres applicatifs
 export const settingsService = {
   getKoboSettings: () => api.get('/settings/kobo'),
   updateKoboSettings: (data) => api.put('/settings/kobo', data),
+};
+
+// API pour les paramètres SEO
+export const seoService = {
+  // Alias utilisés dans AdminDashboard
+  getSettings: () => api.get('/seo/settings'),
+  updateSettings: (data) => api.put('/seo/settings', data),
+  // Méthodes explicites si besoin
+  getSeoSettings: () => api.get('/seo/settings'),
+  updateSeoSettings: (data) => api.put('/seo/settings', data),
 };
 
 // API pour les options de filtres

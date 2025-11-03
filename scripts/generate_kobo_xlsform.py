@@ -3,68 +3,39 @@
 Générateur d'XLSForm/CSV Kobo pour la soumission de prix agricoles.
 
 Fonctionnalités:
-- Extrait les listes (catégories, produits, localités, unités, langues) depuis SQLite (par défaut) ou l'API.
+- Extrait les listes (catégories, produits, localités, unités, langues) depuis l'API.
 - Construit les feuilles survey/choices/settings pour refléter le formulaire "Soumettre un prix" du frontend.
 - Applique les contraintes de validation (prix >= 0, date <= today(), commentaire <= 500, regex téléphone 01XXXXXXXX).
 - Ajoute le filtrage des produits par catégorie via choice_filter et relevant.
 
 Prérequis:
 - Python 3.8+
-- Packages: openpyxl (uniquement si sortie XLSX), requests (uniquement si --use-api)
+- Packages: openpyxl (uniquement si sortie XLSX), requests
   Installation: pip install openpyxl requests
 
 Utilisation:
-- Par défaut (SQLite local, XLSX):
-    python scripts/generate_kobo_xlsform.py
-
-- Force API:
-    python scripts/generate_kobo_xlsform.py --use-api --api-url http://localhost:5001/api
+- Par défaut (API locale, XLSX):
+    python scripts/generate_kobo_xlsform.py --api-url http://localhost:5001/api
 
 - Sortie CSV au lieu de XLSX:
-    python scripts/generate_kobo_xlsform.py --csv --csv-dir scripts/output/kobo_price_submission_csv
+    python scripts/generate_kobo_xlsform.py --csv --csv-dir scripts/output/kobo_price_submission_csv --api-url http://localhost:5001/api
 
 - Spécifier le fichier XLSX de sortie:
-    python scripts/generate_kobo_xlsform.py --output scripts/output/kobo_price_submission.xlsx
+    python scripts/generate_kobo_xlsform.py --output scripts/output/kobo_price_submission.xlsx --api-url http://localhost:5001/api
 
 Notes:
-- Le script lit la base SQLite: database/lokali.db (chemin relatif au projet).
+- Le script lit les données via l'API backend (PostgreSQL/Supabase).
 - Si vous souhaitez personnaliser les libellés, ajustez les fonctions build_* ci-dessous.
 """
 
 import argparse
 import os
 import sys
-import sqlite3
 import csv
 from typing import List, Dict, Any, Optional
 
 
-def fetch_from_db(db_path: str) -> Dict[str, List[Dict[str, Any]]]:
-    if not os.path.exists(db_path):
-        raise FileNotFoundError(f"Base SQLite introuvable: {db_path}")
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-
-    def q(sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
-        cur.execute(sql, params)
-        rows = cur.fetchall()
-        return [dict(r) for r in rows]
-
-    categories = q("SELECT id, name, type FROM product_categories ORDER BY name ASC")
-    products = q("SELECT id, name, category_id FROM products ORDER BY name ASC")
-    localities = q("SELECT id, name FROM localities ORDER BY name ASC")
-    units = q("SELECT id, name, symbol FROM units ORDER BY name ASC")
-    languages = q("SELECT id, name FROM languages ORDER BY name ASC")
-
-    conn.close()
-    return {
-        "categories": categories,
-        "products": products,
-        "localities": localities,
-        "units": units,
-        "languages": languages,
-    }
+# SQLite supprimé: extraction uniquement via API
 
 
 def fetch_from_api(api_url: str) -> Dict[str, List[Dict[str, Any]]]:
@@ -355,20 +326,15 @@ def write_csvs(output_dir: str, survey: List[List[str]], choices: List[List[str]
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Génère un XLSForm/CSV Kobo depuis SQLite/API pour la soumission de prix")
-    parser.add_argument("--use-api", action="store_true", help="Utiliser l'API au lieu de SQLite")
-    parser.add_argument("--api-url", default="http://localhost:5001/api", help="URL de base de l'API (si --use-api)")
-    parser.add_argument("--db-path", default=os.path.join("database", "lokali.db"), help="Chemin vers la base SQLite")
+    parser = argparse.ArgumentParser(description="Génère un XLSForm/CSV Kobo via API pour la soumission de prix")
+    parser.add_argument("--api-url", default="http://localhost:5001/api", help="URL de base de l'API")
     parser.add_argument("--output", default=os.path.join("scripts", "output", "kobo_price_submission.xlsx"), help="Chemin de sortie du fichier XLS")
     parser.add_argument("--csv", action="store_true", help="Sortir au format CSV (survey/choices/settings)")
     parser.add_argument("--csv-dir", default=os.path.join("scripts", "output", "kobo_price_submission_csv"), help="Répertoire de sortie CSV")
     args = parser.parse_args()
 
-    # Extraire les données
-    if args.use_api:
-        data = fetch_from_api(args.api_url)
-    else:
-        data = fetch_from_db(args.db_path)
+    # Extraire les données (API uniquement)
+    data = fetch_from_api(args.api_url)
 
     # Construire feuilles
     survey = build_survey()

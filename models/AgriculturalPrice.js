@@ -11,25 +11,27 @@ class AgriculturalPrice {
                p.price, p.date, p.created_at,
                -- Calcul de la variation de prix par rapport au prix précédent du même produit dans la même localité
                (
-                 SELECT CASE 
-                   WHEN prev_p.price IS NOT NULL AND prev_p.price > 0 
-                   THEN ROUND(((p.price - prev_p.price) / prev_p.price) * 100, 2)
-                   ELSE NULL 
-                 END
-                 FROM prices prev_p 
-                 WHERE prev_p.product_id = p.product_id 
-                   AND prev_p.locality_id = p.locality_id 
-                   AND prev_p.status = 'validated'
-                   AND prev_p.date < p.date
-                 ORDER BY prev_p.date DESC 
-                 LIMIT 1
-               ) as price_change,
+                 COALESCE((
+                   SELECT CASE 
+                     WHEN prev_p.price IS NOT NULL AND prev_p.price > 0 
+                     THEN ROUND((((p.price - prev_p.price) / prev_p.price) * 100)::numeric, 2)
+                     ELSE NULL 
+                   END
+                   FROM prices prev_p 
+                   WHERE prev_p.product_id = p.product_id 
+                     AND prev_p.locality_id = p.locality_id 
+                     AND prev_p.status = 'validated'
+                     AND prev_p.date < p.date
+                   ORDER BY prev_p.date DESC 
+                   LIMIT 1
+                 ), 0::numeric)
+               )::double precision as price_change,
                -- Volume simulé basé sur la popularité du produit (valeurs réalistes)
                CASE 
-                 WHEN pc.type = 'cereales' THEN ROUND((RANDOM() * 500 + 100), 0)
-                 WHEN pc.type = 'legumes' THEN ROUND((RANDOM() * 200 + 50), 0)
-                 WHEN pc.type = 'fruits' THEN ROUND((RANDOM() * 150 + 30), 0)
-                 ELSE ROUND((RANDOM() * 100 + 20), 0)
+                 WHEN pc.type = 'cereales' THEN ROUND(((RANDOM() * 500 + 100))::numeric, 0)
+                 WHEN pc.type = 'legumes' THEN ROUND(((RANDOM() * 200 + 50))::numeric, 0)
+                 WHEN pc.type = 'fruits' THEN ROUND(((RANDOM() * 150 + 30))::numeric, 0)
+                 ELSE ROUND(((RANDOM() * 100 + 20))::numeric, 0)
                END as volume,
                p.date as updated_at
         FROM prices p
@@ -108,6 +110,7 @@ class AgriculturalPrice {
       const rows = await db.all(query, params);
       return rows;
     } catch (error) {
+      console.error('DB error in getValidatedPrices:', error && (error.stack || error.message) || error);
       throw new Error(`Erreur lors de la récupération des prix validés: ${error.message}`);
     }
   }
@@ -230,7 +233,7 @@ class AgriculturalPrice {
               LIMIT 1
             ) AS contributor_phone,
             (
-              SELECT GROUP_CONCAT(lg.name, ', ')
+              SELECT STRING_AGG(lg.name, ', ')
               FROM price_source_languages psl
               JOIN languages lg ON psl.language_id = lg.id
               WHERE psl.price_id = p.id
@@ -278,11 +281,42 @@ class AgriculturalPrice {
     try {
       // Champs autorisés à la mise à jour
       const allowed = new Set([
-        'product_id', 'locality_id', 'unit_id', 'price', 'date', 'comment',
+        // product_id et locality_id sont protégés et ne peuvent pas être modifiés
+        'unit_id', 'price', 'date', 'comment',
         'latitude', 'longitude', 'geo_accuracy', 'source', 'source_type',
         'source_contact_name', 'source_contact_phone', 'source_contact_relation',
         'sub_locality'
       ]);
+      // Journaliser et bloquer si champs protégés présents
+      if (updates && (updates.hasOwnProperty('product_id') || updates.hasOwnProperty('locality_id'))) {
+        try {
+          await db.exec(`CREATE TABLE IF NOT EXISTS audit_logs (
+            id SERIAL PRIMARY KEY,
+            user_id TEXT,
+            action TEXT NOT NULL,
+            table_name TEXT,
+            record_id INTEGER,
+            old_values TEXT,
+            new_values TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+          );`);
+          await db.run(
+            `INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              (options && options.userId) || null,
+              'unauthorized_field_change',
+              'prices',
+              parseInt(priceId),
+              null,
+              JSON.stringify({ product_id: updates.product_id, locality_id: updates.locality_id })
+            ]
+          );
+        } catch (_) {}
+        throw new Error('Modification du produit ou de la localité non autorisée');
+      }
       const keys = Object.keys(updates || {}).filter(k => allowed.has(k));
       if (keys.length === 0) return false;
 
@@ -299,6 +333,20 @@ class AgriculturalPrice {
       }
 
       // Construire la requête UPDATE
+      // Règles métier: arrondi du prix à 2 décimales et plancher à 0
+      if (keys.includes('price')) {
+        let p = updates.price;
+        if (typeof p === 'string') {
+          const s = p.trim().replace(',', '.');
+          const n = Number(s);
+          p = Number.isNaN(n) ? updates.price : n;
+        }
+        if (typeof p === 'number') {
+          if (p < 0) p = 0;
+          updates.price = Math.round(p * 100) / 100;
+        }
+      }
+
       const setClauses = keys.map(k => `${k} = ?`).join(', ');
       const values = keys.map(k => updates[k]);
       values.push(priceId);
@@ -314,7 +362,10 @@ class AgriculturalPrice {
         await db.run(`DELETE FROM price_source_languages WHERE price_id = ?`, [priceId]);
         for (const langId of langIds) {
           try {
-            await db.run(`INSERT OR IGNORE INTO price_source_languages (price_id, language_id) VALUES (?, ?)`, [priceId, langId]);
+            await db.run(
+              `INSERT INTO price_source_languages (price_id, language_id) VALUES (?, ?) ON CONFLICT (price_id, language_id) DO NOTHING`,
+              [priceId, langId]
+            );
           } catch (e) {
             // ignore
           }
@@ -404,14 +455,14 @@ class AgriculturalPrice {
     try {
       let query = `
         SELECT p.id, p.product_id, p.locality_id, p.unit_id, p.price, p.date, p.status,
-               p.comment, p.latitude, p.longitude, p.geo_accuracy, p.sub_locality, p.source, p.source_type,
+               p.comment, p.latitude, p.longitude, p.geo_accuracy, p.geo_accuracy AS accuracy, p.sub_locality, p.source, p.source_type,
                p.rejection_reason,
                p.source_contact_name, p.source_contact_phone, p.source_contact_relation, p.created_at,
                pr.name as product_name, pc.name as category_name, pc.type as category_type,
                l.name as locality_name, l.latitude as locality_latitude, l.longitude as locality_longitude,
                r.name as region_name, u.name as unit_name, u.symbol as unit_symbol,
                (
-                 SELECT GROUP_CONCAT(lg.name, ', ')
+                 SELECT STRING_AGG(lg.name, ', ')
                  FROM price_source_languages psl
                  JOIN languages lg ON psl.language_id = lg.id
                  WHERE psl.price_id = p.id
@@ -613,13 +664,17 @@ class AgriculturalPrice {
   static async getBasketIndex(essentialProducts = [1, 2, 3, 4, 5]) {
     try {
       const placeholders = essentialProducts.map(() => '?').join(',');
+      // Utiliser une borne calculée côté application pour compatibilité multi-SGBD
+      const fromDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10); // YYYY-MM-DD
       const rows = await db.all(
         `SELECT AVG(p.price) as basket_index
          FROM prices p
          WHERE p.status = 'validated' 
          AND p.product_id IN (${placeholders})
-         AND p.date >= date('now', '-30 days')`,
-        essentialProducts
+         AND p.date >= ?`,
+        [...essentialProducts, fromDate]
       );
       
       return rows[0]?.basket_index || 0;

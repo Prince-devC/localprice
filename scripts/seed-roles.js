@@ -1,5 +1,5 @@
 /**
- * Seed des rôles dans SQLite.
+ * Seed des rôles dans Postgres/Supabase.
  * Usage: node scripts/seed-roles.js
  */
 const db = require('../database/connection');
@@ -7,13 +7,13 @@ const db = require('../database/connection');
 async function ensureRoles() {
   const ddl = `
     CREATE TABLE IF NOT EXISTS roles (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL UNIQUE CHECK (name IN ('user','contributor','admin','super_admin'))
     );
     CREATE TABLE IF NOT EXISTS user_roles (
-      user_id TEXT NOT NULL,
+      user_id uuid NOT NULL,
       role_id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, role_id),
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -25,7 +25,7 @@ async function ensureRoles() {
 }
 
 async function upsertRole(name) {
-  await db.run('INSERT OR IGNORE INTO roles (name) VALUES (?)', [name]);
+  await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', [name]);
 }
 
 async function main() {

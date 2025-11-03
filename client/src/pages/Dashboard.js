@@ -561,16 +561,16 @@ const Dashboard = () => {
   const queryClient = useQueryClient();
   // Profil étendu (inclut is_banned via API)
   const { data: profileResp, isLoading: loadingProfile } = useQuery(
-    ['auth-profile'],
+    ['auth-profile', user?.id],
     () => authService.getProfile().then(r => r?.data?.data || null),
-    { enabled: !!isAuthenticated }
+    { enabled: !!isAuthenticated, keepPreviousData: false, staleTime: 0, cacheTime: 0 }
   );
   const isBanned = !!(profileResp?.is_banned);
   // Charger le statut de demande de contribution pour déterminer l'accès
   const { data: myReqResponse, isLoading: isMyReqLoading } = useQuery(
-    ['contribution-me'],
+    ['contribution-me', user?.id],
     () => contributionsService.getMyRequest().then(r => r?.data?.data || null),
-    { enabled: !!isAuthenticated }
+    { enabled: !!isAuthenticated, keepPreviousData: false, staleTime: 0, cacheTime: 0 }
   );
   const myRequest = myReqResponse || null;
   const isContributor = !!(
@@ -628,6 +628,7 @@ const Dashboard = () => {
   const [experienceLevel, setExperienceLevel] = React.useState('');
   const [notes, setNotes] = React.useState('');
   const [showApplyForm, setShowApplyForm] = React.useState(false);
+  const [acceptContributionTerms, setAcceptContributionTerms] = React.useState(false);
 
   const [phoneError, setPhoneError] = React.useState('');
   const [expError, setExpError] = React.useState('');
@@ -699,8 +700,9 @@ const Dashboard = () => {
     setMySelectedIds(allSelected ? [] : allIds);
   };
   const { data: myPricesResp, isLoading: isMyPricesLoading, isError: isMyPricesError, error: myPricesError, isFetching: isMyPricesFetching } = useQuery(
-    ['agro-my-prices', myPricesStatus, myPricesLimit, myPricesOffset],
-    () => agriculturalPriceService.getMyPrices({ status: myPricesStatus, limit: myPricesLimit, offset: myPricesOffset })
+    ['agro-my-prices', user?.id, myPricesStatus, myPricesLimit, myPricesOffset],
+    () => agriculturalPriceService.getMyPrices({ status: myPricesStatus, limit: myPricesLimit, offset: myPricesOffset }),
+    { keepPreviousData: false, staleTime: 0, cacheTime: 0 }
   );
   const myPrices = myPricesResp?.data?.data || [];
 
@@ -895,9 +897,8 @@ const Dashboard = () => {
   }, [myEditPrice, productOptions, localityOptions, unitOptions, languageOptions, languageOpts]);
   const handleMyEditSubmit = (values) => {
     if (!myEditPrice) return;
+    // Omettre produit et localité du payload de mise à jour
     const payload = {
-      product_id: parseInt(values.product_id),
-      locality_id: parseInt(values.locality_id),
       unit_id: parseInt(values.unit_id),
       price: parseFloat(values.price),
       date: values.date,
@@ -918,7 +919,7 @@ const Dashboard = () => {
     }
     const acc = payload.geo_accuracy;
     if (typeof acc === 'number' && acc > 10) {
-      toast("Attention: précision GPS > 10 m. Votre prix pourrait être rejeté.", { icon: '⚠️' });
+      toast("Attention: précision GPS > 10 m. Votre prix sera enregistré, mais la validation peut être refusée.", { icon: '⚠️' });
     }
     updateMyPriceMutation.mutate({ id: myEditPrice.id, data: payload });
   };
@@ -933,6 +934,7 @@ const Dashboard = () => {
   };
 
   const [accuracyConfirm, setAccuracyConfirm] = React.useState({ open: false, payload: null });
+  const [myGeoBusy, setMyGeoBusy] = React.useState(false);
 
   // Modale de détails pour "Mes prix" (lecture, statuts non validés autorisés)
   const [myDetailOpen, setMyDetailOpen] = React.useState(false);
@@ -960,6 +962,10 @@ const Dashboard = () => {
     e.preventDefault();
     if (isBanned) {
       toast.error('Votre compte est banni : demande indisponible');
+      return;
+    }
+    if (!acceptContributionTerms) {
+      toast.error('Veuillez accepter les conditions de contribution');
       return;
     }
     const phone = (contactPhone || '').trim();
@@ -1198,6 +1204,9 @@ const Dashboard = () => {
         {showApplySection && activeMenu === 'apply' && (
           <ContributionSection ref={applySectionRef}>
             <SectionTitle>Devenir contributeur</SectionTitle>
+            <StatusBox style={{ marginBottom: '0.5rem' }}>
+              Consultez les <Link to="/contribution-terms">conditions de contribution</Link>.
+            </StatusBox>
             {isMyReqLoading ? (
               <StatusBox>Chargement du statut de votre demande...</StatusBox>
             ) : myRequest ? (
@@ -1243,7 +1252,7 @@ const Dashboard = () => {
                       <FieldGroup>
                         <LabelRow>
                           <FormLabel htmlFor="activity">Activité</FormLabel>
-                          <Help><FiInfo /><Tooltip>Votre activité principale liée à la collecte (ex: commerçant, producteur).</Tooltip></Help>
+                          <Help><FiInfo /><Tooltip>Votre activité principale (ex: commerçant, producteur).</Tooltip></Help>
                         </LabelRow>
                         <InputField id="activity" placeholder="Ex: Commerçant, Producteur…" value={activity} onChange={e => setActivity(e.target.value)} />
                       </FieldGroup>
@@ -1308,12 +1317,18 @@ const Dashboard = () => {
                       Je dispose de WhatsApp
                     </CheckboxRow>
                     
-                    <StatusBox style={{ marginTop: '0.5rem' }}>
-                       {prefInternet
-                          ? 'Méthode de collecte recommandée: Formulaire web.'
-                          : "Méthode de collecte recommandée: KoboCollect (hors ligne)."}
+                    {!prefInternet && (
+                      <StatusBox style={{ marginTop: '0.5rem' }}>
+                        {"Méthode de collecte recommandée: KoboCollect (hors ligne)."}
                       </StatusBox>
+                    )}
                       <TextareaField placeholder="Notes (optionnel)" value={notes} onChange={e => setNotes(e.target.value)} />
+                      <CheckboxRow>
+                        <input type="checkbox" required checked={acceptContributionTerms} onChange={e => setAcceptContributionTerms(e.target.checked)} />
+                        <span>
+                          J’ai lu et j’accepte les <Link to="/contribution-terms">conditions de contribution</Link>
+                        </span>
+                      </CheckboxRow>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <small style={{ color: '#6b7280' }}>Brouillon auto-enregistré localement</small>
                         <button type="button" onClick={() => {
@@ -1324,7 +1339,7 @@ const Dashboard = () => {
                           toast.success('Brouillon effacé');
                         }} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}>Effacer le brouillon</button>
                       </div>
-                     <SubmitRequestButton type="submit" disabled={applyMutation.isLoading} aria-busy={applyMutation.isLoading}>
+                     <SubmitRequestButton type="submit" disabled={applyMutation.isLoading || !acceptContributionTerms} aria-busy={applyMutation.isLoading}>
                        {applyMutation.isLoading ? 'Envoi…' : 'Soumettre ma demande'}
                      </SubmitRequestButton>
                   </form>
@@ -1504,12 +1519,26 @@ const Dashboard = () => {
                 {myButtonsBusy ? <FiLoader /> : <FiDownload />} {myButtonsBusy ? 'Export…' : 'Export CSV'}
               </button>
               <div style={{ display:'inline-flex', alignItems:'center', gap:'0.35rem', marginLeft:'auto' }}>
-                <button type="button" disabled={myPricesOffset === 0 || myButtonsBusy} onClick={() => setMyPricesOffset(prev => Math.max(0, prev - myPricesLimit))} style={{ border: '1px solid var(--gray-200)', background: (myPricesOffset === 0 || myButtonsBusy) ? 'var(--gray-100)' : 'white', borderRadius: 6, padding: '0.35rem 0.5rem', color: 'var(--gray-700)', display:'inline-flex', alignItems:'center', gap:'0.25rem' }}>
-                  {myButtonsBusy ? <FiLoader /> : <FiChevronLeft />} Précédent
+                <button
+                  type="button"
+                  disabled={myPricesOffset === 0 || myButtonsBusy}
+                  onClick={() => setMyPricesOffset(prev => Math.max(0, prev - myPricesLimit))}
+                  style={{ border: '1px solid var(--gray-200)', background: (myPricesOffset === 0 || myButtonsBusy) ? 'var(--gray-100)' : 'white', borderRadius: 6, padding: '0.35rem 0.5rem', color: 'var(--gray-700)', display:'inline-flex', alignItems:'center' }}
+                  aria-label="Précédent"
+                  title="Précédent"
+                >
+                  {myButtonsBusy ? <FiLoader /> : <FiChevronLeft />}
                 </button>
                 <small style={{ color: 'var(--gray-600)' }}>Page {Math.floor(myPricesOffset / myPricesLimit) + 1}</small>
-                <button type="button" disabled={(myPrices.length < myPricesLimit) || myButtonsBusy} onClick={() => setMyPricesOffset(prev => prev + myPricesLimit)} style={{ border: '1px solid var(--gray-200)', background: ((myPrices.length < myPricesLimit) || myButtonsBusy) ? 'var(--gray-100)' : 'white', borderRadius: 6, padding: '0.35rem 0.5rem', color: 'var(--gray-700)', display:'inline-flex', alignItems:'center', gap:'0.25rem' }}>
-                  Suivant {myButtonsBusy ? <FiLoader /> : <FiChevronRight />}
+                <button
+                  type="button"
+                  disabled={(myPrices.length < myPricesLimit) || myButtonsBusy}
+                  onClick={() => setMyPricesOffset(prev => prev + myPricesLimit)}
+                  style={{ border: '1px solid var(--gray-200)', background: ((myPrices.length < myPricesLimit) || myButtonsBusy) ? 'var(--gray-100)' : 'white', borderRadius: 6, padding: '0.35rem 0.5rem', color: 'var(--gray-700)', display:'inline-flex', alignItems:'center' }}
+                  aria-label="Suivant"
+                  title="Suivant"
+                >
+                  {myButtonsBusy ? <FiLoader /> : <FiChevronRight />}
                 </button>
               </div>
             </div>
@@ -1578,7 +1607,7 @@ const Dashboard = () => {
                               >
                                 {myButtonsBusy ? <FiLoader /> : <FiEye />}
                               </button>
-                              {p.status !== 'rejected' ? (
+                              {p.status === 'validated' ? (
                                 <Link 
                                   to={`/price-map?product_id=${p.product_id}&locality_id=${p.locality_id}${(p.latitude!=null && p.longitude!=null) ? `&lat=${p.latitude}&lng=${p.longitude}&zoom=14` : ''}`}
                                   style={{ background:'transparent', border:'1px solid var(--gray-200)', borderRadius:6, padding:'0.3rem', color:'#10b981', textDecoration:'none', display:'inline-flex', alignItems:'center' }}
@@ -1591,7 +1620,7 @@ const Dashboard = () => {
                                 <span 
                                   style={{ background:'#f9fafb', border:'1px solid var(--gray-200)', borderRadius:6, padding:'0.3rem', color:'#9ca3af', display:'inline-flex', alignItems:'center', cursor:'not-allowed' }}
                                   aria-label="Lien carte indisponible"
-                                  title="Lien carte indisponible pour les prix rejetés"
+                                  title="Lien carte indisponible pour les prix non validés"
                                 >
                                   <FiMapPin />
                                 </span>
@@ -1767,6 +1796,7 @@ const Dashboard = () => {
               })()}
               confirmText={deleteMyPriceMutation.isLoading ? 'Suppression…' : 'Oui, supprimer'}
               cancelText="Annuler"
+              busy={deleteMyPriceMutation.isLoading}
               onConfirm={() => {
                 const id = myDeleteConfirm.price?.id;
                 if (!id) { setMyDeleteConfirm({ open:false, price:null }); return; }
@@ -1790,13 +1820,16 @@ const Dashboard = () => {
                   </small>
                   <button
                     type="button"
-                    style={{ padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid var(--gray-200)', background: 'var(--gray-50)', color: 'var(--gray-800)' }}
+                    style={{ padding: '0.5rem 0.75rem', borderRadius: 8, border: '1px solid var(--gray-200)', background: myGeoBusy ? '#e5e7eb' : 'var(--gray-50)', color: 'var(--gray-800)', opacity: myGeoBusy ? 0.7 : 1 }}
+                    disabled={myGeoBusy}
+                    aria-busy={myGeoBusy}
                     onClick={async () => {
                       try {
+                        setMyGeoBusy(true);
                         let lat = parseFloat(values.latitude);
                         let lon = parseFloat(values.longitude);
                         let accVal = (values.geo_accuracy !== '' && values.geo_accuracy != null) ? parseFloat(values.geo_accuracy) : null;
-                        const tryGeo = !(Number.isFinite(lat) && Number.isFinite(lon)) && !!navigator.geolocation;
+                        const tryGeo = !!navigator.geolocation;
                         if (tryGeo) {
                           await new Promise((resolve, reject) => {
                             navigator.geolocation.getCurrentPosition(
@@ -1831,7 +1864,6 @@ const Dashboard = () => {
                         next.geo_accuracy = accVal != null && Number.isFinite(accVal) ? Number(accVal) : values.geo_accuracy;
                         if (nearest && nearest.id != null) {
                           next.locality_id = String(nearest.id);
-                          toast.success(`Localité auto-sélectionnée: ${nearest.name || nearest.display_name || nearest.id} (${Math.round(best)} m)`);
                         } else {
                           toast('Localité non mise à jour: aucune correspondance avec coordonnées', { icon: 'ℹ️' });
                         }
@@ -1839,10 +1871,12 @@ const Dashboard = () => {
                       } catch (err) {
                         console.error('Auto-localisation error:', err);
                         toast.error("Impossible d'obtenir la position. Vérifiez les permissions.");
+                      } finally {
+                        setMyGeoBusy(false);
                       }
                     }}
                   >
-                    Mise à jour auto de la localisation
+                    {myGeoBusy ? 'Mise à jour…' : 'Mise à jour auto de la localisation'}
                   </button>
                 </div>
               )}

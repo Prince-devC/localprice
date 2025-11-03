@@ -9,6 +9,15 @@ const { requireAdmin, requireRole } = require('../middleware/roleAuth');
 const db = require('../database/connection');
 const axios = require('axios');
 const { sendContributionStatusEmail, sendPriceStatusEmail } = require('../utils/mailer');
+// Utilitaire: extraire le total depuis l'en-tête Content-Range de Supabase
+function parseContentRangeCount(contentRange) {
+  if (!contentRange || typeof contentRange !== 'string') return null;
+  // Format attendu: "0-0/123" ou "0-199/200"
+  const parts = contentRange.split('/');
+  if (parts.length !== 2) return null;
+  const total = parseInt(parts[1], 10);
+  return Number.isNaN(total) ? null : total;
+}
 // Ensure optional column for submission method exists
 async function ensureSubmissionMethodColumn() {
   try {
@@ -23,22 +32,72 @@ async function ensureSubmissionMethodColumn() {
   }
 }
 
-// Modération: tables bannis/supprimés (créées à la volée)
+// Modération: tables bannis/supprimés (créées à la volée) - Postgres uniquement
 async function ensureModerationTables() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS banned_users (
-      user_id TEXT PRIMARY KEY,
-      banned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      banned_by TEXT
+      user_id uuid PRIMARY KEY,
+      banned_at TIMESTAMPTZ DEFAULT NOW(),
+      banned_by uuid,
+      FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+      FOREIGN KEY (banned_by) REFERENCES auth.users(id) ON DELETE SET NULL
     )
   `);
   await db.execute(`
     CREATE TABLE IF NOT EXISTS deleted_users (
-      user_id TEXT PRIMARY KEY,
-      deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      deleted_by TEXT
+      user_id uuid PRIMARY KEY,
+      deleted_at TIMESTAMPTZ DEFAULT NOW(),
+      deleted_by uuid,
+      FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE,
+      FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL
     )
   `);
+  // Harmoniser les contraintes si elles existaient auparavant vers public.users
+  await db.execute(`
+    ALTER TABLE banned_users DROP CONSTRAINT IF EXISTS banned_users_user_id_fkey;
+    ALTER TABLE banned_users DROP CONSTRAINT IF EXISTS banned_users_banned_by_fkey;
+    ALTER TABLE banned_users ADD CONSTRAINT banned_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ALTER TABLE banned_users ADD CONSTRAINT banned_users_banned_by_fkey FOREIGN KEY (banned_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+  `);
+  await db.execute(`
+    ALTER TABLE deleted_users DROP CONSTRAINT IF EXISTS deleted_users_user_id_fkey;
+    ALTER TABLE deleted_users DROP CONSTRAINT IF EXISTS deleted_users_deleted_by_fkey;
+    ALTER TABLE deleted_users ADD CONSTRAINT deleted_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+    ALTER TABLE deleted_users ADD CONSTRAINT deleted_users_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+  `);
+}
+
+// S'assurer que les tables de rôles existent et que le rôle 'contributor' est bien présent
+async function ensureRolesTables() {
+  const ddl = `
+    CREATE TABLE IF NOT EXISTS roles (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE CHECK (name IN ('user','contributor','admin','super_admin'))
+    );
+    CREATE TABLE IF NOT EXISTS user_roles (
+      user_id uuid NOT NULL,
+      role_id INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, role_id),
+      FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_id);
+  `;
+  try {
+    await db.exec(ddl);
+  } catch (_) {
+    // ignore
+  }
+  try {
+    await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['user']);
+    await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['contributor']);
+    await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['admin']);
+    await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', ['super_admin']);
+  } catch (_) {
+    // ignore
+  }
 }
 
 
@@ -54,11 +113,42 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
         SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_prices
       FROM prices
     `);
+    // Objet de stats prix par défaut (SQLite)
+    let priceStatsObj = priceStats[0];
 
     // Statistiques utilisateurs (Supabase si configuré, sinon fallback SQLite)
     let userStats;
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // Si Supabase est configuré, préférer les comptages depuis Supabase pour les prix
+    if (supabaseUrl && serviceKey) {
+      try {
+        const baseUrl = supabaseUrl.replace(/\/$/, '');
+        const headers = {
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
+          Prefer: 'count=exact',
+          Accept: 'application/json'
+        };
+        const getCount = async (query) => {
+          const resp = await axios.get(`${baseUrl}/rest/v1/prices?${query}`, { headers, timeout: 10000 });
+          const cr = resp.headers['content-range'] || resp.headers['Content-Range'] || null;
+          const total = parseContentRangeCount(cr);
+          // Fallback: si l'en-tête n'est pas présent, compter la longueur
+          return (total != null) ? total : (Array.isArray(resp.data) ? resp.data.length : 0);
+        };
+        const [total_prices, pending_prices, validated_prices, rejected_prices] = await Promise.all([
+          getCount('select=id'),
+          getCount('select=id&status=eq.pending'),
+          getCount('select=id&status=eq.validated'),
+          getCount('select=id&status=eq.rejected'),
+        ]);
+        priceStatsObj = { total_prices, pending_prices, validated_prices, rejected_prices };
+      } catch (e) {
+        // En cas d'erreur Supabase, conserver les stats locales
+        console.warn('[admin] Supabase priceStats fallback local:', e?.message || e);
+      }
+    }
     if (supabaseUrl && serviceKey) {
       const baseUrl = supabaseUrl.replace(/\/$/, '');
       const perPage = 200;
@@ -99,15 +189,13 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
         FROM user_roles ur
         JOIN roles r ON ur.role_id = r.id
         LEFT JOIN users u ON u.id = ur.user_id
-        WHERE r.name IN ('admin', 'super_admin')
+        WHERE r.name = 'admin'
       `);
       const [deletedRows] = await db.execute(`SELECT user_id FROM deleted_users`);
       const deletedSet = new Set((deletedRows || []).map(r => String(r.user_id)));
 
       const total_users = uniqueUsers.filter(u => !deletedSet.has(String(u.id))).length;
       const matchRow = (row) => supaIdSet.has(String(row.user_id)) || (row.email && supaEmailSet.has(String(row.email).toLowerCase()));
-      const contributors = (contributorsRows || []).filter(matchRow).length;
-      const admins = (adminsRows || []).filter(matchRow).length;
       // Compter les super_admins et les exclure du total
       const [superAdminsRows] = await db.execute(`
         SELECT DISTINCT ur.user_id, u.email 
@@ -116,29 +204,47 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
         LEFT JOIN users u ON u.id = ur.user_id
         WHERE r.name = 'super_admin'
       `);
-      const superAdminsCount = (superAdminsRows || []).filter(matchRow).length;
+      const superAdminIdSet = new Set((superAdminsRows || []).filter(matchRow).map(r => String(r.user_id)));
+      const superAdminsCount = superAdminIdSet.size;
       const adjusted_total = Math.max(0, total_users - superAdminsCount);
+      const contributors = (contributorsRows || []).filter(r => matchRow(r) && !superAdminIdSet.has(String(r.user_id))).length;
+      const admins = (adminsRows || []).filter(r => matchRow(r) && !superAdminIdSet.has(String(r.user_id))).length;
 
       userStats = { total_users: adjusted_total, contributors, admins };
     } else {
-      const [[{ total_users }]] = await db.execute(`SELECT COUNT(*) as total_users FROM users`);
+      // Fallback local: compter via table pivot user_roles (les comptes Supabase n'existent pas toujours dans `users`)
+      await ensureModerationTables();
+      const [[{ total_users }]] = await db.execute(`
+        SELECT COUNT(DISTINCT ur.user_id) AS total_users
+        FROM user_roles ur
+        LEFT JOIN deleted_users du ON du.user_id::uuid = ur.user_id
+        WHERE du.user_id IS NULL
+      `);
       const [[{ contributors }]] = await db.execute(`
         SELECT COUNT(DISTINCT ur.user_id) as contributors
         FROM user_roles ur
         JOIN roles r ON ur.role_id = r.id
-        WHERE r.name = 'contributor'
+        LEFT JOIN deleted_users du ON du.user_id::uuid = ur.user_id
+        WHERE r.name = 'contributor' AND du.user_id IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM user_roles ur2
+            JOIN roles r2 ON ur2.role_id = r2.id
+            WHERE ur2.user_id = ur.user_id AND r2.name = 'super_admin'
+          )
       `);
       const [[{ admins }]] = await db.execute(`
         SELECT COUNT(DISTINCT ur.user_id) as admins
         FROM user_roles ur
         JOIN roles r ON ur.role_id = r.id
-        WHERE r.name IN ('admin', 'super_admin')
+        LEFT JOIN deleted_users du ON du.user_id::uuid = ur.user_id
+        WHERE r.name = 'admin' AND du.user_id IS NULL
       `);
       const [[{ super_admins }]] = await db.execute(`
         SELECT COUNT(DISTINCT ur.user_id) as super_admins
         FROM user_roles ur
         JOIN roles r ON ur.role_id = r.id
-        WHERE r.name = 'super_admin'
+        LEFT JOIN deleted_users du ON du.user_id::uuid = ur.user_id
+        WHERE r.name = 'super_admin' AND du.user_id IS NULL
       `);
       const adjusted_total = Math.max(0, total_users - super_admins);
       userStats = { total_users: adjusted_total, contributors, admins };
@@ -192,7 +298,7 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
       SELECT COUNT(*) as total_offers FROM offers
     `);
     const [[{ active_offers }]] = await db.execute(`
-      SELECT COUNT(*) as active_offers FROM offers WHERE is_active = 1
+      SELECT COUNT(*) as active_offers FROM offers WHERE is_active = TRUE
     `);
     const offerStats = {
       total_offers: total_offers || 0,
@@ -213,7 +319,7 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
     res.json({
       success: true,
       data: {
-        priceStats: priceStats[0],
+        priceStats: priceStatsObj,
         userStats,
         productStats: productStats[0],
         localityStats: localityStats[0],
@@ -355,18 +461,18 @@ router.get('/users', requireAdmin, async (req, res) => {
       return res.json({ success: true, data });
     }
 
-    // Fallback: liste locale depuis SQLite si pas de clé service
+    // Fallback: liste locale depuis Postgres si pas de clé service
     await ensureModerationTables();
     let query = `
       SELECT u.id, u.username, u.email, u.created_at,
-             GROUP_CONCAT(r.name) AS roles,
+             STRING_AGG(DISTINCT r.name, ',') AS roles,
              CASE WHEN bu.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_banned,
              CASE WHEN du.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_deleted
       FROM users u
       LEFT JOIN user_roles ur ON ur.user_id = u.id
       LEFT JOIN roles r ON r.id = ur.role_id
-      LEFT JOIN banned_users bu ON bu.user_id = u.id
-      LEFT JOIN deleted_users du ON du.user_id = u.id
+      LEFT JOIN banned_users bu ON bu.user_id::uuid = u.id
+      LEFT JOIN deleted_users du ON du.user_id::uuid = u.id
     `;
     const params = [];
     if (role) {
@@ -411,28 +517,36 @@ router.get('/users', requireAdmin, async (req, res) => {
 // GET /api/admin/contributors - Liste des contributeurs acceptés avec stats et préférences
 router.get('/contributors', requireAdmin, async (req, res) => {
   try {
+    const reqLogId = '[admin][contributors]';
     await ensureModerationTables();
     const { limit = 100, offset = 0, active_only } = req.query;
+    await ensureRolesTables();
+    
+    // Suppression du backfill automatique ici pour respecter les retraits manuels du rôle
+    // Le rôle "contributor" est désormais exclusivement géré via les routes d'approbation/retrait.
 
     // Récupérer les utilisateurs ayant le rôle contributor
+    
     const [contributorsRows] = await db.execute(
-      `SELECT DISTINCT u.id, u.email, u.username
+      `SELECT 
+         ur.user_id AS id,
+         u.email,
+         u.username,
+         COALESCE(u.created_at, ur.created_at) AS sort_ts
        FROM user_roles ur
        JOIN roles r ON ur.role_id = r.id
        LEFT JOIN users u ON u.id = ur.user_id
-       LEFT JOIN banned_users bu ON bu.user_id = u.id
-       LEFT JOIN deleted_users du ON du.user_id = u.id
        WHERE r.name = 'contributor'
-         AND du.user_id IS NULL
-         AND u.id NOT IN (
+         AND ur.user_id NOT IN (
            SELECT ur2.user_id
            FROM user_roles ur2
            JOIN roles r2 ON r2.id = ur2.role_id
            WHERE r2.name = 'super_admin'
          )
-       ORDER BY u.created_at DESC
+       ORDER BY COALESCE(u.created_at, ur.created_at) DESC
        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`
     );
+    const rowsArr = Array.isArray(contributorsRows) ? contributorsRows : [];
 
     // Compter les prix soumis par utilisateur
     const [countRows] = await db.execute(`
@@ -444,8 +558,12 @@ router.get('/contributors', requireAdmin, async (req, res) => {
       FROM prices
       WHERE submitted_by IS NOT NULL
       GROUP BY submitted_by
-    `);
+      `);
+    
     const countMap = new Map((countRows || []).map(r => [String(r.user_id), r]));
+
+    // Log détaillé des contributeurs trouvés (avec stats)
+    
 
     // Préférences du compte
     const [prefRows] = await db.execute(`
@@ -458,13 +576,13 @@ router.get('/contributors', requireAdmin, async (req, res) => {
     const prefMap = new Map((prefRows || []).map(r => [String(r.user_id), r]));
 
     // Enrichir avec Supabase (affichage)
-    let enriched = contributorsRows || [];
+    let enriched = rowsArr;
     try {
       const supabaseUrl = process.env.SUPABASE_URL;
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
       if (supabaseUrl && serviceKey) {
         const base = `${supabaseUrl.replace(/\/$/, '')}/auth/v1`;
-        const promises = (contributorsRows || []).map(async (u) => {
+        const promises = rowsArr.map(async (u) => {
           try {
             const resp = await axios.get(`${base}/admin/users/${u.id}`, {
               headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
@@ -488,7 +606,7 @@ router.get('/contributors', requireAdmin, async (req, res) => {
     }
 
     // Fusionner stats et préférences
-    let data = (enriched || []).map(u => {
+    let data = (Array.isArray(enriched) ? enriched : []).map(u => {
       const stats = countMap.get(String(u.id)) || { total_prices: 0, validated_prices: 0, pending_prices: 0, rejected_prices: 0 };
       const prefs = prefMap.get(String(u.id)) || { pref_has_smartphone: 1, pref_has_internet: 1, preferred_method: 'web' };
       return {
@@ -532,12 +650,19 @@ router.post('/users/:id/roles/:role', requireRole('super_admin'), async (req, re
     if (!['user','contributor','admin'].includes(role)) {
       return res.status(400).json({ success: false, message: 'Rôle invalide' });
     }
+    
+    // Vérifier que l'utilisateur existe dans la table users
+    const [[userExists]] = await db.execute('SELECT id FROM users WHERE id = ? LIMIT 1', [id]);
+    if (!userExists) {
+      return res.status(404).json({ success: false, message: 'Utilisateur introuvable dans la base locale' });
+    }
+    
     const [[roleRow]] = await db.execute('SELECT id FROM roles WHERE name = ?', [role]);
     if (!roleRow) {
       return res.status(404).json({ success: false, message: 'Rôle introuvable' });
     }
     await db.execute(
-      'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
+      'INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT (user_id, role_id) DO NOTHING',
       [id, roleRow.id]
     );
     // Optionnel: mettre à jour le rôle principal dans users
@@ -556,10 +681,23 @@ router.delete('/users/:id/roles/:role', requireRole('super_admin'), async (req, 
     if (!roleRow) {
       return res.status(404).json({ success: false, message: 'Rôle introuvable' });
     }
+    
+    // Toujours permettre le retrait de rôles même si l'utilisateur n'existe pas dans users
+    // (pour nettoyer les rôles orphelins)
     await db.execute(
       'DELETE FROM user_roles WHERE user_id = ? AND role_id = ?',
       [id, roleRow.id]
     );
+    
+    // Seulement mettre à jour users si l'utilisateur existe
+    const [[userExists]] = await db.execute('SELECT id FROM users WHERE id = ? LIMIT 1', [id]);
+    if (userExists) {
+      await db.execute(
+        'UPDATE users SET role = CASE WHEN role = ? THEN NULL ELSE role END WHERE id = ?',
+        [role, id]
+      );
+    }
+    
     res.json({ success: true, message: 'Rôle retiré' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -611,8 +749,9 @@ router.post('/validate-price/:id', requireAdmin, async (req, res) => {
            LIMIT 1`,
           [id]
         );
-        const recipient = row && row.user_email;
+        let recipient = row && row.user_email;
         let displayName = null;
+        let supaUser = null;
         try {
           const supabaseUrl = process.env.SUPABASE_URL;
           const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -622,11 +761,12 @@ router.post('/validate-price/:id', requireAdmin, async (req, res) => {
               headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
               timeout: 8000,
             });
-            const supaUser = resp?.data || null;
+            supaUser = resp?.data || null;
             const firstName = supaUser?.user_metadata?.firstName || null;
             const lastName = supaUser?.user_metadata?.lastName || null;
             const usernameMeta = supaUser?.user_metadata?.username || null;
             displayName = ([firstName, lastName].filter(Boolean).join(' ').trim()) || usernameMeta || row.user_username || row.user_email || 'Utilisateur';
+            if (!recipient) recipient = supaUser?.email || null;
           }
         } catch (_) {
           displayName = row?.user_username || row?.user_email || 'Utilisateur';
@@ -687,8 +827,9 @@ router.post('/reject-price/:id', requireAdmin, async (req, res) => {
            LIMIT 1`,
           [id]
         );
-        const recipient = row && row.user_email;
+        let recipient = row && row.user_email;
         let displayName = null;
+        let supaUser = null;
         try {
           const supabaseUrl = process.env.SUPABASE_URL;
           const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
@@ -698,11 +839,12 @@ router.post('/reject-price/:id', requireAdmin, async (req, res) => {
               headers: { Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
               timeout: 8000,
             });
-            const supaUser = resp?.data || null;
+            supaUser = resp?.data || null;
             const firstName = supaUser?.user_metadata?.firstName || null;
             const lastName = supaUser?.user_metadata?.lastName || null;
             const usernameMeta = supaUser?.user_metadata?.username || null;
             displayName = ([firstName, lastName].filter(Boolean).join(' ').trim()) || usernameMeta || row.user_username || row.user_email || 'Utilisateur';
+            if (!recipient) recipient = supaUser?.email || null;
           }
         } catch (_) {
           displayName = row?.user_username || row?.user_email || 'Utilisateur';
@@ -738,6 +880,7 @@ module.exports = router;
 // ===== Gestion des demandes de contribution =====
 router.get('/contribution-requests', requireAdmin, async (req, res) => {
   try {
+    const reqLogId = '[admin][contribution-requests]';
     const { limit = 50, offset = 0, status } = req.query;
     let query = `
       SELECT cr.*, u.email, u.username
@@ -800,17 +943,18 @@ router.post('/contribution-requests/:id/approve', requireAdmin, async (req, res)
 
     // Met à jour la demande
     await db.execute(
-      'UPDATE contribution_requests SET status = "approved", reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE contribution_requests SET status = \'approved\', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?',
       [req.user.id, id]
     );
 
     // Ajoute le rôle via la table pivot
-    const [[roleRow]] = await db.execute('SELECT id FROM roles WHERE name = "contributor" LIMIT 1');
+    await ensureRolesTables();
+    const [[roleRow]] = await db.execute('SELECT id FROM roles WHERE name = ? LIMIT 1', ['contributor']);
     const roleId = roleRow && roleRow.id;
     if (!roleId) {
       return res.status(500).json({ success: false, message: 'Rôle contributor introuvable' });
     }
-    await db.execute('INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)', [request.user_id, roleId]);
+    await db.execute('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT (user_id, role_id) DO NOTHING', [request.user_id, roleId]);
 
     // Envoi d'email (meilleure expérience utilisateur)
     try {
@@ -837,7 +981,7 @@ router.post('/contribution-requests/:id/approve', requireAdmin, async (req, res)
       }
       await sendContributionStatusEmail(recipient, 'approved', { name: displayName });
     } catch (e) {
-      console.warn('[admin] Échec envoi email approuvé:', e?.message || e);
+      // ignore email errors silently
     }
 
     return res.json({ success: true, message: 'Demande approuvée, utilisateur promu contributeur' });
@@ -861,7 +1005,7 @@ router.post('/contribution-requests/:id/reject', requireAdmin, async (req, res) 
     }
     const userId = rows[0].user_id;
     await db.execute(
-      'UPDATE contribution_requests SET status = "rejected", reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = ? WHERE id = ?',
+      "UPDATE contribution_requests SET status = 'rejected', reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, rejection_reason = ? WHERE id = ?",
       [req.user.id, rejection_reason, id]
     );
 
@@ -945,11 +1089,21 @@ router.put('/users/ban', requireRole('super_admin'), async (req, res) => {
     }
 
     if (is_banned) {
+      // Vérifier que les utilisateurs existent dans la table users avant insertion
+      const [existingUsers] = await db.execute(
+        `SELECT id FROM users WHERE id IN (${targets.map(() => '?').join(',')})`,
+        targets
+      );
+      const existingUserIds = new Set((existingUsers || []).map(u => String(u.id)));
+
       for (const id of targets) {
-        await db.execute(
-          `INSERT OR IGNORE INTO banned_users (user_id, banned_by) VALUES (?, ?)`,
-          [id, req.user.id]
-        );
+        // Seulement insérer dans banned_users si l'utilisateur existe dans users
+        if (existingUserIds.has(String(id))) {
+          await db.execute(
+            `INSERT INTO banned_users (user_id, banned_by) VALUES (?, ?) ON CONFLICT (user_id) DO NOTHING`,
+            [id, req.user.id]
+          );
+        }
       }
     } else {
       await db.execute(
@@ -969,6 +1123,11 @@ router.post('/users/bulk-delete', requireRole('super_admin'), async (req, res) =
   try {
     await ensureModerationTables();
     const { user_ids = [] } = req.body || {};
+    console.log('[admin][bulk-delete] request', {
+      actor: req.user?.id,
+      count: Array.isArray(user_ids) ? user_ids.length : 0,
+      sample: Array.isArray(user_ids) ? user_ids.slice(0, 5) : []
+    });
     if (!Array.isArray(user_ids) || user_ids.length === 0) {
       return res.status(400).json({ success: false, message: 'user_ids (array) requis' });
     }
@@ -981,23 +1140,42 @@ router.post('/users/bulk-delete', requireRole('super_admin'), async (req, res) =
       user_ids
     );
     const protectedIds = new Set((superAdminRows || []).map(r => String(r.id)));
+    console.log('[admin][bulk-delete] protected super_admin ids', Array.from(protectedIds));
 
     const targets = user_ids.filter(id => !protectedIds.has(String(id)));
+    console.log('[admin][bulk-delete] targets after protection filter', { count: targets.length, sample: targets.slice(0, 10) });
     if (targets.length === 0) {
       return res.json({ success: true, affected: 0, skipped: Array.from(protectedIds) });
     }
 
+    // Vérifier que les utilisateurs existent dans la table users avant insertion
+    const [existingUsers] = await db.execute(
+      `SELECT id FROM users WHERE id IN (${targets.map(() => '?').join(',')})`,
+      targets
+    );
+    const existingUserIds = new Set((existingUsers || []).map(u => String(u.id)));
+    console.log('[admin][bulk-delete] existing users in DB', { count: existingUserIds.size });
+
     for (const id of targets) {
+      // Insérer systématiquement; la FK vers auth.users garantit la cohérence
       await db.execute(
-        `INSERT OR IGNORE INTO deleted_users (user_id, deleted_by) VALUES (?, ?)`,
+        `INSERT INTO deleted_users (user_id, deleted_by) VALUES (?, ?) ON CONFLICT (user_id) DO NOTHING`,
         [id, req.user.id]
       );
-      await db.execute(`DELETE FROM user_roles WHERE user_id = ?`, [id]);
-      await db.execute(`UPDATE users SET role = NULL WHERE id = ?`, [id]);
+      // Si l'utilisateur existe dans la table locale, neutraliser les rôles/role
+      if (existingUserIds.has(String(id))) {
+        await db.execute(`UPDATE users SET role = NULL WHERE id = ?`, [id]);
+        await db.execute(`DELETE FROM user_roles WHERE user_id = ?`, [id]);
+      } else {
+        // Nettoyage défensif; ne fait rien si aucune ligne
+        await db.execute(`DELETE FROM user_roles WHERE user_id = ?`, [id]);
+      }
     }
 
+    console.log('[admin][bulk-delete] completed', { affected: targets.length, skipped: Array.from(protectedIds) });
     return res.json({ success: true, affected: targets.length, skipped: Array.from(protectedIds) });
   } catch (error) {
+    console.error('[admin][bulk-delete] error', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 });

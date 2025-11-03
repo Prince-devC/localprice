@@ -69,6 +69,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/filter-options', require('./routes/filter-options'));
 app.use('/api/contributions', require('./routes/contributions'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/seo', require('./routes/seo'));
 
 // Route de test
 app.get('/api/test', (req, res) => {

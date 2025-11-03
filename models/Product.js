@@ -71,29 +71,20 @@ class Product {
 
   // Rechercher des produits par code-barres
   static async getByBarcode(barcode) {
-    try {
-      const [rows] = await db.execute(
-        `SELECT p.*, c.name as category_name 
-         FROM products p 
-         LEFT JOIN product_categories c ON p.category_id = c.id 
-         WHERE p.barcode = ?`,
-        [barcode]
-      );
-      return rows[0];
-    } catch (error) {
-      throw new Error(`Erreur lors de la recherche par code-barres: ${error.message}`);
-    }
+    // Le schéma actuel ne contient pas de colonne barcode dans products.
+    // On retourne null pour que la route réponde 404 proprement.
+    return null;
   }
 
   // Créer un nouveau produit
   static async create(productData) {
     try {
-      const { name, description, category_id, brand, barcode, image_url } = productData;
+      const { name, description, category_id } = productData;
 
       const [result] = await db.execute(
-        `INSERT INTO products (name, description, category_id, brand, barcode, image_url)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [name, description, category_id, brand, barcode, image_url]
+        `INSERT INTO products (name, description, category_id)
+         VALUES (?, ?, ?)`,
+        [name, description, category_id]
       );
 
       return result.insertId;
@@ -105,13 +96,13 @@ class Product {
   // Mettre à jour un produit
   static async update(id, productData) {
     try {
-      const { name, description, category_id, brand, barcode, image_url } = productData;
+      const { name, description, category_id } = productData;
 
       const [result] = await db.execute(
         `UPDATE products SET 
-         name = ?, description = ?, category_id = ?, brand = ?, barcode = ?, image_url = ?
+         name = ?, description = ?, category_id = ?
          WHERE id = ?`,
-        [name, description, category_id, brand, barcode, image_url, id]
+        [name, description, category_id, id]
       );
 
       return result.affectedRows > 0;
@@ -167,10 +158,7 @@ class Product {
         params.push(filters.category_id);
       }
 
-      if (filters.brand) {
-        query += ` AND p.brand LIKE ?`;
-        params.push(`%${filters.brand}%`);
-      }
+      // Champ 'brand' non présent dans le schéma courant
 
       if (filters.min_price && filters.max_price) {
         query += ` AND p.id IN (

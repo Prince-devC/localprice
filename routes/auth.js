@@ -70,6 +70,47 @@ const authenticateSupabaseToken = async (req, res, next) => {
   }
 };
 
+// Middleware optionnel: essaie de récupérer l'utilisateur Supabase, sinon continue sans bloquer
+const optionalSupabaseToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) {
+      return next();
+    }
+
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const anonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !anonKey) {
+      // Ne pas bloquer, continuer sans utilisateur
+      return next();
+    }
+
+    const url = `${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`;
+    const resp = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: anonKey,
+      },
+      timeout: 10000,
+    });
+
+    const supaUser = resp?.data || null;
+    if (supaUser && supaUser.id) {
+      req.supabaseUser = {
+        id: supaUser.id,
+        email: supaUser.email,
+        user_metadata: supaUser.user_metadata || {},
+        app_metadata: supaUser.app_metadata || {},
+      };
+    }
+    return next();
+  } catch (_) {
+    // En cas d'erreur (token manquant/invalide), ne pas bloquer
+    return next();
+  }
+};
+
 // Middleware hybride: tente Supabase, sinon JWT local
 const authenticateAnyToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -164,8 +205,8 @@ router.post('/register', async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Déterminer l'identifiant (id TEXT) — utiliser l'email
-    const userId = String(email).trim();
+    // Déterminer l'identifiant: utiliser un UUID (compatible Postgres)
+    const userId = (crypto.randomUUID ? crypto.randomUUID() : require('uuid').v4());
 
     // Créer l'utilisateur
     await db.execute(
@@ -177,7 +218,7 @@ router.post('/register', async (req, res) => {
     const verificationToken = crypto.randomBytes(24).toString('hex');
     const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24h
     await db.execute(
-      'UPDATE users SET email_verification_token = ?, email_verification_expires = ?, email_verified = 0 WHERE id = ?',
+      'UPDATE users SET email_verification_token = ?, email_verification_expires = ?, email_verified = FALSE WHERE id = ?',
       [verificationToken, expiresAt, userId]
     );
 
@@ -212,7 +253,7 @@ router.post('/register', async (req, res) => {
       success: true,
       message: 'Compte créé. Un email de vérification a été envoyé.',
       data: {
-        user: { id: userId, username, email, role, email_verified: 0 },
+        user: { id: userId, username, email, role, email_verified: false },
         previewUrl
       }
     });
@@ -308,8 +349,8 @@ router.get('/profile', authenticateAnyToken, async (req, res) => {
               CASE WHEN bu.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_banned,
               CASE WHEN du.user_id IS NOT NULL THEN 1 ELSE 0 END AS is_deleted
        FROM users u
-       LEFT JOIN banned_users bu ON bu.user_id = u.id
-       LEFT JOIN deleted_users du ON du.user_id = u.id
+       LEFT JOIN banned_users bu ON bu.user_id::uuid = u.id
+       LEFT JOIN deleted_users du ON du.user_id::uuid = u.id
        WHERE u.id = ?`,
       [userId]
     );
@@ -441,16 +482,17 @@ router.post('/change-password', authenticateAnyToken, async (req, res) => {
 let nodemailer; // chargé à la volée si disponible
 
 const ensureOtpSchema = async () => {
-  // Crée les tables OTP si elles n'existent pas
+  // Crée les tables OTP si elles n'existent pas (compatibles SQLite et PostgreSQL)
+  // Utilise une clé primaire composite pour éviter AUTOINCREMENT non supporté en PostgreSQL
   const createSql = `
     CREATE TABLE IF NOT EXISTS otp_codes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
       phone TEXT NOT NULL,
       email TEXT,
       otp_hash TEXT NOT NULL,
       delivery TEXT NOT NULL,
-      expires_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
+      expires_at BIGINT NOT NULL,
+      created_at BIGINT NOT NULL,
+      PRIMARY KEY (phone, created_at)
     );
     CREATE INDEX IF NOT EXISTS idx_otp_phone ON otp_codes(phone);
     CREATE INDEX IF NOT EXISTS idx_otp_expires ON otp_codes(expires_at);
@@ -462,14 +504,14 @@ const isValidPhone = (phone) => /^01\d{8}$/.test(String(phone || '').trim());
 
 // S'assure que les colonnes username et password_hash existent dans users
 const ensureUsersColumns = async () => {
-  const [cols] = await db.execute("PRAGMA table_info(users)");
-  const names = cols.map(c => c.name);
+  const cols = await db.all("PRAGMA table_info(users)");
+  const names = (Array.isArray(cols) ? cols : []).map(c => c.name);
   const statements = [];
   if (!names.includes('username')) statements.push("ALTER TABLE users ADD COLUMN username TEXT");
   if (!names.includes('password_hash')) statements.push("ALTER TABLE users ADD COLUMN password_hash TEXT");
-  if (!names.includes('email_verified')) statements.push("ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0");
+  if (!names.includes('email_verified')) statements.push("ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE");
   if (!names.includes('email_verification_token')) statements.push("ALTER TABLE users ADD COLUMN email_verification_token TEXT");
-  if (!names.includes('email_verification_expires')) statements.push("ALTER TABLE users ADD COLUMN email_verification_expires INTEGER");
+  if (!names.includes('email_verification_expires')) statements.push("ALTER TABLE users ADD COLUMN email_verification_expires BIGINT");
   for (const stmt of statements) {
     await db.exec(stmt + ';');
   }
@@ -479,13 +521,13 @@ const ensureUsersColumns = async () => {
 const ensureRolesSchema = async () => {
   const ddl = `
     CREATE TABLE IF NOT EXISTS roles (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL UNIQUE CHECK (name IN ('user','contributor','admin','super_admin'))
     );
     CREATE TABLE IF NOT EXISTS user_roles (
-      user_id TEXT NOT NULL,
+      user_id uuid NOT NULL,
       role_id INTEGER NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, role_id),
       FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -499,7 +541,7 @@ const ensureRolesSchema = async () => {
 const getRoleId = async (name) => {
   const [rows] = await db.execute('SELECT id FROM roles WHERE name = ? LIMIT 1', [name]);
   if (!rows || rows.length === 0) {
-    await db.execute('INSERT OR IGNORE INTO roles (name) VALUES (?)', [name]);
+    await db.execute('INSERT INTO roles (name) VALUES (?) ON CONFLICT (name) DO NOTHING', [name]);
     const [rows2] = await db.execute('SELECT id FROM roles WHERE name = ? LIMIT 1', [name]);
     return rows2 && rows2[0] ? rows2[0].id : null;
   }
@@ -527,7 +569,7 @@ router.post('/request-otp', async (req, res) => {
     const createdAt = Date.now();
 
     await db.execute(
-      'INSERT INTO otp_codes (phone, email, otp_hash, delivery, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO otp_codes (phone, email, otp_hash, delivery, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING phone',
       [phone.trim(), (email || null), otpHash, delivery, expiresAt, createdAt]
     );
 
@@ -573,10 +615,11 @@ router.post('/request-otp', async (req, res) => {
     // Toujours loguer pour dév
     console.log('[OTP] phone=', phone, 'code=', code, 'delivery=', delivery, 'email=', email, 'previewUrl=', transportInfo);
 
+    const devCode = code; // Expose OTP code in response to ease local testing
     return res.json({
       success: true,
       message: sent ? `OTP envoyé par ${delivery}` : `OTP généré (envoi ${delivery} non disponible)`,
-      data: { delivery, phone, email, previewUrl: transportInfo || null }
+      data: { delivery, phone, email, previewUrl: transportInfo || null, devCode }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -626,7 +669,10 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     // Créer/Mettre à jour l'utilisateur dans la table users
-    const userId = phone.trim(); // Utiliser le téléphone comme identifiant TEXT
+    // Utiliser un UUID Postgres; si utilisateur Supabase présent, garder son id
+    const userId = (req.supabaseUser && req.supabaseUser.id)
+      ? req.supabaseUser.id
+      : (crypto.randomUUID ? crypto.randomUUID() : require('uuid').v4());
     const normalizedEmail = (email && String(email).trim()) || `${userId}@otp.lokali`;
 
     // Générer un username auto-généré unique basé sur prénom/nom ou email/phone
@@ -649,7 +695,7 @@ router.post('/verify-otp', async (req, res) => {
     const hashedPassword = await bcrypt.hash(String(password), saltRounds);
 
     await db.execute(
-      'INSERT OR IGNORE INTO users (id, email, role) VALUES (?, ?, ?)',
+      'INSERT INTO users (id, email, role) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING',
       [userId, normalizedEmail, role]
     );
     await db.execute(
@@ -701,7 +747,7 @@ router.get('/verify-email', async (req, res) => {
     }
 
     await db.execute(
-      'UPDATE users SET email_verified = 1, email_verification_token = NULL, email_verification_expires = NULL WHERE id = ?',
+      'UPDATE users SET email_verified = TRUE, email_verification_token = NULL, email_verification_expires = NULL WHERE id = ?',
       [user.id]
     );
 
@@ -717,7 +763,8 @@ router.get('/roles', authenticateAnyToken, async (req, res) => {
   try {
     const userId = (req.supabaseUser && req.supabaseUser.id) || (req.user && req.user.id);
     if (!userId) {
-      return res.status(400).json({ success: false, message: 'Utilisateur introuvable' });
+      // Mode invité: renvoyer un rôle minimal pour permettre le rendu UI
+      return res.json({ success: true, data: { roles: ['guest'] } });
     }
 
     // (logs retirés en production) évitez de journaliser des PII
@@ -749,13 +796,13 @@ router.get('/roles', authenticateAnyToken, async (req, res) => {
       const email = emailCandidate || null;
       // Ensure local users row exists for Supabase user id
       await db.execute(
-        'INSERT OR IGNORE INTO users (id, email, role) VALUES (?, ?, ?)',
+        'INSERT INTO users (id, email, role) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING',
         [userId, email, 'user']
       );
       const userRoleId = await getRoleId('user');
       if (userRoleId) {
         await db.execute(
-          'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
+          'INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT (user_id, role_id) DO NOTHING',
           [userId, userRoleId]
         );
         rolesSet.add('user');
@@ -773,4 +820,4 @@ router.get('/roles', authenticateAnyToken, async (req, res) => {
   }
 });
 
-module.exports = { router, authenticateToken, authenticateSupabaseToken, authenticateAnyToken };
+module.exports = { router, authenticateToken, authenticateSupabaseToken, authenticateAnyToken, optionalSupabaseToken };
