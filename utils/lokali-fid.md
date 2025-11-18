@@ -117,6 +117,25 @@
 ### Collecte des données (pilote: Kobo uniquement)
 - KoboToolbox (XLSForm + webhook sécurisé): génération via `scripts/generate_kobo_xlsform.py`, réception sur `/api/kobo/webhook`.
 
+### Évolutions prévues — fournisseurs, magasins de stockage et coûts de transport
+- Fiches fournisseurs et magasins de stockage
+  - Informations: identité, localisation, contacts, horaires, capacité, fiabilité.
+  - Association des prix pratiqués par lieu (traçabilité: prix → fournisseur/magasin).
+  - Recherche et filtrage par disponibilité, distance, catégorie de produit.
+- Outils de calcul des coûts de transport pour les commerçants
+  - Paramètres: origine/destination, volume/poids, type de véhicule, coût carburant.
+  - Intégration API itinéraire (OpenStreetMap/OSRM) pour distances/temps estimés.
+  - Calcul: coût total de l’approvisionnement, coût unitaire livré, marge nette estimée.
+  - Intégration UI: simulateur sur pages Comparaison/Prix, export CSV.
+- Impact attendu
+  - Aide à la décision des commerçants: choix du fournisseur/lieu optimal, itinéraires, timing.
+  - Réduction des coûts logistiques et meilleure planification des achats.
+  - Transparence accrue sur la chaîne d’approvisionnement locale.
+ - Roadmap
+  - Conception des modèles et endpoints dédiés (suppliers/stores/costs étendus).
+  - Prototype du simulateur de coûts de transport et tests utilisateurs.
+  - Déploiement progressif après validation du pilote Kobo.
+
 ## Exigences pour déployer et tester (pilote)
 - Infrastructure:
   - Hébergement du backend Node.js (`PORT=5000`), base de données PostgreSQL.
