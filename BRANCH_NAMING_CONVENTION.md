@@ -100,6 +100,8 @@ fix/header-navigation-mobile
 feature/price-alerts
 feature/store-locator
 feature/user-favorites
+feature/kobo-webhook-integration
+feature/suppliers-contact-flow
 ```
 
 ### Améliorations UI/UX
@@ -107,6 +109,13 @@ feature/user-favorites
 enhancement/logo-sizing
 enhancement/mobile-navigation
 enhancement/search-autocomplete
+```
+
+### Documentation
+```
+docs/quick-start-update
+docs/troubleshooting-windows
+docs/readme-platform-overview
 ```
 
 ## Workflow Recommandé

@@ -176,7 +176,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   
-  const { login, loading } = useAuth();
+  const { login, loading, user, roles, hasRole, refreshRoles } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -202,7 +202,17 @@ const Login = () => {
       // Réinitialiser le formulaire et retarder la redirection pour une meilleure UX
       setFormData({ email: '', password: '' });
       setShowPassword(false);
-      setTimeout(() => navigate('/'), 800);
+
+      // Rafraîchir les rôles depuis l'API pour décider de la destination
+      try {
+        await refreshRoles?.();
+      } catch (_) {}
+      let currentRoles = [];
+      try { currentRoles = JSON.parse(localStorage.getItem('roles') || '[]'); } catch (_) {}
+      const userRoleMeta = user?.user_metadata?.role;
+      const isAdmin = (hasRole?.('admin')) || currentRoles.includes('admin') || userRoleMeta === 'admin';
+      const destination = isAdmin ? '/admin' : '/dashboard';
+      navigate(destination, { replace: true });
     } else {
       let message = result.message || 'Erreur de connexion';
       // Mapping des erreurs Supabase en messages utilisateurs

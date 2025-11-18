@@ -450,8 +450,32 @@ const AdminDashboard = () => {
     try { window.location.hash = key; } catch {}
   };
 
+  // XLSForm generation state and handler (super admin)
+  const [xlsGenerating, setXlsGenerating] = React.useState(false);
+  const handleGenerateXLS = async () => {
+    try {
+      setXlsGenerating(true);
+      const res = await adminService.generateKoboXlsForm({ format: 'xlsx' });
+      const blob = (res && res.data) ? res.data : res;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'kobo_price_submission.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('XLSForm généré et téléchargé');
+    } catch (err) {
+      console.error('Failed to generate XLSForm', err);
+      toast.error("Échec de génération de l'XLSForm Kobo");
+    } finally {
+      setXlsGenerating(false);
+    }
+  };
+
   // Récupérer les données du tableau de bord
-  const { data: dashboardData, isLoading: loadingDashboard } = useQuery(
+  const { data: dashboardData, isLoading: loadingDashboard, isFetching: fetchingDashboard, refetch: refetchDashboard } = useQuery(
     'admin-dashboard',
     adminService.getDashboard,
     {
@@ -1378,6 +1402,7 @@ const AdminDashboard = () => {
               <NavAnchor href="#users" onClick={handleMenuClick('users')} $active={activeMenu === 'users'}><FiUsers /> Utilisateurs</NavAnchor>
               <NavAnchor href="#offers" onClick={handleMenuClick('offers')} $active={activeMenu === 'offers'}><FiPackage /> Offres</NavAnchor>
               <NavAnchor href="#settings" onClick={handleMenuClick('settings')} $active={activeMenu === 'settings'}><FiSettings /> Paramètres Kobo</NavAnchor>
+              <NavAnchor href="#kobo_xlsform" onClick={handleMenuClick('kobo_xlsform')} $active={activeMenu === 'kobo_xlsform'}><FiDownload /> Générer XLSForm Kobo</NavAnchor>
             </>
           )}
 
@@ -2349,6 +2374,16 @@ const AdminDashboard = () => {
           </div>
           <button
             type="button"
+            onClick={() => refetchDashboard()}
+            disabled={loadingDashboard || fetchingDashboard}
+            aria-busy={loadingDashboard || fetchingDashboard}
+            style={{ padding:'0.4rem 0.8rem', border:'none', borderRadius:'8px', background:'#2563eb', color:'#fff', display:'inline-flex', alignItems:'center', gap:'0.5rem' }}
+            title="Rafraîchir"
+          >
+            <FiRefreshCcw /> {fetchingDashboard || loadingDashboard ? 'Rafraîchissement…' : 'Rafraîchir'}
+          </button>
+          <button
+            type="button"
             onClick={() => exportToCSV('prix_recents.csv', [
               { header: 'Produit', accessor: 'product_name' },
               { header: 'Localité', accessor: 'locality_name' },
@@ -2872,6 +2907,23 @@ const AdminDashboard = () => {
             </Button>
           </>
         )}
+      </Section>
+      )}
+
+      {/* Génération XLSForm Kobo (super admin) */}
+      {activeMenu === 'kobo_xlsform' && (
+      <Section id="kobo_xlsform">
+        <SectionTitle>
+          <FiDownload />
+          Générer et télécharger l'XLSForm Kobo
+        </SectionTitle>
+        <div style={{ color:'#6b7280', marginBottom:'0.75rem' }}>
+          Ce formulaire XLSX est basé sur vos catégories, produits, unités et langues actuels.
+          Utilisez-le avec KoboToolbox/KoboCollect pour la collecte de prix.
+        </div>
+        <Button onClick={handleGenerateXLS} disabled={xlsGenerating} aria-busy={xlsGenerating}>
+          {xlsGenerating ? 'Génération…' : (<><FiDownload /> Télécharger XLSForm</>)}
+        </Button>
       </Section>
       )}
 

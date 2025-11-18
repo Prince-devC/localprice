@@ -7,7 +7,7 @@ require('dotenv').config();
 const app = express();
 // Trust first proxy to correctly interpret X-Forwarded-For for rate limiting
 app.set('trust proxy', 1);
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
 // Middleware de sécurité
 app.use(helmet());
@@ -31,8 +31,8 @@ app.use(cors({
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     // Autoriser le frontend lancé sur un autre port en développement
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
     'http://localhost:3002',
     'http://127.0.0.1:3002',
     'http://localhost:3003',

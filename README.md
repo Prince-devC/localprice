@@ -1,6 +1,17 @@
-# 🛒 Lokali — Comparaison de Prix Locaux (État Actuel)
+# 🛒 Lokali — Plateforme de Prix Locaux
 
-Lokali est une application web permettant de visualiser et comparer les prix agricoles par localité. L’accueil affiche une carte et/ou une table des prix, centrée sur le Bénin, avec des filtres simples/avancés.
+Lokali est une plateforme web qui collecte, modère et publie des prix locaux (agricoles), avec un annuaire de fournisseurs et des outils de comparaison. Elle intègre un flux de collecte (formulaires ou webhook Kobo), une modération côté administrateur, et une interface publique orientée recherche/visualisation.
+
+## 🎯 Vue d’ensemble
+- Collecte des prix via formulaire ou webhook Kobo (REST)
+- Stockage des données dans PostgreSQL (Supabase)
+- Modération: validation/refus des contributions/prix (via routes Admin)
+- Publication: carte/table des prix filtrables, fiches fournisseurs détaillées
+- Contact: formulaire de contact fournisseur (auth requise)
+- Auth: intégration Supabase + JWT côté API
+- Notifications email: envoi de mails (approbation/refus), URLs par défaut sur http://localhost:3000
+- Paramètres: endpoints pour la configuration (Kobo, etc.)
+- SEO: endpoints dédiés pour le référencement
 
 ## ✨ Fonctionnalités Actuelles
 - Carte et table des prix agricoles (accueil)
@@ -44,16 +55,17 @@ cd client && npm install && cd ..
 npm run start:all
 
 # Ou séparément
-npm run dev     # Backend sur http://localhost:5001
+npm run dev     # Backend sur http://localhost:5000
 npm run client  # Frontend sur http://localhost:3000
 ```
 
-Frontend: `http://localhost:3000/`  |  Backend API: `http://localhost:5001/`
+Frontend: `http://localhost:3000/`  |  Backend API: `http://localhost:5000/`
 
 ## 🧭 Routes principales
 - `/` — Carte/Table des prix
 - `/suppliers` — Liste des fournisseurs (prix, disponibilités colorées)
 - `/supplier/:id/contact` — Contact du fournisseur (auth requise)
+ - `/login`, `/register` — Auth utilisateur (UI)
 
 ## 📁 Structure (simplifiée)
 ```
@@ -74,11 +86,16 @@ localprice/
 ├── routes/
 │   ├── suppliers.js
 │   ├── agricultural-prices.js
+│   ├── contributions.js
+│   ├── admin.js
 │   ├── filter-options.js
 │   ├── localities.js
 │   ├── products.js
 │   ├── product-categories.js
 │   ├── stores.js
+│   ├── seo.js
+│   ├── settings.js
+│   ├── auth.js
 │   └── units.js
 ├── scripts/
 │   ├── check-table-counts.js
@@ -86,7 +103,7 @@ localprice/
 └── server.js
 ```
 
-## 🔌 API (extraits utiles au frontend)
+## 🔌 API (extraits utiles)
 - `GET /api/suppliers` — Liste des fournisseurs
 - `GET /api/suppliers/:id/summary` — Prix/disponibilités/coordonnées par fournisseur
 - `GET /api/agricultural-prices` — Liste des prix validés (filtres pris en charge)
@@ -98,6 +115,10 @@ localprice/
 - `GET /api/product-categories` — Catégories
 - `GET /api/stores` — Fournisseurs
 - `GET /api/units` — Unités
+- `POST /api/contributions/apply` — Soumettre une demande de contribution
+- `GET /api/contributions/me` — Consulter ma dernière demande
+- `GET /api/seo/*` — Métadonnées SEO
+- `GET/PUT /api/settings/kobo` — Paramétrage Kobo (secret, url, etc.)
 
 ## 🗃️ Base de Données
 - Postgres (Supabase) — configurez `SUPABASE_DB_URL` dans `.env`.
@@ -108,7 +129,7 @@ localprice/
 - Script Python: `scripts/generate_kobo_xlsform.py`
 - Prérequis: `pip install openpyxl requests`
 - Générer via l’API (recommandé):
-  - `python scripts/generate_kobo_xlsform.py --use-api --api-url http://localhost:5001/api`
+  - `python scripts/generate_kobo_xlsform.py --use-api --api-url http://localhost:5000/api`
   - Sortie par défaut: `scripts/output/kobo_price_submission.xlsx`
 - Sortie par défaut: `scripts/output/kobo_price_submission.xlsx`
 - Le formulaire inclut:
@@ -151,14 +172,14 @@ $body = @{
   source_contact_relation = 'vendeur'; sub_locality = 'Quartier central';
   source_language_id = 1;
 } | ConvertTo-Json
-Invoke-RestMethod -Method POST -Uri http://localhost:5001/api/kobo/webhook -Headers $headers -ContentType 'application/json' -Body $body
+Invoke-RestMethod -Method POST -Uri http://localhost:5000/api/kobo/webhook -Headers $headers -ContentType 'application/json' -Body $body
 ```
 Remplacez le port par celui défini dans `PORT` si différent (ex.: 5002 en dev).
 
 ## 🐛 Dépannage
 - `net::ERR_CONNECTION_REFUSED` (client): démarrer `npm run client`; si port 3000 occupé (Windows):
   - `netstat -ano | findstr :3000` puis `taskkill /PID <PID> /F`
-  - ou lancer sur `3001`: `cd client; $env:PORT=3001; npm start`
+  - ou lancer sur `3000`: `cd client; $env:PORT=3000; npm start`
 - Erreur HMR: fermer les instances React en double, forcer le refresh (Ctrl+Shift+R), redémarrer le client.
 - Erreur DB EBUSY: arrêter le backend/client avant `force-recreate-db.js`.
 

@@ -220,6 +220,8 @@ export const adminService = {
   getAuditLogs: (params = {}) => api.get('/admin/audit-logs', { params }),
   validatePrice: (id, data) => api.post(`/admin/validate-price/${id}`, data),
   rejectPrice: (id, data) => api.post(`/admin/reject-price/${id}`, data),
+  // Génération du fichier XLSForm Kobo
+  generateKoboXlsForm: () => api.get('/admin/kobo/xlsform', { responseType: 'blob' }),
   // Demandes de contribution
   getContributionRequests: (params = {}) => api.get('/admin/contribution-requests', { params }),
   approveContributionRequest: (id) => api.post(`/admin/contribution-requests/${id}/approve`),

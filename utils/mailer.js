@@ -48,8 +48,8 @@ function getFrom() {
 
 function renderContributionEmail(status, { name, reason } = {}) {
   const brandName = process.env.MAIL_BRAND_NAME || 'Lokali';
-  const actionUrl = process.env.MAIL_ACTION_URL || 'http://localhost:3001/dashboard';
-  const unsubscribeUrl = process.env.MAIL_UNSUBSCRIBE_URL || 'http://localhost:3001/profile#notifications';
+  const actionUrl = process.env.MAIL_ACTION_URL || 'http://localhost:3000/dashboard';
+  const unsubscribeUrl = process.env.MAIL_UNSUBSCRIBE_URL || 'http://localhost:3000/profile#notifications';
   const logoUrl = process.env.MAIL_LOGO_URL || null;
   const logoAlt = process.env.MAIL_LOGO_ALT || 'Lokali';
   if (status === 'approved') {
@@ -81,8 +81,8 @@ function renderPriceEmail(status, {
   reason,
 } = {}) {
   const brandName = process.env.MAIL_BRAND_NAME || 'Lokali';
-  const actionUrl = process.env.MAIL_ACTION_URL || 'http://localhost:3001/dashboard';
-  const unsubscribeUrl = process.env.MAIL_UNSUBSCRIBE_URL || 'http://localhost:3001/profile#notifications';
+  const actionUrl = process.env.MAIL_ACTION_URL || 'http://localhost:3000/dashboard';
+  const unsubscribeUrl = process.env.MAIL_UNSUBSCRIBE_URL || 'http://localhost:3000/profile#notifications';
   const logoUrl = process.env.MAIL_LOGO_URL || null;
   const logoAlt = process.env.MAIL_LOGO_ALT || 'Lokali';
   if (status === 'approved') {

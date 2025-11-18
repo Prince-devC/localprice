@@ -154,7 +154,12 @@ router.post('/webhook', async (req, res) => {
 
     // Métadonnées source
     const source = (data.source || '').toString().trim() || null;
-    const source_type = (data.source_type || '').toString().trim() || null;
+    let source_type = (data.source_type || '').toString().trim() || null;
+    const source_type_other = (data.source_type_other || '').toString().trim() || null;
+    if (source_type && source_type.toLowerCase() === 'autre' && source_type_other) {
+      // Conserver la précision dans le type; format simple "autre: <detail>"
+      source_type = `autre: ${source_type_other}`;
+    }
     const source_contact_name = (data.source_contact_name || '').toString().trim() || null;
     const source_contact_phone = (data.source_contact_phone || '').toString().trim() || null;
     const source_contact_relation = (data.source_contact_relation || '').toString().trim() || null;

@@ -15,13 +15,13 @@ Prérequis:
 
 Utilisation:
 - Par défaut (API locale, XLSX):
-    python scripts/generate_kobo_xlsform.py --api-url http://localhost:5001/api
+    python scripts/generate_kobo_xlsform.py --api-url http://localhost:5000/api
 
 - Sortie CSV au lieu de XLSX:
-    python scripts/generate_kobo_xlsform.py --csv --csv-dir scripts/output/kobo_price_submission_csv --api-url http://localhost:5001/api
+    python scripts/generate_kobo_xlsform.py --csv --csv-dir scripts/output/kobo_price_submission_csv --api-url http://localhost:5000/api
 
 - Spécifier le fichier XLSX de sortie:
-    python scripts/generate_kobo_xlsform.py --output scripts/output/kobo_price_submission.xlsx --api-url http://localhost:5001/api
+    python scripts/generate_kobo_xlsform.py --output scripts/output/kobo_price_submission.xlsx --api-url http://localhost:5000/api
 
 Notes:
 - Le script lit les données via l'API backend (PostgreSQL/Supabase).
@@ -167,7 +167,7 @@ def build_survey() -> List[List[str]]:
     ])
 
     # Catégorie
-    rows.append(["select_one categories", "category_id", "Catégorie de produit", "yes", "", "", "", "", "", "", ""])
+    rows.append(["select_one categories", "category_id", "Catégorie de produit", "yes", "", "", "", "search", "Recherchez par nom de catégorie.", "", ""])
     # Nouvelle catégorie si 'Autre'
     rows.append([
         "text", "new_category_name", "Nouvelle catégorie", "yes",
@@ -184,7 +184,7 @@ def build_survey() -> List[List[str]]:
     # Produit (filtré par catégorie)
     rows.append([
         "select_one products", "product_id", "Produit", "yes",
-        "", "", "${category_id} != ''", "", "", "category_id=${category_id}", ""
+        "", "", "${category_id} != ''", "search", "Filtré par catégorie; recherchez le produit.", "category_id=${category_id}", ""
     ])
     # Nouveau produit si 'Autre' (par catégorie) ou catégorie 'Autre'
     rows.append([
@@ -194,7 +194,7 @@ def build_survey() -> List[List[str]]:
     ])
 
     # Localité
-    rows.append(["select_one localities", "locality_id", "Commune / Localité", "yes", "", "", "", "", "", "", ""])
+    rows.append(["select_one localities", "locality_id", "Commune / Localité", "yes", "", "", "", "search", "Recherchez la commune/localité.", "", ""])
 
     # Sous-localité
     rows.append(["text", "sub_locality", "Village / Quartier / Hameau (optionnel)", "", "", "", "", "", "Décrivez la sous-localité précise si utile.", "", ""])
@@ -205,7 +205,7 @@ def build_survey() -> List[List[str]]:
     ])
 
     # Unité
-    rows.append(["select_one units", "unit_id", "Unité", "yes", "", "", "", "", "", "", ""])
+    rows.append(["select_one units", "unit_id", "Unité", "yes", "", "", "", "search", "Recherchez l’unité (ex: kg, l, unité).", "", ""])
     rows.append([
         "text", "new_unit_name", "Nouvelle unité", "yes",
         "string-length(.) >= 1", "Indiquez l'unité (ex: kg, l, unité)",
@@ -238,6 +238,12 @@ def build_survey() -> List[List[str]]:
     # Source + type
     rows.append(["text", "source", "Nom de la source", "yes", "", "La source est requise pour assurer la fiabilité", "", "", "Ex: K. Diarra, marché X. Ces informations aident à vérifier la fiabilité des données.", "", ""])
     rows.append(["select_one source_type", "source_type", "Type de source", "yes", "", "Sélectionnez le type de source", "", "", "Ces informations aident à vérifier la fiabilité des données.", "", ""])
+    # Si 'autre' est choisi, préciser (obligatoire quand pertinent)
+    rows.append([
+        "text", "source_type_other", "Préciser autre type de source", "yes",
+        "string-length(.) >= 2", "2 caractères minimum",
+        "selected(${source_type}, 'autre')", "", "Décrivez le type de source (ex: collecteur local)", "", ""
+    ])
 
     # Contact
     rows.append(["text", "source_contact_name", "Nom du contact (optionnel)", "", "", "", "", "", "", "", ""])
@@ -251,7 +257,7 @@ def build_survey() -> List[List[str]]:
     rows.append(["geopoint", "gps", "Géolocalisation (idéalement ≤ 10 m)", "", "", "", "", "maps", "Activez la haute précision GPS et restez à ciel ouvert.", "", ""])
 
     # Langue de communication
-    rows.append(["select_one languages", "source_language_id", "Langue de communication avec la source", "", "", "", "", "", "Par défaut: Français ou Fon si disponibles.", "", ""])
+    rows.append(["select_one languages", "source_language_id", "Langue de communication avec la source", "", "", "", "", "search", "Recherchez la langue de communication.", "", ""])
     rows.append([
         "text", "new_language_name", "Nouvelle langue", "yes",
         "string-length(.) >= 2", "2 caractères minimum",
@@ -327,7 +333,7 @@ def write_csvs(output_dir: str, survey: List[List[str]], choices: List[List[str]
 
 def main():
     parser = argparse.ArgumentParser(description="Génère un XLSForm/CSV Kobo via API pour la soumission de prix")
-    parser.add_argument("--api-url", default="http://localhost:5001/api", help="URL de base de l'API")
+    parser.add_argument("--api-url", default="http://localhost:5000/api", help="URL de base de l'API")
     parser.add_argument("--output", default=os.path.join("scripts", "output", "kobo_price_submission.xlsx"), help="Chemin de sortie du fichier XLS")
     parser.add_argument("--csv", action="store_true", help="Sortir au format CSV (survey/choices/settings)")
     parser.add_argument("--csv-dir", default=os.path.join("scripts", "output", "kobo_price_submission_csv"), help="Répertoire de sortie CSV")

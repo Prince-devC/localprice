@@ -1415,9 +1415,12 @@ const Dashboard = () => {
                   <div style={{ marginBottom: '0.75rem' }}>
                     2) Ouvrez l'application → Paramètres → Serveur, puis renseignez:
                   </div>
+                  <StatusBox style={{ marginBottom: '0.75rem' }}>
+                    Ces informations concernent <strong>le serveur Kobo</strong> (URL, identifiant et mot de passe). Elles ne sont <strong>pas</strong> vos identifiants Lokali.
+                  </StatusBox>
                   <KoboPanel>
                     <KoboRow>
-                      <KoboLabel>URL du serveur</KoboLabel>
+                      <KoboLabel>URL du serveur Kobo</KoboLabel>
                       <span>
                         <KoboValue>{koboServerUrl}</KoboValue>
                         <CopyButton type="button" onClick={() => {
@@ -1426,7 +1429,7 @@ const Dashboard = () => {
                       </span>
                     </KoboRow>
                     <KoboRow>
-                      <KoboLabel>Nom d'utilisateur (commun)</KoboLabel>
+                      <KoboLabel>Nom d'utilisateur Kobo (commun)</KoboLabel>
                       <span>
                         <KoboValue>{koboUsername}</KoboValue>
                         <CopyButton type="button" onClick={() => {
@@ -1435,7 +1438,7 @@ const Dashboard = () => {
                       </span>
                     </KoboRow>
                     <KoboRow>
-                      <KoboLabel>Mot de passe</KoboLabel>
+                      <KoboLabel>Mot de passe Kobo (commun)</KoboLabel>
                       <span>
                         <KoboValue>{koboPassword}</KoboValue>
                         <CopyButton type="button" onClick={() => {
@@ -1444,7 +1447,7 @@ const Dashboard = () => {
                       </span>
                     </KoboRow>
                     <KoboRow>
-                      <KoboLabel>Votre nom d'utilisateur Lokali</KoboLabel>
+                      <KoboLabel>Votre identifiant Lokali (pour lier les soumissions)</KoboLabel>
                       <span>
                         <KoboValue>{myLokaliUsername || '—'}</KoboValue>
                         <CopyButton type="button" onClick={() => {
@@ -1455,7 +1458,7 @@ const Dashboard = () => {
                       </span>
                     </KoboRow>
                     <KoboRow>
-                      <KoboLabel>Votre identifiant Supabase (ID)</KoboLabel>
+                      <KoboLabel>Votre ID Lokali (Supabase)</KoboLabel>
                       <span>
                         <KoboValue>{mySupabaseUserId || '—'}</KoboValue>
                         <CopyButton type="button" onClick={() => {
@@ -1467,10 +1470,14 @@ const Dashboard = () => {
                     </KoboRow>
                   </KoboPanel>
                   <div style={{ marginTop: '0.75rem' }}>
-                    3) Synchronisez, puis ouvrez le formulaire de collecte des prix.
+                    3) Synchronisez (actualisez les formulaires), puis <strong>téléchargez et ouvrez</strong> le formulaire « Soumettre un prix de produit agricole ».
                   </div>
+                  <StatusBox style={{ marginTop: '0.5rem' }}>
+                    Dans KoboCollect: Menu principal → « Télécharger un formulaire vierge » → sélectionnez « Soumettre un prix de produit agricole » → Télécharger, puis ouvrez le formulaire pour saisir vos prix.
+                  </StatusBox>
                   <StatusBox style={{ marginTop: '0.75rem' }}>
-                    Note: au début du formulaire Kobo, renseignez votre <strong>nom d'utilisateur Lokali</strong> (<strong>{myLokaliUsername || '—'}</strong>) dans le champ « Nom d'utilisateur ». Cela permet de lier vos soumissions à votre compte.
+                    Les identifiants affichés <strong>en bas</strong> (identifiant Lokali et ID Lokali) servent à vous <strong>identifier comme contributeur</strong>.
+                    Au début du formulaire Kobo, renseignez votre <strong>identifiant Lokali</strong> (<strong>{myLokaliUsername || '—'}</strong>) dans le champ « Nom d'utilisateur » pour lier vos soumissions à votre compte.
                   </StatusBox>
                 </div>
               ))

@@ -9,6 +9,8 @@ const { requireAdmin, requireRole } = require('../middleware/roleAuth');
 const db = require('../database/connection');
 const axios = require('axios');
 const { sendContributionStatusEmail, sendPriceStatusEmail } = require('../utils/mailer');
+const { spawn } = require('child_process');
+const path = require('path');
 // Utilitaire: extraire le total depuis l'en-tête Content-Range de Supabase
 function parseContentRangeCount(contentRange) {
   if (!contentRange || typeof contentRange !== 'string') return null;
@@ -874,6 +876,41 @@ router.post('/reject-price/:id', requireAdmin, async (req, res) => {
 
 module.exports = router;
 
+// GET /api/admin/kobo/xlsform - Générer et télécharger le XLSForm Kobo
+router.get('/kobo/xlsform', requireRole('super_admin'), async (req, res) => {
+  try {
+    const pythonBin = process.env.PYTHON_BIN || 'python';
+    const scriptPath = path.join(__dirname, '..', 'scripts', 'generate_kobo_xlsform.py');
+    const timestamp = Date.now();
+    const outputPath = path.join(__dirname, '..', 'scripts', 'output', `kobo_price_submission_${timestamp}.xlsx`);
+    const apiUrl = `${req.protocol}://${req.get('host')}/api`;
+
+    const child = spawn(pythonBin, [scriptPath, '--api-url', apiUrl, '--output', outputPath], { stdio: 'inherit' });
+
+    let responded = false;
+    child.on('error', (err) => {
+      if (responded) return;
+      responded = true;
+      res.status(500).json({ success: false, message: 'Échec du lancement du script XLSForm', error: String(err && err.message ? err.message : err) });
+    });
+    child.on('exit', (code) => {
+      if (responded) return;
+      responded = true;
+      if (code === 0) {
+        res.download(outputPath, 'lokali_kobo_price_form.xlsx', (err) => {
+          if (err) {
+            res.status(500).json({ success: false, message: 'Échec du téléchargement du fichier', error: String(err && err.message ? err.message : err) });
+          }
+        });
+      } else {
+        res.status(500).json({ success: false, message: `La génération XLSForm a échoué avec le code ${code}` });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 
 
 
@@ -1059,6 +1096,179 @@ router.get('/offers', requireAdmin, async (req, res) => {
     res.json({ success: true, data: rows });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/admin/offers - Créer une offre (admin)
+router.post('/offers', requireAdmin, async (req, res) => {
+  try {
+    const { name, description, price, currency = 'XOF', period, features = null, is_active = true } = req.body || {};
+    if (!name || typeof price === 'undefined' || !period) {
+      return res.status(400).json({ success: false, message: 'name, price et period sont requis' });
+    }
+    if (!['monthly','yearly'].includes(String(period))) {
+      return res.status(400).json({ success: false, message: 'period doit être "monthly" ou "yearly"' });
+    }
+    const [rows] = await db.execute(
+      'INSERT INTO offers (name, description, price, currency, period, features, is_active) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+      [name, description || null, price, currency || 'XOF', period, features ? JSON.stringify(features) : null, is_active ? 1 : 0]
+    );
+    const id = rows && rows[0] && rows[0].id;
+    return res.status(201).json({ success: true, message: 'Offre créée avec succès', data: { id } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/admin/offers/:id - Mettre à jour une offre (admin)
+router.put('/offers/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [[exists]] = await db.execute('SELECT id FROM offers WHERE id = ? LIMIT 1', [id]);
+    if (!exists) {
+      return res.status(404).json({ success: false, message: 'Offre non trouvée' });
+    }
+
+    const { name, description, price, currency, period, features, is_active } = req.body || {};
+    if (typeof period !== 'undefined' && period && !['monthly','yearly'].includes(String(period))) {
+      return res.status(400).json({ success: false, message: 'period doit être "monthly" ou "yearly"' });
+    }
+
+    const fields = [];
+    const params = [];
+    if (typeof name !== 'undefined') { fields.push('name = ?'); params.push(name); }
+    if (typeof description !== 'undefined') { fields.push('description = ?'); params.push(description || null); }
+    if (typeof price !== 'undefined') { fields.push('price = ?'); params.push(price); }
+    if (typeof currency !== 'undefined') { fields.push('currency = ?'); params.push(currency || 'XOF'); }
+    if (typeof period !== 'undefined') { fields.push('period = ?'); params.push(period); }
+    if (typeof features !== 'undefined') { fields.push('features = ?'); params.push(features ? JSON.stringify(features) : null); }
+    if (typeof is_active !== 'undefined') { fields.push('is_active = ?'); params.push(is_active ? 1 : 0); }
+
+    if (!fields.length) {
+      return res.status(400).json({ success: false, message: 'Aucun champ à mettre à jour' });
+    }
+
+    params.push(id);
+    await db.execute(`UPDATE offers SET ${fields.join(', ')} WHERE id = ?`, params);
+    return res.json({ success: true, message: 'Offre mise à jour avec succès' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// DELETE /api/admin/offers/:id - Supprimer une offre (admin)
+router.delete('/offers/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [[exists]] = await db.execute('SELECT id FROM offers WHERE id = ? LIMIT 1', [id]);
+    if (!exists) {
+      return res.status(404).json({ success: false, message: 'Offre non trouvée' });
+    }
+    await db.execute('DELETE FROM offers WHERE id = ?', [id]);
+    return res.json({ success: true, message: 'Offre supprimée avec succès' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/admin/offers/:id/status - Activer/Désactiver une offre (admin)
+router.put('/offers/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body || {};
+    if (typeof is_active === 'undefined') {
+      return res.status(400).json({ success: false, message: 'is_active requis' });
+    }
+    const [[exists]] = await db.execute('SELECT id FROM offers WHERE id = ? LIMIT 1', [id]);
+    if (!exists) {
+      return res.status(404).json({ success: false, message: 'Offre non trouvée' });
+    }
+    await db.execute('UPDATE offers SET is_active = ? WHERE id = ?', [is_active ? 1 : 0, id]);
+    return res.json({ success: true, message: 'Statut de l’offre mis à jour' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ===== Souscriptions =====
+// GET /api/admin/subscriptions - Liste des souscriptions (admin)
+router.get('/subscriptions', requireAdmin, async (req, res) => {
+  try {
+    const { status, user_id, limit = 100, offset = 0 } = req.query;
+    let query = 'SELECT * FROM subscriptions';
+    const params = [];
+    const where = [];
+    if (status) { where.push('status = ?'); params.push(status); }
+    if (user_id) { where.push('user_id = ?'); params.push(user_id); }
+    if (where.length) { query += ` WHERE ${where.join(' AND ')}`; }
+    query += ` ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
+    const [rows] = await db.execute(query, params);
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/admin/subscriptions - Créer une souscription (admin)
+router.post('/subscriptions', requireAdmin, async (req, res) => {
+  try {
+    const { user_id, offer_id, start_date = null, auto_renew = true } = req.body || {};
+    if (!user_id || !offer_id) {
+      return res.status(400).json({ success: false, message: 'user_id et offer_id sont requis' });
+    }
+    const [[offerExists]] = await db.execute('SELECT id FROM offers WHERE id = ? LIMIT 1', [offer_id]);
+    if (!offerExists) {
+      return res.status(404).json({ success: false, message: 'Offre introuvable' });
+    }
+    const [rows] = await db.execute(
+      'INSERT INTO subscriptions (user_id, offer_id, status, start_date, end_date, auto_renew) VALUES (?, ?, ?, ?, NULL, ?) RETURNING id',
+      [user_id, offer_id, 'active', start_date, auto_renew ? 1 : 0]
+    );
+    const id = rows && rows[0] && rows[0].id;
+    return res.status(201).json({ success: true, message: 'Souscription créée avec succès', data: { id } });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// PUT /api/admin/subscriptions/:id - Mettre à jour une souscription (admin)
+router.put('/subscriptions/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [[exists]] = await db.execute('SELECT id FROM subscriptions WHERE id = ? LIMIT 1', [id]);
+    if (!exists) {
+      return res.status(404).json({ success: false, message: 'Souscription non trouvée' });
+    }
+    const { status, end_date, auto_renew, offer_id } = req.body || {};
+    const fields = [];
+    const params = [];
+    if (typeof status !== 'undefined') { fields.push('status = ?'); params.push(status); }
+    if (typeof end_date !== 'undefined') { fields.push('end_date = ?'); params.push(end_date || null); }
+    if (typeof auto_renew !== 'undefined') { fields.push('auto_renew = ?'); params.push(auto_renew ? 1 : 0); }
+    if (typeof offer_id !== 'undefined') { fields.push('offer_id = ?'); params.push(offer_id); }
+    if (!fields.length) {
+      return res.status(400).json({ success: false, message: 'Aucun champ à mettre à jour' });
+    }
+    params.push(id);
+    await db.execute(`UPDATE subscriptions SET ${fields.join(', ')} WHERE id = ?`, params);
+    return res.json({ success: true, message: 'Souscription mise à jour avec succès' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/admin/subscriptions/:id/cancel - Annuler une souscription (admin)
+router.post('/subscriptions/:id/cancel', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [[exists]] = await db.execute('SELECT id FROM subscriptions WHERE id = ? LIMIT 1', [id]);
+    if (!exists) {
+      return res.status(404).json({ success: false, message: 'Souscription non trouvée' });
+    }
+    await db.execute('UPDATE subscriptions SET status = ?, end_date = CURRENT_DATE WHERE id = ?', ['canceled', id]);
+    return res.json({ success: true, message: 'Souscription annulée avec succès' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 

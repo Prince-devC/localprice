@@ -11,7 +11,10 @@ git clone <url-du-repo>
 cd localprice
 
 # Copier la configuration
+# Linux/macOS
 cp env.example .env
+# Windows PowerShell
+Copy-Item env.example .env
 ```
 
 ## 🗃️ Base de données Postgres (Supabase)
@@ -36,14 +39,14 @@ npm run start:all
 
 # Option 2 : démarrage séparé
 # Terminal 1
-npm run dev    # API sur http://localhost:5001
+npm run dev    # API sur http://localhost:5000
 # Terminal 2
 npm run client # React sur http://localhost:3000
 ```
 
 ## 🌐 Accès
 - Frontend: `http://localhost:3000/`
-- Backend API: `http://localhost:5001/`
+- Backend API: `http://localhost:5000/`
 
 ## 🧭 Nouvelles pages et flux
 - `GET /suppliers` (UI): liste des fournisseurs avec cartes stylées et badges prix.
@@ -69,11 +72,11 @@ npm run client # React sur http://localhost:3000
     - ou démarrer sur un autre port:
       ```powershell
       cd client
-      $env:PORT=3001; npm start
+      $env:PORT=3000; npm start
       ```
 - Erreur DB: vérifiez `SUPABASE_DB_URL` et la disponibilité du service Postgres.
 - Certificats SSL: en dev, la variable `NODE_TLS_REJECT_UNAUTHORIZED=0` est activée pour faciliter les tests.
-- CORS: le frontend doit pointer vers `http://localhost:5001`.
+- CORS: le frontend doit pointer vers `http://localhost:5000`.
 
 ## 📁 Structure (simplifiée)
 ```

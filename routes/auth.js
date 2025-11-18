@@ -226,7 +226,7 @@ router.post('/register', async (req, res) => {
     let previewUrl = null;
     try {
       const frontendBase = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const apiBase = process.env.API_URL || 'http://localhost:5001';
+      const apiBase = process.env.API_URL || 'http://localhost:5000';
       const verifyUrl = `${apiBase}/api/auth/verify-email?email=${encodeURIComponent(email)}&token=${verificationToken}`;
 
       // charge nodemailer si installé

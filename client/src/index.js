@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 import App from './App';
+import ScrollToTop from './components/ScrollToTop';
 
 // Configuration React Query
 const queryClient = new QueryClient({
@@ -22,6 +23,7 @@ root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <ScrollToTop />
         <App />
         <Toaster 
           position="top-right"
