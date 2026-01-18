@@ -10,7 +10,9 @@ function buildPool() {
     const needsSSL = /supabase\.co/.test(connectionString) || /sslmode=require/.test(connectionString);
     return new Pool({
       connectionString,
-      ssl: needsSSL ? { rejectUnauthorized: false } : false
+      ssl: needsSSL ? { rejectUnauthorized: false } : false,
+      // Échouer rapidement si la connexion ne peut pas être établie
+      connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 5000),
     });
   }
 
@@ -27,7 +29,16 @@ function buildPool() {
     console.warn('SUPABASE_DB_URL/DATABASE_URL non définie. Tentative de connexion locale Postgres via paramètres .env (DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME).');
   }
 
-  return new Pool({ host, port, user, password, database, ssl });
+  return new Pool({
+    host,
+    port,
+    user,
+    password,
+    database,
+    ssl,
+    // Échouer rapidement en local si la base ne répond pas
+    connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 5000),
+  });
 }
 
 const pool = buildPool();

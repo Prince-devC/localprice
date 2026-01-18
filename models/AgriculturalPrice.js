@@ -237,7 +237,14 @@ class AgriculturalPrice {
               FROM price_source_languages psl
               JOIN languages lg ON psl.language_id = lg.id
               WHERE psl.price_id = p.id
-            ) AS source_languages
+            ) AS source_languages,
+            (
+              SELECT psl.language_id
+              FROM price_source_languages psl
+              WHERE psl.price_id = p.id
+              ORDER BY psl.language_id
+              LIMIT 1
+            ) AS source_language_id
          FROM prices p
          JOIN products pr ON p.product_id = pr.id
          JOIN product_categories pc ON pr.category_id = pc.id

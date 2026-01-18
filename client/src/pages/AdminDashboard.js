@@ -637,10 +637,71 @@ const AdminDashboard = () => {
   );
   const editFields = React.useMemo(() => {
     if (!editPrice) return [];
+    const ensureOption = (opts, value, label) => {
+      if (value === undefined || value === null) return opts || [];
+      const arr = opts || [];
+      const exists = arr.some(o => String(o.value) === String(value));
+      if (exists) return arr;
+      return [{ value, label: label || String(value) }, ...arr];
+    };
+    const effectiveProductOptions = ensureOption(
+      productOptions,
+      editPrice.product_id,
+      editPrice.product_name
+    );
+    const effectiveLocalityOptions = ensureOption(
+      localityOptions,
+      editPrice.locality_id,
+      editPrice.locality_name
+    );
+    const effectiveUnitOptions = ensureOption(
+      unitOptions,
+      editPrice.unit_id,
+      editPrice.unit_name
+        ? (editPrice.unit_symbol ? `${editPrice.unit_name} (${editPrice.unit_symbol})` : editPrice.unit_name)
+        : undefined
+    );
+    const baseSourceTypeOptions = [
+      { value: '', label: 'Type de source' },
+      { value: 'producteur', label: 'Producteur' },
+      { value: 'cooperative', label: 'Coopérative' },
+      { value: 'transformateur', label: 'Transformateur' },
+      { value: 'grossiste', label: 'Grossiste' },
+      { value: 'commercant', label: 'Commerçant' },
+      { value: 'autre', label: 'Autre' }
+    ];
+    const sourceTypeOptions = editPrice.source_type && !baseSourceTypeOptions.some(o => o.value === editPrice.source_type)
+      ? [...baseSourceTypeOptions, { value: editPrice.source_type, label: editPrice.source_type }]
+      : baseSourceTypeOptions;
+    const baseRelationOptions = [
+      { value: '', label: 'Lien du contact (optionnel)' },
+      { value: 'moi', label: 'Moi' },
+      { value: 'proche', label: 'Proche' },
+      { value: 'autre', label: 'Autre' }
+    ];
+    const relationOptions = editPrice.source_contact_relation && !baseRelationOptions.some(o => o.value === editPrice.source_contact_relation)
+      ? [...baseRelationOptions, { value: editPrice.source_contact_relation, label: editPrice.source_contact_relation }]
+      : baseRelationOptions;
+    let sourceLanguageDefault = '';
+    if (editPrice.source_language_id) {
+      sourceLanguageDefault = editPrice.source_language_id;
+    } else if (editPrice.source_languages && Array.isArray(languageOptions) && languageOptions.length > 0) {
+      const names = String(editPrice.source_languages)
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      for (const name of names) {
+        const match = languageOptions.find(l => String(l.label).toLowerCase() === name.toLowerCase());
+        if (match) {
+          sourceLanguageDefault = match.value;
+          break;
+        }
+      }
+    }
     return [
-      { name: 'product_id', label: 'Produit', type: 'select', required: true, options: productOptions, defaultValue: editPrice.product_id },
-      { name: 'locality_id', label: 'Localité', type: 'select', required: true, options: localityOptions, defaultValue: editPrice.locality_id },
-      { name: 'unit_id', label: 'Unité', type: 'select', required: true, options: unitOptions, defaultValue: editPrice.unit_id },
+      { name: 'product_id', label: 'Produit', type: 'select', required: true, options: effectiveProductOptions, defaultValue: editPrice.product_id },
+      { name: 'locality_id', label: 'Localité', type: 'select', required: true, options: effectiveLocalityOptions, defaultValue: editPrice.locality_id },
+      { name: 'unit_id', label: 'Unité', type: 'select', required: true, options: effectiveUnitOptions, defaultValue: editPrice.unit_id },
       { name: 'price', label: 'Prix', type: 'number', required: true, defaultValue: editPrice.price },
       { name: 'date', label: 'Date (YYYY-MM-DD)', type: 'text', required: true, defaultValue: (editPrice.date || '').slice(0, 10) },
       { name: 'sub_locality', label: 'Sous-localité', type: 'text', defaultValue: editPrice.sub_locality || '' },
@@ -648,25 +709,12 @@ const AdminDashboard = () => {
       { name: 'longitude', label: 'Longitude', type: 'number', defaultValue: editPrice.longitude ?? '' },
       { name: 'geo_accuracy', label: 'Précision GPS (m)', type: 'number', defaultValue: editPrice.geo_accuracy ?? '' },
       { name: 'comment', label: 'Commentaire', type: 'textarea', defaultValue: editPrice.comment || '' },
-      { name: 'source_type', label: 'Type de source', type: 'select', defaultValue: editPrice.source_type || '', options: [
-        { value: '', label: 'Type de source' },
-        { value: 'producteur', label: 'Producteur' },
-        { value: 'cooperative', label: 'Coopérative' },
-        { value: 'transformateur', label: 'Transformateur' },
-        { value: 'grossiste', label: 'Grossiste' },
-        { value: 'commercant', label: 'Commerçant' },
-        { value: 'autre', label: 'Autre' }
-      ] },
+      { name: 'source_type', label: 'Type de source', type: 'select', defaultValue: editPrice.source_type || '', options: sourceTypeOptions },
       { name: 'source', label: 'Source', type: 'text', defaultValue: editPrice.source || '' },
       { name: 'source_contact_name', label: 'Nom du contact', type: 'text', defaultValue: editPrice.source_contact_name || '' },
       { name: 'source_contact_phone', label: 'Téléphone du contact', type: 'text', defaultValue: editPrice.source_contact_phone || '' },
-      { name: 'source_contact_relation', label: 'Relation du contact', type: 'select', defaultValue: editPrice.source_contact_relation || '', options: [
-        { value: '', label: 'Lien du contact (optionnel)' },
-        { value: 'moi', label: 'Moi' },
-        { value: 'proche', label: 'Proche' },
-        { value: 'autre', label: 'Autre' }
-      ] },
-      { name: 'source_language_id', label: 'Langue de communication', type: 'select', defaultValue: '', options: [
+      { name: 'source_contact_relation', label: 'Relation du contact', type: 'select', defaultValue: editPrice.source_contact_relation || '', options: relationOptions },
+      { name: 'source_language_id', label: 'Langue de communication', type: 'select', defaultValue: sourceLanguageDefault || '', options: [
         { value: '', label: 'Sélectionner une langue (optionnel)' },
         ...languageOptions
       ] }
@@ -675,8 +723,6 @@ const AdminDashboard = () => {
   const handleEditSubmit = (values) => {
     if (!editPrice) return;
     const payload = {
-      product_id: parseInt(values.product_id),
-      locality_id: parseInt(values.locality_id),
       unit_id: parseInt(values.unit_id),
       price: parseFloat(values.price),
       date: values.date,

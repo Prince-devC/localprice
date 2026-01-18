@@ -634,7 +634,7 @@ const Header = () => {
               </DropdownMenu>
             </DropdownContainer>
             
-            <NavLink to={isAuthenticated ? ((isContributor || isAdmin) ? '/submit-price' : '/dashboard?apply=1') : '/login'}>Contribuer</NavLink>
+            <NavLink to={isAuthenticated ? '/dashboard#contribute' : '/login'}>Contribuer</NavLink>
             {/* Retiré: Mon Espace & Espace Admin du menu principal */}
           </Nav>
 
@@ -715,7 +715,7 @@ const Header = () => {
           </MobileNavLink>
         </MobileDropdownSection>
         
-        <MobileNavLink to={isAuthenticated ? ((isContributor || isAdmin) ? '/submit-price' : '/dashboard?apply=1') : '/login'}>Contribuer</MobileNavLink>
+        <MobileNavLink to={isAuthenticated ? '/dashboard#contribute' : '/login'}>Contribuer</MobileNavLink>
         {/* Accès directs sur mobile */}
         
         {isAuthenticated ? (
