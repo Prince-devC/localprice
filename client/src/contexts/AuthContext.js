@@ -34,7 +34,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    // Init session from Supabase
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -73,7 +72,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [queryClient]);
 
   const login = async (email, password) => {
     try {
@@ -118,7 +117,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const username = generateUsername();
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {

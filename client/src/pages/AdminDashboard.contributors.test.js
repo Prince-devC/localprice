@@ -81,7 +81,7 @@ const setup = async () => {
     </QueryClientProvider>
   );
   await waitForElementToBeRemoved(() =>
-    screen.getByText(/Chargement de l'espace admin/i)
+    screen.queryByText(/Chargement de l'espace admin/i)
   );
   const link = screen.getByTestId('nav-contributors');
   fireEvent.click(link);

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
 import { agriculturalPriceService, productCategoryService, localityService, unitService, productService, languageService, contributionsService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import LoadingSpinner from './LoadingSpinner';
 import ConfirmModal from './ConfirmModal';
 import styled, { keyframes } from 'styled-components';
 import { toast } from 'react-hot-toast';

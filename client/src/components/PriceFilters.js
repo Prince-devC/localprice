@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
-import { FiFilter, FiChevronDown } from 'react-icons/fi';
+import { FiFilter } from 'react-icons/fi';
 import { filterOptionsService } from '../services/api';
 
 const FiltersContainer = styled.div`

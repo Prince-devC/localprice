@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from 'react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
@@ -258,7 +258,7 @@ const EmptyState = styled.div`
 
 const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, onDataLoaded, onLoadingChange }) => {
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh] = useState(true);
   const navigate = useNavigate();
 
   console.log('PriceTable: Received filters:', filters);
@@ -298,7 +298,10 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
   console.log('Full API response structure:', JSON.stringify(agriculturalPricesResponse, null, 2));
 
   // Extraire les données de la réponse API
-  let agriculturalPrices = agriculturalPricesResponse?.data?.data || [];
+  const agriculturalPrices = useMemo(
+    () => agriculturalPricesResponse?.data?.data || [],
+    [agriculturalPricesResponse]
+  );
   const paginationInfo = agriculturalPricesResponse?.data?.pagination || null;
   
   console.log('Extracted agricultural prices:', agriculturalPrices);

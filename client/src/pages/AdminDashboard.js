@@ -1270,35 +1270,6 @@ const AdminDashboard = () => {
     );
   };
 
-  const getRecommendation = (req) => {
-    if (!req) return '—';
-    const prefMethod = (req.preferred_method || '').toLowerCase();
-    if (prefMethod) {
-      switch (prefMethod) {
-        case 'web': return 'Formulaire web';
-        case 'offline': return 'KoboCollect (hors ligne)';
-        case 'whatsapp': return 'WhatsApp';
-        case 'sms': return 'SMS';
-        case 'mobile': return 'Application mobile';
-        default: break;
-      }
-    }
-    const method = (req.submission_method || '').toLowerCase();
-    switch (method) {
-      case 'web': return 'Formulaire web';
-      case 'offline': return 'KoboCollect (hors ligne)';
-      case 'whatsapp': return 'WhatsApp';
-      case 'sms': return 'SMS';
-      case 'mobile': return 'Application mobile';
-      default: {
-        const hasInternet = (typeof req.pref_has_internet !== 'undefined' && req.pref_has_internet !== null)
-          ? !!req.pref_has_internet
-          : !!req.has_internet;
-        return hasInternet ? 'Formulaire web' : 'KoboCollect (hors ligne)';
-      }
-    }
-  };
-
   // Vérifier les permissions
   if (!user) {
     return (

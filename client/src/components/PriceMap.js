@@ -406,7 +406,6 @@ const PriceMap = ({
   }, []);
 
   useEffect(() => {
-    // Debounce pour éviter les requêtes trop fréquentes
     const timeoutId = setTimeout(() => {
       fetchPrices();
       fetchStores();
@@ -414,7 +413,7 @@ const PriceMap = ({
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [fetchPrices, fetchStores]);
+  }, [fetchPrices, fetchStores, fetchSuppliers]);
 
   const handleSupplierPopupOpen = useCallback(async (supplierId) => {
     try {
@@ -641,7 +640,7 @@ function FitBoundsOnData({ bounds, fitRequested, onDone, initialFitEnabled = tru
       map.fitBounds(bounds, { padding: [30, 30] });
       didAutoFitRef.current = true;
     }
-  }, [map, bounds]);
+  }, [map, bounds, initialFitEnabled]);
   useEffect(() => {
     if (bounds && fitRequested) {
       map.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
