@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { FiSearch, FiFilter, FiX, FiMapPin, FiTrendingUp } from 'react-icons/fi';
-import { comparisonService, productService } from '../services/api';
+import { FiSearch, FiX } from 'react-icons/fi';
+import { comparisonService } from '../services/api';
 import ProductCard from '../components/ProductCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 

@@ -22,15 +22,6 @@ const PageTitle = styled.h1`
 `;
 
 
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-`;
-
-// Plus de liste/état vide pendant le développement
-
 const DevNotice = styled.div`
   border: 1px dashed var(--primary-color);
   background: #fff8e1;

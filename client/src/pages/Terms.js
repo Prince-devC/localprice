@@ -25,11 +25,6 @@ const Title = styled.h1`
   margin-bottom: 0.75rem;
 `;
 
-const SubTitle = styled.p`
-  color: var(--gray-600);
-  margin-bottom: 1.25rem;
-`;
-
 const Section = styled.section`
   margin-bottom: 1.25rem;
 `;

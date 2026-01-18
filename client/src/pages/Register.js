@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { FiUser, FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiUser, FiMail, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
