@@ -228,7 +228,7 @@ function SimpleLineChart({ data, onHoverChange }) {
     };
     const points = data.map(d => ({ x: sx(new Date(d.date).getTime()), y: sy(Number(d.avg_price)) }));
     return { points, xMin, xMax, yMin, yMax, sx, sy };
-  }, [data, height, innerH, innerW, margin.bottom, margin.left, margin.right, margin.top]);
+  }, [data, height, innerH, innerW, margin.bottom, margin.left, margin.top]);
 
   const path = useMemo(() => {
     if (!calc.points || calc.points.length === 0) return '';
@@ -370,15 +370,15 @@ const PriceDetail = () => {
   const price = initialPrice || fetchedDetail?.data || null;
 
   const { data: evolutionResp, isLoading: loadingEvolution } = usePriceEvolution(price?.product_id, price?.locality_id);
-  const evolution = evolutionResp?.data?.data || [];
-
+  
   // Filtrer par période
   const filteredEvolution = useMemo(() => {
+    const evolution = evolutionResp?.data?.data || [];
     if (!evolution || evolution.length === 0) return [];
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - periodDays);
     return evolution.filter(pt => new Date(pt.date) >= cutoff);
-  }, [evolution, periodDays]);
+  }, [evolutionResp, periodDays]);
 
   const stats = useMemo(() => {
     if (!filteredEvolution || filteredEvolution.length === 0) return null;

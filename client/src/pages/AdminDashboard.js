@@ -3088,7 +3088,7 @@ function CategoriesSection({ queryClient, isAdmin }) {
 
   const [form, setForm] = React.useState({ name: '', type: 'brut', description: '' });
   const [search, setSearch] = React.useState('');
-  const [catLimit, setCatLimit] = React.useState(20);
+  const [catLimit] = React.useState(20);
   const [catPage, setCatPage] = React.useState(1);
   const catOffset = (catPage - 1) * catLimit;
   const visibleCategories = React.useMemo(() => {
@@ -3318,7 +3318,7 @@ function UnitsSection({ queryClient, isAdmin }) {
   const [name, setName] = React.useState('');
   const [symbol, setSymbol] = React.useState('');
   const [search, setSearch] = React.useState('');
-  const [unitLimit, setUnitLimit] = React.useState(20);
+  const [unitLimit] = React.useState(20);
   const [unitPage, setUnitPage] = React.useState(1);
   const unitOffset = (unitPage - 1) * unitLimit;
   const visibleUnits = React.useMemo(() => {
@@ -3536,7 +3536,7 @@ function UnitsSection({ queryClient, isAdmin }) {
 function LocalitiesSection({ queryClient, isAdmin, regionOpts = [] }) {
   const [search, setSearch] = React.useState('');
   const [selectedRegion, setSelectedRegion] = React.useState('');
-  const [locLimit, setLocLimit] = React.useState(20);
+  const [locLimit] = React.useState(20);
   const [locPage, setLocPage] = React.useState(1);
   const locOffset = (locPage - 1) * locLimit;
 
@@ -3684,7 +3684,7 @@ function ProductsSection({ queryClient, isAdmin }) {
   );
   const [form, setForm] = React.useState({ name: '', category_id: '' });
   const [search, setSearch] = React.useState('');
-  const [prodLimit, setProdLimit] = React.useState(20);
+  const [prodLimit] = React.useState(20);
   const [prodPage, setProdPage] = React.useState(1);
   const prodOffset = (prodPage - 1) * prodLimit;
   const catMap = React.useMemo(() => {
@@ -3917,7 +3917,7 @@ function LanguagesSection({ queryClient, isAdmin }) {
   );
   const [name, setName] = React.useState('');
   const [search, setSearch] = React.useState('');
-  const [langLimit, setLangLimit] = React.useState(20);
+  const [langLimit] = React.useState(20);
   const [langPage, setLangPage] = React.useState(1);
   const langOffset = (langPage - 1) * langLimit;
   const visibleLanguages = React.useMemo(() => {

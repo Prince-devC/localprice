@@ -688,7 +688,7 @@ const Dashboard = () => {
 
   // Mes prix: filtres, pagination et sélection
   const [myPricesStatus, setMyPricesStatus] = React.useState('all');
-  const [myPricesLimit, setMyPricesLimit] = React.useState(20);
+  const [myPricesLimit] = React.useState(20);
   const [myPricesOffset, setMyPricesOffset] = React.useState(0);
   const [mySelectedIds, setMySelectedIds] = React.useState([]);
   const toggleMySelect = (id) => setMySelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -704,7 +704,10 @@ const Dashboard = () => {
     () => agriculturalPriceService.getMyPrices({ status: myPricesStatus, limit: myPricesLimit, offset: myPricesOffset }),
     { keepPreviousData: false, staleTime: 0, cacheTime: 0 }
   );
-  const myPrices = myPricesResp?.data?.data || [];
+  const myPrices = React.useMemo(
+    () => myPricesResp?.data?.data || [],
+    [myPricesResp]
+  );
 
   // Recherche locale et liste visible (filtrée sur la page courante)
   const [myPricesSearch, setMyPricesSearch] = React.useState('');
@@ -758,32 +761,7 @@ const Dashboard = () => {
   const languageOptions = React.useMemo(() => (languageOpts || []).map(l => ({ value: l.id, label: l.name })), [languageOpts]);
 
   // Simple stats for regular users (no contribution rights)
-  const GeneralStats = () => {
-    const productsCount = Array.isArray(productOpts) ? productOpts.length : 0;
-    const localitiesCount = Array.isArray(localityOpts) ? localityOpts.length : 0;
-    const unitsCount = Array.isArray(units) ? units.length : 0;
-    const myValidated = Array.isArray(myPrices) ? myPrices.filter(p => p.status === 'validated').length : 0;
-    return (
-      <>
-        <div style={{ padding:'0.75rem', border:'1px solid var(--gray-200)', borderRadius:8, background:'#f9fafb' }}>
-          <div style={{ color:'var(--gray-500)', fontSize:'0.85rem' }}>Produits</div>
-          <div style={{ fontWeight:700, fontSize:'1.1rem' }}>{productsCount}</div>
-        </div>
-        <div style={{ padding:'0.75rem', border:'1px solid var(--gray-200)', borderRadius:8, background:'#f9fafb' }}>
-          <div style={{ color:'var(--gray-500)', fontSize:'0.85rem' }}>Localités</div>
-          <div style={{ fontWeight:700, fontSize:'1.1rem' }}>{localitiesCount}</div>
-        </div>
-        <div style={{ padding:'0.75rem', border:'1px solid var(--gray-200)', borderRadius:8, background:'#f9fafb' }}>
-          <div style={{ color:'var(--gray-500)', fontSize:'0.85rem' }}>Unités</div>
-          <div style={{ fontWeight:700, fontSize:'1.1rem' }}>{unitsCount}</div>
-        </div>
-        <div style={{ padding:'0.75rem', border:'1px solid var(--gray-200)', borderRadius:8, background:'#f9fafb' }}>
-          <div style={{ color:'var(--gray-500)', fontSize:'0.85rem' }}>Mes prix validés</div>
-          <div style={{ fontWeight:700, fontSize:'1.1rem' }}>{myValidated}</div>
-        </div>
-      </>
-    );
-  };
+  // GeneralStats supprimé car non utilisé
 
   // Edition d'un prix "Mes prix"
   const [myEditOpen, setMyEditOpen] = React.useState(false);
