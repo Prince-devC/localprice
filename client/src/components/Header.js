@@ -3,7 +3,6 @@ import { Link, NavLink as RouterNavLink, useNavigate, useLocation } from 'react-
 import styled from 'styled-components';
 import { FiUser, FiLogOut, FiMenu, FiX, FiChevronDown, FiTrendingUp, FiHome, FiShield } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import { authService } from '../services/api';
 
 const HeaderContainer = styled.header`
   position: fixed;
@@ -543,13 +542,6 @@ const Header = () => {
     || (user?.role === 'admin' || user?.role === 'super_admin')
   );
 
-  const isContributor = !!(
-    (roles && roles.includes('contributor'))
-    || (user?.user_metadata && user.user_metadata.role === 'contributor')
-    || (user?.app_metadata && user.app_metadata.role === 'contributor')
-    || user?.role === 'contributor'
-  );
-
   const displayName = user?.user_metadata?.firstName
     ? `${user.user_metadata.firstName} ${user.user_metadata.lastName || ''}`.trim()
     : (user?.user_metadata?.username || user?.email || 'Utilisateur');
@@ -584,7 +576,7 @@ const Header = () => {
   // Fermer le menu mobile quand on navigue
   useEffect(() => {
     setIsMobileMenuOpen(false);
-  }, [navigate]);
+  }, [location.pathname]);
 
   return (
     <>

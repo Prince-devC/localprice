@@ -524,7 +524,7 @@ const AdminDashboard = () => {
     return fallbackValue;
   }, [dashboardData, pickNumber]);
   // Etats pour prix récents (client-side pagination & recherche)
-  const [recentLimit, setRecentLimit] = React.useState(20);
+  const [recentLimit] = React.useState(20);
   const [recentPage, setRecentPage] = React.useState(1);
   const recentOffset = (recentPage - 1) * recentLimit;
   const [recentSearch, setRecentSearch] = React.useState('');
@@ -545,7 +545,7 @@ const AdminDashboard = () => {
   React.useEffect(() => { setRecentPage(1); }, [recentSearch]);
 
   // Etats pagination/filtre pour prix en attente
-  const [pendingLimit, setPendingLimit] = React.useState(20);
+  const [pendingLimit] = React.useState(20);
   const [pendingPage, setPendingPage] = React.useState(1);
   const pendingOffset = (pendingPage - 1) * pendingLimit;
   const [pendingSearch, setPendingSearch] = React.useState('');
@@ -586,16 +586,7 @@ const AdminDashboard = () => {
     () => filterOptionsService.getLocalities(),
     { select: (r) => r?.data?.data || [] }
   );
-  const { data: categoryOpts = [] } = useQuery(
-    'filter-categories',
-    () => filterOptionsService.getCategories(),
-    { select: (r) => r?.data?.data || [] }
-  );
-  const { data: categoriesAll = [] } = useQuery(
-    'admin-categories-all',
-    () => productCategoryService.getAll(),
-    { select: (r) => r?.data?.data || [], enabled: !!isAdmin }
-  );
+  // Anciennes requêtes de catégories non utilisées supprimées
   const { data: regionOpts = [] } = useQuery(
     'filter-regions',
     () => filterOptionsService.getRegions(),
@@ -749,7 +740,7 @@ const AdminDashboard = () => {
   const [detailPrice, setDetailPrice] = React.useState(null);
 
   // Lecture des offres (lecture seule pour admins et super-admins)
-  const [offersLimit, setOffersLimit] = React.useState(20);
+  const [offersLimit] = React.useState(20);
   const [offersPage, setOffersPage] = React.useState(1);
   const offersOffset = (offersPage - 1) * offersLimit;
   const [offersSearch, setOffersSearch] = React.useState('');
@@ -812,23 +803,7 @@ const AdminDashboard = () => {
     }
   );
 
-  // Compteurs additionnels (fallback): prix validés / rejetés et total utilisateurs
-  const { data: validatedPrices = [] } = useQuery(
-    'admin-validated-prices-count',
-    () => agriculturalPriceService.getAll({ limit: 1000, status: 'validated' }),
-    { select: (r) => r?.data?.data || [], enabled: !!isAdmin }
-  );
-  const { data: rejectedPrices = [] } = useQuery(
-    'admin-rejected-prices-count',
-    () => agriculturalPriceService.getAll({ limit: 1000, status: 'rejected' }),
-    { select: (r) => r?.data?.data || [], enabled: !!isAdmin }
-  );
-  const { data: usersAll = [] } = useQuery(
-    'admin-users-all-count',
-    () => adminService.getUsers({ limit: 1000, offset: 0 }),
-    { select: (r) => r?.data?.data || [], enabled: !!isAdmin }
-  );
-
+  // Compteurs additionnels (fallback) retirés car non utilisés
   // Sélection multiple pour prix en attente
   const [pendingSelectedIds, setPendingSelectedIds] = React.useState([]);
   const togglePendingSelect = (id) => {
@@ -937,7 +912,7 @@ const AdminDashboard = () => {
   );
 
   // Demandes de contribution (en attente) avec pagination et recherche
-  const [requestsLimit, setRequestsLimit] = React.useState(20);
+  const [requestsLimit] = React.useState(20);
   const [requestsPage, setRequestsPage] = React.useState(1);
   const requestsOffset = (requestsPage - 1) * requestsLimit;
   const [requestsSearch, setRequestsSearch] = React.useState('');
@@ -951,7 +926,7 @@ const AdminDashboard = () => {
   );
 
   // Liste des utilisateurs (lecture) avec pagination et recherche
-  const [usersLimit, setUsersLimit] = React.useState(20);
+  const [usersLimit] = React.useState(20);
   const [usersPage, setUsersPage] = React.useState(1);
   const usersOffset = (usersPage - 1) * usersLimit;
   const [usersSearch, setUsersSearch] = React.useState('');
@@ -965,7 +940,7 @@ const AdminDashboard = () => {
   );
 
   // Contributeurs (acceptés) – inclure ceux sans activité, avec pagination et recherche
-  const [contributorsLimit, setContributorsLimit] = React.useState(20);
+  const [contributorsLimit] = React.useState(20);
   const [contributorsPage, setContributorsPage] = React.useState(1);
   const contributorsOffset = (contributorsPage - 1) * contributorsLimit;
   const [contributorsSearch, setContributorsSearch] = React.useState('');
@@ -1027,7 +1002,7 @@ const AdminDashboard = () => {
   const [seoLoading, setSeoLoading] = React.useState(false);
 
   // Charger les paramètres SEO
-  const { data: seoData, isLoading: loadingSeoData, refetch: refetchSeo } = useQuery(
+  useQuery(
     'admin-seo-settings',
     () => seoService.getSettings().then((r) => r?.data?.data || {}),
     { 
@@ -1120,7 +1095,6 @@ const AdminDashboard = () => {
   // Rôles disponibles (liste statique côté client pour simplicité)
   // Autoriser l’attribution du rôle de base "user" et des rôles admin
   const availableRoles = isSuperAdmin ? ['user', 'admin', 'super_admin'] : [];
-  const loadingRoles = false;
 
   const addRoleMutation = useMutation(
     ({ userId, role }) => adminService.addUserRole(userId, role),
