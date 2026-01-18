@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, NavLink as RouterNavLink } from 'react-router-dom';
+import { Link, NavLink as RouterNavLink, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { FiMapPin, FiPhone, FiMail, FiGithub, FiTwitter, FiFacebook } from 'react-icons/fi';
 import { categoryService } from '../services/api';
@@ -116,6 +116,7 @@ const FooterBottom = styled.div`
 `;
 
 const Footer = () => {
+  const location = useLocation();
   const { isAuthenticated, roles } = useAuth();
   const isContributor = roles?.includes('contributor');
   const isAdmin = roles?.includes('admin');
@@ -123,6 +124,11 @@ const Footer = () => {
 
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+
+  const searchParams = new URLSearchParams(location.search);
+  const activeCategoryId = location.pathname.startsWith('/all-prices')
+    ? searchParams.get('category_id')
+    : null;
 
   useEffect(() => {
     let mounted = true;
@@ -197,7 +203,12 @@ const Footer = () => {
               ) : categories && categories.length > 0 ? (
                 categories.slice(0, 6).map(cat => (
                   <li key={cat.id}>
-                    <RouterNavLink to={`/all-prices?category_id=${cat.id}`}>{cat.name}</RouterNavLink>
+                    <Link
+                      to={`/all-prices?category_id=${cat.id}`}
+                      aria-current={activeCategoryId === String(cat.id) ? 'page' : undefined}
+                    >
+                      {cat.name}
+                    </Link>
                   </li>
                 ))
               ) : (

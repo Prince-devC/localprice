@@ -25,8 +25,7 @@ function MapCenter({ center, zoom }) {
 // Helpers visibilité
 const formatK = (value) => {
   const v = Number(value) || 0;
-  if (v >= 1000) return ((v / 1000).toFixed(v >= 10000 ? 0 : 1)) + 'k';
-  return String(Math.round(v));
+  return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v);
 };
 
 
@@ -623,6 +622,9 @@ const PriceMap = ({
             color: 'white'
           }}>S</div>
           <span>Fournisseurs (magasins et marchés)</span>
+        </div>
+        <div style={{ marginTop: '8px', fontSize: '11px', color: '#555' }}>
+          Le nombre dans le rond correspond au prix en FCFA.
         </div>
       </div>
     </div>

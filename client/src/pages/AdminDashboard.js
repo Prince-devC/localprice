@@ -1394,7 +1394,6 @@ const AdminDashboard = () => {
   };
 
   const initialLoading = (
-    profileLoading ||
     (activeMenu === 'pending' && loadingPending) ||
     (activeMenu === 'stats' && loadingDashboard) ||
     (activeMenu === 'recent' && loadingDashboard) ||
@@ -1430,7 +1429,7 @@ const AdminDashboard = () => {
 
           {/* Gestion des contributeurs */}
           <NavAnchor href="#requests" onClick={handleMenuClick('requests')} $active={activeMenu === 'requests'}><FiUsers /> Demandes de contributeur</NavAnchor>
-          <NavAnchor href="#contributors" onClick={handleMenuClick('contributors')} $active={activeMenu === 'contributors'}><FiUser /> Contributeurs (acceptés)</NavAnchor>
+          <NavAnchor href="#contributors" onClick={handleMenuClick('contributors')} $active={activeMenu === 'contributors'} data-testid="nav-contributors"><FiUser /> Contributeurs (acceptés)</NavAnchor>
 
           {/* Gestion des données produits */}
           <NavAnchor href="#categories" onClick={handleMenuClick('categories')} $active={activeMenu === 'categories'}><FiPackage /> Catégories</NavAnchor>

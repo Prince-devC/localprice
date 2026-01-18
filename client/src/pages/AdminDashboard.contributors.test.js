@@ -2,7 +2,8 @@
  * Tests de rendu pour la section Contributeurs dans AdminDashboard
  */
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import AdminDashboard from './AdminDashboard';
 
@@ -65,17 +66,24 @@ jest.mock('../services/api', () => ({
   },
   productService: { getAll: jest.fn().mockResolvedValue({ data: { success: true, data: [] } }) },
   settingsService: { getKoboSettings: jest.fn().mockResolvedValue({ data: { success: true, data: {} } }) },
+  authService: {
+    getProfile: jest.fn().mockResolvedValue({ data: { data: { role: 'super_admin' } } }),
+  },
 }));
 
 const setup = async () => {
   const client = new QueryClient();
   render(
     <QueryClientProvider client={client}>
-      <AdminDashboard />
+      <MemoryRouter>
+        <AdminDashboard />
+      </MemoryRouter>
     </QueryClientProvider>
   );
-  // Aller dans l’onglet contributeurs
-  const link = await screen.findByRole('link', { name: /Contributeurs \(acceptés\)/i });
+  await waitForElementToBeRemoved(() =>
+    screen.getByText(/Chargement de l'espace admin/i)
+  );
+  const link = screen.getByTestId('nav-contributors');
   fireEvent.click(link);
 };
 
