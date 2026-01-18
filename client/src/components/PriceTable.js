@@ -261,8 +261,6 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
   const [autoRefresh] = useState(true);
   const navigate = useNavigate();
 
-  console.log('PriceTable: Received filters:', filters);
-
   const { 
     data: agriculturalPricesResponse, 
     isLoading, 
@@ -278,11 +276,8 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
       refetchIntervalInBackground: false,
       onSuccess: () => {
         setLastRefresh(new Date());
-        console.log('Agricultural prices fetched successfully');
       },
-      onError: (error) => {
-        console.error('Error fetching agricultural prices:', error);
-      }
+      onError: () => {}
     }
   );
 
@@ -293,9 +288,6 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
     }
   }, [isLoading, isFetching, onLoadingChange]);
 
-  console.log('Current filters:', filters);
-  console.log('Agricultural prices response:', agriculturalPricesResponse);
-  console.log('Full API response structure:', JSON.stringify(agriculturalPricesResponse, null, 2));
 
   // Extraire les données de la réponse API
   const agriculturalPrices = useMemo(
@@ -337,9 +329,6 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
     displayedPrices = agriculturalPrices.slice(0, limit);
   }
   
-  console.log('Extracted agricultural prices:', agriculturalPrices);
-  console.log('Displayed agricultural prices:', displayedPrices);
-
   const handleManualRefresh = async () => {
     await refetch();
     if (onRefresh) {

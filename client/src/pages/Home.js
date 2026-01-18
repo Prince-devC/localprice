@@ -137,8 +137,6 @@ const Home = () => {
     // Ajouter des paramètres par défaut pour l'API des prix agricoles
     apiFilters.limit = 50;
     apiFilters.status = 'validated';
-    
-    console.log('Mapped filters for API:', apiFilters);
     return apiFilters;
   };
 

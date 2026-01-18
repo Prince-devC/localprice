@@ -25,18 +25,15 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// CORS configuration
 app.use(cors({
   origin: [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    // Autoriser le frontend lancé sur un autre port en développement
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:3002',
     'http://127.0.0.1:3002',
     'http://localhost:3003',
-    'http://127.0.0.1:3003'
+    'http://127.0.0.1:3003',
+    'https://lokali-xi.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
