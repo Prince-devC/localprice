@@ -228,7 +228,7 @@ function SimpleLineChart({ data, onHoverChange }) {
     };
     const points = data.map(d => ({ x: sx(new Date(d.date).getTime()), y: sy(Number(d.avg_price)) }));
     return { points, xMin, xMax, yMin, yMax, sx, sy };
-  }, [data]);
+  }, [data, height, innerH, innerW, margin.bottom, margin.left, margin.right, margin.top]);
 
   const path = useMemo(() => {
     if (!calc.points || calc.points.length === 0) return '';

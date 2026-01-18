@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { FiArrowLeft, FiMapPin, FiTrendingUp, FiStar } from 'react-icons/fi';
+import { FiArrowLeft, FiMapPin, FiTrendingUp } from 'react-icons/fi';
 import { useQuery } from 'react-query';
 import { productService } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';

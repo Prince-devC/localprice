@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiMail, FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
 
 const LoginContainer = styled.div`
   min-height: calc(100vh - 160px);
@@ -176,7 +175,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   
-  const { login, loading, user, roles, hasRole, refreshRoles } = useAuth();
+  const { login, loading, user, hasRole, refreshRoles } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
