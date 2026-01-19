@@ -115,7 +115,7 @@ const Hero = () => {
           Prix Directs & Fournisseurs de Produits Agricoles au Bénin
         </HeroTitle>
         <HeroSubtitle>
-          Lokali votre courtier digital vous permet de consulter les prix de produits agricoles par localité et de vous connecter à des fournisseurs sans intermédiaire.
+          Lokali est une plateforme de transparence de prix des produits agricoles et de mise en relation des coopératives et acheteurs.
         </HeroSubtitle>
         <HeroCTA>
           <CTAButton onClick={() => { document.getElementById('filters-section').scrollIntoView({ behavior: 'smooth' }); }}>

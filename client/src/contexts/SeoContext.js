@@ -4,9 +4,9 @@ import { seoService } from '../services/api';
 const SeoContext = createContext(null);
 
 const defaultSettings = {
-  siteTitle: 'LocalPrice',
-  siteDescription: 'Comparez les prix locaux et découvrez les meilleures offres.',
-  siteKeywords: 'prix, produits, comparaison, localités, offres',
+  siteTitle: 'Lokali',
+  siteDescription: 'Plateforme de transparence de prix des produits agricoles et de mise en relation des coopératives et acheteurs.',
+  siteKeywords: 'prix, produits agricoles, transparence, coopératives, acheteurs, bénin',
   homepageTitle: '',
   homepageDescription: '',
   openGraphImage: ''

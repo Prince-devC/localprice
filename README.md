@@ -1,6 +1,6 @@
-# 🛒 Lokali — Plateforme de Prix Locaux
+# 🛒 Lokali — Plateforme de Transparence Agricole
 
-Lokali est une plateforme web qui collecte, modère et publie des prix locaux (agricoles), avec un annuaire de fournisseurs et des outils de comparaison. Elle intègre un flux de collecte (formulaires ou webhook Kobo), une modération côté administrateur, et une interface publique orientée recherche/visualisation.
+Lokali est une plateforme de transparence de prix des produits agricoles et de mise en relation des coopératives et acheteurs. Elle collecte, modère et publie des prix locaux (agricoles), avec un annuaire de fournisseurs et des outils de comparaison. Elle intègre un flux de collecte (formulaires ou webhook Kobo), une modération côté administrateur, et une interface publique orientée recherche/visualisation.
 
 ## 🎯 Vue d’ensemble
 - Collecte des prix via formulaire ou webhook Kobo (REST)
@@ -69,7 +69,7 @@ Frontend: `http://localhost:3000/`  |  Backend API: `http://localhost:5000/`
 
 ## 📁 Structure (simplifiée)
 ```
-localprice/
+lokali/
 ├── client/
 │   ├── src/
 │   │   ├── components/SupplierCard.js

@@ -21,7 +21,7 @@ function buildPool() {
   const port = Number(process.env.DB_PORT || 5432);
   const user = process.env.DB_USER || 'postgres';
   const password = process.env.DB_PASSWORD || '';
-  const database = process.env.DB_NAME || 'localprice';
+  const database = process.env.DB_NAME || 'lokali';
   const sslEnv = String(process.env.PGSSL || '').toLowerCase();
   const ssl = sslEnv === 'true' ? { rejectUnauthorized: false } : false;
 

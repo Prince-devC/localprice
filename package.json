@@ -1,7 +1,7 @@
 {
-  "name": "localprice",
+  "name": "lokali",
   "version": "1.0.0",
-  "description": "Application de comparaison de prix locaux",
+  "description": "Plateforme de transparence de prix des produits agricoles et de mise en relation des coopératives et acheteurs",
   "engines": {
     "node": ">=18.0.0"
   },
