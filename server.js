@@ -23,6 +23,9 @@ const PORT = process.env.PORT || 5000;
 // Middleware de sécurité
 app.use(helmet());
 
+// Compression GZIP
+app.use(compression());
+
 // Rate limiting - plus permissif pour le développement
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
