@@ -75,6 +75,30 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'API Lokali fonctionne!' });
 });
 
+// Route de vérification base de données (Diagnostic)
+app.get('/api/health-db', async (req, res) => {
+  try {
+    // Import dynamique pour éviter les soucis d'ordre de chargement si nécessaire, 
+    // ou on peut l'importer en haut. Ici on l'utilise juste pour ce test.
+    const db = require('./database/postgres');
+    const result = await db.get('SELECT NOW() as time');
+    res.json({ 
+      status: 'success', 
+      message: 'Connexion base de données OK', 
+      time: result.time,
+      env: process.env.NODE_ENV
+    });
+  } catch (error) {
+    console.error('DB Health Check Failed:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: 'Échec connexion base de données', 
+      error_details: error.message,
+      error_code: error.code
+    });
+  }
+});
+
 // Gestion des erreurs
 app.use((err, req, res, next) => {
   console.error(err.stack);
