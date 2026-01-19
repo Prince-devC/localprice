@@ -2868,8 +2868,38 @@ const AdminDashboard = () => {
           <FiSettings />
           Paramètres Kobo
         </SectionTitle>
+        
+        <StatusBox style={{ marginBottom: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
+          <h4 style={{ margin:'0 0 0.5rem 0', color:'#1e40af' }}>Configuration Webhook KoboToolbox</h4>
+          <p style={{ margin:'0 0 0.5rem 0', fontSize:'0.9rem' }}>
+            Pour recevoir les données automatiquement, configurez ce Webhook dans votre projet KoboToolbox (Settings &gt; REST Services &gt; Register a new endpoint) :
+          </p>
+          <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', background:'white', padding:'0.5rem', borderRadius:'6px', border:'1px solid #e5e7eb' }}>
+            <code style={{ flex:1, wordBreak:'break-all', color:'#d63384' }}>
+              {(() => {
+                const apiBase = process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
+                const baseUrl = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase.startsWith('/') ? '' : '/'}${apiBase}`;
+                return `${baseUrl.replace(/\/$/, '')}/kobo/webhook`;
+              })()}
+            </code>
+            <Button 
+              size="small" 
+              onClick={() => {
+                const apiBase = process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
+                const baseUrl = apiBase.startsWith('http') ? apiBase : `${window.location.origin}${apiBase.startsWith('/') ? '' : '/'}${apiBase}`;
+                const url = `${baseUrl.replace(/\/$/, '')}/kobo/webhook`;
+                navigator.clipboard.writeText(url);
+                toast.success('URL copiée !');
+              }}
+              style={{ padding:'0.25rem 0.75rem', fontSize:'0.85rem' }}
+            >
+              Copier
+            </Button>
+          </div>
+        </StatusBox>
+
         <div style={{ color:'#6b7280', marginBottom:'0.75rem' }}>
-          Configurez l'URL du serveur et l'identifiant utilisés dans les instructions KoboCollect du Dashboard.
+          Configurez ci-dessous l'URL du serveur et l'identifiant qui seront affichés aux contributeurs dans leurs instructions KoboCollect.
         </div>
         {loadingKoboSettings ? (
           <LoadingSpinner />

@@ -7,7 +7,8 @@ function buildPool() {
 
   // Si on ne force pas le local et qu'une URL est fournie, utiliser l'URL
   if (!preferLocal && connectionString) {
-    const needsSSL = /supabase\.co/.test(connectionString) || /sslmode=require/.test(connectionString);
+    const needsSSL = /supabase\.(co|com)/.test(connectionString) || /sslmode=require/.test(connectionString);
+    console.log(`[DB] Connection string provided. Needs SSL: ${needsSSL}`);
     return new Pool({
       connectionString,
       ssl: needsSSL ? { rejectUnauthorized: false } : false,
