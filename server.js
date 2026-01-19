@@ -33,7 +33,9 @@ app.use(cors({
     'http://127.0.0.1:3002',
     'http://localhost:3003',
     'http://127.0.0.1:3003',
-    'https://lokali-xi.vercel.app'
+    'https://lokali-xi.vercel.app',
+    'https://lokali.bj',
+    'https://www.lokali.bj'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
