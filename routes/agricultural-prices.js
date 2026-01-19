@@ -155,13 +155,37 @@ const ensurePriceSchema = async () => {
   }
 };
 
+// Ensure indexes exist for performance
+const ensureIndices = async () => {
+  try {
+    // Index pour la requête principale (tri par date et prix) et filtres
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_prices_status_date_price ON prices (status, date DESC, price ASC);`);
+    
+    // Index couvrant pour la sous-requête de variation de prix (optimisation critique)
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_prices_prod_loc_status_date ON prices (product_id, locality_id, status, date DESC);`);
+    
+    // Index pour les jointures et filtres fréquents
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_prices_product_id ON prices (product_id);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_prices_locality_id ON prices (locality_id);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_prices_date ON prices (date);`);
+  } catch (e) {
+    console.warn('Index creation warning:', e.message);
+  }
+};
+
+let schemaChecked = false;
+
 // GET /api/agricultural-prices - Récupérer les prix validés (public)
 router.get('/', async (req, res) => {
   try {
-    // S'assurer que les tables nécessaires existent en dev local
-    await ensureCorePriceSchema();
-    await ensurePriceSchema();
-    await ensureAuditTable();
+    // S'assurer que les tables et index existent (une seule fois par démarrage)
+    if (!schemaChecked) {
+      await ensureCorePriceSchema();
+      await ensurePriceSchema();
+      await ensureAuditTable();
+      await ensureIndices();
+      schemaChecked = true;
+    }
 
     const filters = {
       id: req.query.id,

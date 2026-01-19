@@ -293,6 +293,9 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
     {
       refetchInterval: autoRefresh ? 30000 : false, // Rafraîchissement toutes les 30 secondes
       refetchIntervalInBackground: false,
+      keepPreviousData: true, // Garder les données précédentes pendant le chargement (UX fluide)
+      staleTime: 10000, // Considérer les données comme fraîches pendant 10s
+      refetchOnWindowFocus: false, // Éviter le rechargement agressif au focus
       onSuccess: () => {
         setLastRefresh(new Date());
       },
