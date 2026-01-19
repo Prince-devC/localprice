@@ -4,8 +4,8 @@ import { seoService } from '../services/api';
 const SeoContext = createContext(null);
 
 const defaultSettings = {
-  siteTitle: 'Lokali - Prix agricoles et alimentaires au Bénin',
-  siteDescription: 'Accédez aux prix des produits agricoles et alimentaires en temps réel sur les marchés du Bénin. Connectez-vous aux producteurs et acheteurs locaux.',
+  siteTitle: 'Lokali - Prix agricoles au Bénin',
+  siteDescription: 'Accédez aux prix des produits agricoles en temps réel sur les marchés du Bénin. Connectez-vous aux producteurs et acheteurs locaux.',
   siteKeywords: 'prix, produits agricoles, transparence, coopératives, acheteurs, bénin, marché, vivrier',
   homepageTitle: '',
   homepageDescription: '',
