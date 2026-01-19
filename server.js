@@ -2,7 +2,18 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const dns = require('dns');
 require('dotenv').config();
+
+// Force la résolution IPv4 par défaut (Node 17+)
+// Cela aide souvent sur Render/Vercel pour se connecter aux bases de données
+if (dns.setDefaultResultOrder) {
+  try {
+    dns.setDefaultResultOrder('ipv4first');
+  } catch (e) {
+    console.warn('Impossible de définir l\'ordre de résolution DNS:', e);
+  }
+}
 
 const app = express();
 // Trust first proxy to correctly interpret X-Forwarded-For for rate limiting
