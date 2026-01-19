@@ -22,6 +22,25 @@ const TableTitle = styled.h2`
   font-weight: 600;
   color: var(--gray-800);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const LiveIndicator = styled.span`
+  background-color: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  animation: pulse 2s infinite;
+
+  @keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
 `;
 
 const RefreshButton = styled.button`
@@ -347,25 +366,28 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
   return (
     <PriceTableContainer>
       <TableHeader>
-        <TableTitle>Prix des produits en temps réels</TableTitle>
-        <div>
-          <LastUpdateInfo>
-            Dernière mise à jour: {formatLastUpdate(lastRefresh)}
-          </LastUpdateInfo>
-          <RefreshButton 
-            onClick={handleManualRefresh}
-            disabled={isFetching}
-            className={isFetching ? 'refreshing' : ''}
-          >
-            <FiRefreshCw />
-            {isFetching ? 'Actualisation...' : 'Actualiser'}
-          </RefreshButton>
-        </div>
+        <TableTitle>
+          Prix agricoles validés
+          <LiveIndicator>LIVE</LiveIndicator>
+        </TableTitle>
+        <RefreshButton 
+          onClick={handleManualRefresh}
+          disabled={isFetching}
+          className={isFetching ? 'refreshing' : ''}
+        >
+          <FiRefreshCw />
+          {isFetching ? 'Mise à jour...' : 'Actualiser'}
+        </RefreshButton>
       </TableHeader>
+
+      <LastUpdateInfo>
+        Dernière mise à jour : {formatLastUpdate(lastRefresh)}
+      </LastUpdateInfo>
 
       {/* Toujours afficher le tableau, avec un overlay pendant le chargement */}
       <TradingTable>
-        {(isLoading || isFetching) && (
+        {/* Afficher le loader overlay SEULEMENT lors du chargement initial sans données */}
+        {(isLoading && !agriculturalPrices.length) && (
           <LoaderOverlay>
             <LoadingSpinner />
           </LoaderOverlay>

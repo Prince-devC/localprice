@@ -239,7 +239,7 @@ const Footer = () => {
         </FooterGrid>
         
         <FooterBottom>
-          <p>&copy; 2024 Lokali. Tous droits réservés.</p>
+          <p>&copy; 2024 Lokali. Tous droits réservés. | Conçu par <a href="https://kijanilab.com" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', fontWeight: 'bold' }}>Kijanilab</a></p>
         </FooterBottom>
       </FooterContent>
     </FooterContainer>
