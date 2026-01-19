@@ -3,7 +3,7 @@ require('dotenv').config();
 
 function buildPool() {
   const preferLocal = String(process.env.DB_USE_LOCAL || '').toLowerCase() === 'true';
-  const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+  const connectionString = process.env.SUPABASE_POOLER_URL || process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
 
   // Si on ne force pas le local et qu'une URL est fournie, utiliser l'URL
   if (!preferLocal && connectionString) {
