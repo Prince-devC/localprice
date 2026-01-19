@@ -4,12 +4,12 @@ import { seoService } from '../services/api';
 const SeoContext = createContext(null);
 
 const defaultSettings = {
-  siteTitle: 'Lokali',
-  siteDescription: 'Plateforme de transparence de prix des produits agricoles et de mise en relation des coopératives et acheteurs.',
-  siteKeywords: 'prix, produits agricoles, transparence, coopératives, acheteurs, bénin',
+  siteTitle: 'Lokali - Prix agricoles et alimentaires au Bénin',
+  siteDescription: 'Accédez aux prix des produits agricoles et alimentaires en temps réel sur les marchés du Bénin. Connectez-vous aux producteurs et acheteurs locaux.',
+  siteKeywords: 'prix, produits agricoles, transparence, coopératives, acheteurs, bénin, marché, vivrier',
   homepageTitle: '',
   homepageDescription: '',
-  openGraphImage: ''
+  openGraphImage: 'https://lokali.bj/assets/lokali_blue.svg'
 };
 
 export function SeoProvider({ children }) {
