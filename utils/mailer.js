@@ -203,8 +203,31 @@ async function sendPriceStatusEmail(to, status, details = {}) {
   }
 }
 
+async function sendGenericEmail(to, subject, text, html) {
+  try {
+    if (!to) {
+      console.warn('[mailer] Pas de destinataire, envoi ignoré');
+      return { skipped: true };
+    }
+    const info = await transporter.sendMail({
+      from: getFrom(),
+      to,
+      subject,
+      text,
+      html,
+      replyTo: process.env.MAIL_REPLY_TO || undefined,
+    });
+    console.log('[mailer] Email générique envoyé:', info.messageId, '->', to);
+    return info;
+  } catch (err) {
+    console.error('[mailer] Échec envoi email générique:', err?.message || err);
+    throw err; // Re-throw to let caller handle or ignore
+  }
+}
+
 module.exports = {
   transporter,
   sendContributionStatusEmail,
   sendPriceStatusEmail,
+  sendGenericEmail,
 };

@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const router = express.Router();
 const db = require('../database/connection');
+const { sendGenericEmail } = require('../utils/mailer');
 
 // Middleware pour vérifier le token JWT
 const authenticateToken = (req, res, next) => {
@@ -229,22 +230,23 @@ router.post('/register', async (req, res) => {
       const apiBase = process.env.API_URL || 'http://localhost:5000';
       const verifyUrl = `${apiBase}/api/auth/verify-email?email=${encodeURIComponent(email)}&token=${verificationToken}`;
 
-      // charge nodemailer si installé
-      const nodemailer = require('nodemailer');
-      const testAccount = await nodemailer.createTestAccount();
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        auth: { user: testAccount.user, pass: testAccount.pass },
-      });
-      const info = await transporter.sendMail({
-        from: 'Lokali <no-reply@lokali.dev>',
-        to: email,
-        subject: 'Vérifiez votre email',
-        text: `Bienvenue sur Lokali! Cliquez pour vérifier votre email: ${verifyUrl}`,
-        html: `<p>Bienvenue sur Lokali!</p><p><a href="${verifyUrl}">Vérifier mon email</a></p>`
-      });
-      previewUrl = nodemailer.getTestMessageUrl(info);
+      // Utiliser le mailer centralisé (Zoho ou autre)
+      try {
+        const info = await sendGenericEmail(
+          email,
+          'Vérifiez votre email',
+          `Bienvenue sur Lokali! Cliquez pour vérifier votre email: ${verifyUrl}`,
+          `<p>Bienvenue sur Lokali!</p><p><a href="${verifyUrl}">Vérifier mon email</a></p>`
+        );
+        // Si on est en dev local avec Ethereal (via fallback dans mailer.js si configuré ainsi),
+        // on pourrait récupérer l'URL, mais ici on assume que mailer.js gère l'envoi réel ou loggue.
+        // Si sendGenericEmail retourne un objet nodemailer standard, getTestMessageUrl ne marche que pour Ethereal.
+        // On laisse null pour previewUrl sauf si on veut vraiment le supporter.
+        previewUrl = null; 
+      } catch (e) {
+        console.error("Erreur envoi email verif:", e);
+        previewUrl = null;
+      }
     } catch (e) {
       previewUrl = null;
     }
@@ -588,26 +590,16 @@ router.post('/request-otp', async (req, res) => {
       }
     } else if (delivery === 'email' && email) {
       try {
-        // charge nodemailer si installé
-        nodemailer = nodemailer || require('nodemailer');
-        const testAccount = await nodemailer.createTestAccount();
-        const transporter = nodemailer.createTransport({
-          host: 'smtp.ethereal.email',
-          port: 587,
-          auth: {
-            user: testAccount.user,
-            pass: testAccount.pass,
-          },
-        });
-        const info = await transporter.sendMail({
-          from: 'Lokali <no-reply@lokali.dev>',
-          to: email,
-          subject: 'Votre code OTP',
-          text: `Votre code OTP Lokali: ${code}`,
-        });
-        transportInfo = nodemailer.getTestMessageUrl(info);
+        // Utiliser le mailer centralisé
+        const info = await sendGenericEmail(
+          email,
+          'Votre code OTP',
+          `Votre code OTP Lokali: ${code}`
+        );
+        transportInfo = null; // Pas de preview URL pour SMTP réel
         sent = true;
       } catch (e) {
+        console.error("Erreur envoi OTP email:", e);
         sent = false;
       }
     }
