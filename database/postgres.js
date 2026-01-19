@@ -12,7 +12,8 @@ function buildPool() {
       connectionString,
       ssl: needsSSL ? { rejectUnauthorized: false } : false,
       // Échouer rapidement si la connexion ne peut pas être établie
-      connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 5000),
+      // Augmenté à 10s pour les connexions distantes (Render -> Supabase)
+      connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 10000),
     });
   }
 

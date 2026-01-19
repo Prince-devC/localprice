@@ -139,6 +139,7 @@ const Footer = () => {
       })
       .catch((err) => {
         console.error('[footer] Échec du chargement des catégories', err);
+        if (mounted) setCategories([]); // Fallback vide pour afficher "Aucune catégorie" ou gérer autrement
       })
       .finally(() => {
         if (mounted) setLoadingCategories(false);
@@ -201,18 +202,27 @@ const Footer = () => {
               {loadingCategories ? (
                 <li style={{ color: 'var(--gray-400)' }}>Chargement…</li>
               ) : categories && categories.length > 0 ? (
-                categories.slice(0, 6).map(cat => (
-                  <li key={cat.id}>
-                    <Link
-                      to={`/all-prices?category_id=${cat.id}`}
-                      aria-current={activeCategoryId === String(cat.id) ? 'page' : undefined}
-                    >
-                      {cat.name}
-                    </Link>
+                <>
+                  {categories.slice(0, 6).map(cat => (
+                    <li key={cat.id}>
+                      <Link
+                        to={`/all-prices?category_id=${cat.id}`}
+                        aria-current={activeCategoryId === String(cat.id) ? 'page' : undefined}
+                      >
+                        {cat.name}
+                      </Link>
+                    </li>
+                  ))}
+                  <li>
+                    <RouterNavLink to="/all-prices" style={{ fontWeight: '600', marginTop: '0.5rem', display: 'inline-block' }}>
+                      Voir tout →
+                    </RouterNavLink>
                   </li>
-                ))
+                </>
               ) : (
-                <li style={{ color: 'var(--gray-400)' }}>Aucune catégorie</li>
+                <li>
+                   <RouterNavLink to="/all-prices">Voir tous les prix</RouterNavLink>
+                </li>
               )}
             </ul>
           </FooterSection>

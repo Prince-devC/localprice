@@ -13,7 +13,7 @@ const resolvedBaseURL = (() => {
 
 const api = axios.create({
   baseURL: resolvedBaseURL,
-  timeout: 15000,
+  timeout: 30000, // Augmenté à 30s pour gérer les démarrages à froid (cold starts)
   headers: {
     'Content-Type': 'application/json',
   },
