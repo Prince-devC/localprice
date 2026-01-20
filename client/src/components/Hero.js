@@ -112,10 +112,10 @@ const Hero = () => {
     <HeroSection>
       <HeroContent>
         <HeroTitle>
-          Prix Directs & Fournisseurs de Produits Agricoles au Bénin
+          Prix Directs & Fournisseurs de Produits au Bénin
         </HeroTitle>
         <HeroSubtitle>
-          Lokali est une plateforme de transparence de prix des produits agricoles et de mise en relation des coopératives et acheteurs.
+          Lokali est une plateforme de transparence de prix des produits et de mise en relation des coopératives et acheteurs.
         </HeroSubtitle>
         <HeroCTA>
           <CTAButton onClick={() => { document.getElementById('filters-section').scrollIntoView({ behavior: 'smooth' }); }}>
