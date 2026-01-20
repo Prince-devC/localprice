@@ -50,7 +50,7 @@ const Contributor = () => {
       <ContributorContent>
         <ContributorTitle>Devenez Contributeur</ContributorTitle>
         <ContributorDescription>
-          Aidez-nous à collecter les données de prix et contribuez à la transparence du marché au Bénin
+          Aidez-nous à collecter les données de prix et contribuez à la transparence du marché agricole au Bénin
         </ContributorDescription>
         <ContributorButton to="/submit-price">
           Commencer à contribuer

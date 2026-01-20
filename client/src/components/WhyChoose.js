@@ -75,7 +75,7 @@ const WhyChoose = () => {
           </FeatureIcon>
           <FeatureTitle>Prix par localité</FeatureTitle>
           <FeatureDescription>
-            Consultez les prix de produits spécifiques à chaque localité du Bénin en temps réel.
+            Consultez les prix de produits agricoles spécifiques à chaque localité du Bénin en temps réel.
           </FeatureDescription>
         </FeatureCard>
         
@@ -85,7 +85,7 @@ const WhyChoose = () => {
           </FeatureIcon>
           <FeatureTitle>Connexion directe</FeatureTitle>
           <FeatureDescription>
-            Connectez-vous directement aux fournisseurs de produits sans intermédiaire.
+            Connectez-vous directement aux fournisseurs de produits agricoles sans intermédiaire.
           </FeatureDescription>
         </FeatureCard>
         
@@ -95,7 +95,7 @@ const WhyChoose = () => {
           </FeatureIcon>
           <FeatureTitle>Courtier digital</FeatureTitle>
           <FeatureDescription>
-            Votre courtier digital pour faciliter vos transactions au Bénin.
+            Votre courtier digital pour faciliter vos transactions agricoles au Bénin.
           </FeatureDescription>
         </FeatureCard>
       </FeaturesGrid>

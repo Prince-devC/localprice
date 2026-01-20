@@ -283,9 +283,9 @@ const AllPrices = () => {
     <AllPricesContainer>
       <PageHeader>
         <HeaderContent>
-          <PageTitle>Tous les Prix de Produits</PageTitle>
+          <PageTitle>Tous les Prix de Produits Agricoles</PageTitle>
           <PageSubtitle>
-            Consultez l'ensemble des prix des produits disponibles sur notre plateforme
+            Consultez l'ensemble des prix des produits agricoles disponibles sur notre plateforme
           </PageSubtitle>
         </HeaderContent>
       </PageHeader>
