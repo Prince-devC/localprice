@@ -1,3 +1,6 @@
+// Bypass SSL certificate validation for this script - MUST be before requiring database
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const db = require('../database/postgres');
 
 async function cleanPrices() {
