@@ -370,7 +370,7 @@ const PriceTable = ({ filters, onRefresh, showViewAllLink = true, limit = null, 
     <PriceTableContainer>
       <TableHeader>
         <TableTitle>
-          Prix agricoles validés
+          Prix validés
           <LiveIndicator>LIVE</LiveIndicator>
         </TableTitle>
         <RefreshButton 
