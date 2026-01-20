@@ -924,7 +924,10 @@ const Dashboard = () => {
     () => settingsService.getKoboSettings().then(r => r?.data?.data || null),
     { staleTime: 30_000 }
   );
-  const koboServerUrl = (koboSettingsResp?.server_url || process.env.REACT_APP_KOBO_SERVER_URL || 'https://kc.kobotoolbox.org');
+  // Fallback priority: DB setting > Env var > API URL (if absolute) > Default Kobo
+  const apiUrl = process.env.REACT_APP_API_URL;
+  const defaultServerUrl = (apiUrl && apiUrl.startsWith('http')) ? apiUrl : 'https://kc.kobotoolbox.org';
+  const koboServerUrl = (koboSettingsResp?.server_url || process.env.REACT_APP_KOBO_SERVER_URL || defaultServerUrl);
   const koboUsername = (koboSettingsResp?.username || 'Identifiant défini par l’admin');
   const koboPassword = (koboSettingsResp?.password || 'Mot de passe défini par l’admin');
   // Identifiant personnel à renseigner dans le formulaire Kobo (pour lier les contributions)
